@@ -1,4 +1,4 @@
-import Vue, { DirectiveBinding, VNode } from 'vue'
+import type { Directive } from 'vue'
 
 export type LongpressEvent = Partial<Touch> & { preventDefault: () => void }
 
@@ -14,14 +14,14 @@ function resolveHandler(value: LongpressBinding): (e: LongpressEvent) => void {
     return (e: LongpressEvent) => value.handler(e, ...value.args)
 }
 
-Vue.directive('longpress', {
-    bind: function (el: HTMLElement, binding: DirectiveBinding<LongpressBinding>, vNode: VNode) {
+const longpress: Directive<HTMLElement, LongpressBinding> = {
+    mounted(el, binding) {
         // Make sure expression provided is a function or { handler, args } object
         if (typeof binding.value !== 'function' && typeof binding.value?.handler !== 'function') {
             // Fetch name of component
-            const compName = vNode.context?.$options.name
+            const compName = (binding.instance?.$options as { name?: string } | undefined)?.name
             // pass warning to console
-            let warn = `[longpress:] provided expression '${binding.expression}' is not a function or { handler, args } object`
+            let warn = `[longpress:] provided expression is not a function or { handler, args } object`
             if (compName) {
                 warn += ` Found in component '${compName}' `
             }
@@ -124,4 +124,6 @@ Vue.directive('longpress', {
 
         document.addEventListener('scroll', cancel, { passive: true })
     },
-})
+}
+
+export default longpress

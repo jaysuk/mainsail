@@ -1,20 +1,17 @@
-import Vue from 'vue'
-import Vuetify from 'vuetify'
-import { Touch, Ripple } from 'vuetify/lib/directives'
+import 'vuetify/styles'
+import { createVuetify } from 'vuetify'
+import { aliases, mdi } from 'vuetify/iconsets/mdi-svg'
 
-Vue.use(Vuetify, {
-    directives: { Touch, Ripple },
-})
-
-export default new Vuetify({
+export default createVuetify({
     theme: {
-        dark: true,
-        options: { customProperties: true },
+        defaultTheme: 'dark',
     },
     icons: {
-        iconfont: 'mdiSvg',
+        defaultSet: 'mdi',
+        aliases,
+        sets: { mdi },
     },
-    breakpoint: {
+    display: {
         mobileBreakpoint: 768,
     },
 })

@@ -1,9 +1,8 @@
-import vue from '@pedrolamas/plugin-vue2'
+import vue from '@vitejs/plugin-vue'
+import vuetify from 'vite-plugin-vuetify'
 import version from 'vite-plugin-package-version'
 import { defineConfig } from 'vitest/config'
 
-import Components from 'unplugin-vue-components/vite'
-import { VuetifyResolver } from 'unplugin-vue-components/resolvers'
 import { checker } from 'vite-plugin-checker'
 
 import path from 'path'
@@ -80,16 +79,11 @@ export default defineConfig({
         buildVersion(),
         buildReleaseInfo(),
         vue(),
+        // auto-imports Vuetify 4 components/directives and wires up styles
+        vuetify({ autoImport: true }),
         version(),
         checker({
-            typescript: {
-                root: path.resolve(__dirname),
-                buildMode: false,
-            },
-        }),
-        Components({
-            dts: true, // enabled by default if `typescript` is installed
-            resolvers: [VuetifyResolver()],
+            vueTsc: true,
         }),
     ],
 
@@ -145,12 +139,6 @@ export default defineConfig({
     resolve: {
         dedupe: ['vue'],
         alias: {
-            // Ensure every importer exact same Vue build
-            vue: 'vue/dist/vue.runtime.esm.js',
-            'vue/dist/vue.runtime.common.js': 'vue/dist/vue.runtime.esm.js',
-            'vue/dist/vue.runtime.common.dev.js': 'vue/dist/vue.runtime.esm.js',
-            'vue/dist/vue.runtime.common.prod.js': 'vue/dist/vue.runtime.esm.js',
-            'vue/dist/vue.common.js': 'vue/dist/vue.runtime.esm.js',
             '@': path.resolve(__dirname, './src'),
             stream: 'stream-browserify',
             events: 'events',
@@ -160,15 +148,6 @@ export default defineConfig({
     // 'global' is required by node polyfills (stream-browserify, events) at runtime
     define: {
         global: 'globalThis',
-    },
-
-    // Vite 8 transforms TS via Oxc, which (unlike the build) does not auto-detect
-    // experimentalDecorators from tsconfig in per-file transforms (e.g. Vitest).
-    // Vue 2 class components rely on legacy decorators, so enable them explicitly.
-    oxc: {
-        decorator: {
-            legacy: true,
-        },
     },
 
     optimizeDeps: {

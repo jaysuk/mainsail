@@ -1,25 +1,24 @@
 import 'regenerator-runtime' // async polyfill used by the gcodeviewer
 import 'resize-observer-polyfill' // polyfill needed by the responsive class detection
-import Vue from 'vue'
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import App from '@/App.vue'
 import vuetify from '@/plugins/vuetify'
 import i18n, { setAndLoadLocale } from '@/plugins/i18n'
-import store from '@/store'
 import router from '@/plugins/router'
-import { WebSocketPlugin } from '@/plugins/webSocketClient'
-// vue-observe-visibility
-import { ObserveVisibility } from 'vue-observe-visibility'
-//vue-load-image
-import VueLoadImage from 'vue-load-image'
-//vue-toast-notifications
-import VueToast from 'vue-toast-notification'
+
+// Toast notifications
+import ToastPlugin from 'vue-toast-notification'
 import 'vue-toast-notification/dist/theme-sugar.css'
-//overlayerscrollbars-vue
-import { OverlayScrollbarsPlugin } from 'overlayscrollbars-vue'
-import 'overlayscrollbars/css/OverlayScrollbars.css'
+
+// OverlayScrollbars v2 styles. The Vue 2 `OverlayScrollbarsPlugin` no longer
+// exists in overlayscrollbars-vue@0.5 — usage is migrated to the
+// <OverlayScrollbarsComponent> component per-panel in Phase 3.
+import 'overlayscrollbars/overlayscrollbars.css'
+
 // Directives
-import './directives/longpress'
-import './directives/responsive-class'
+import longpress from '@/directives/longpress'
+import responsiveClass from '@/directives/responsive-class'
 
 // Echarts
 import ECharts from 'vue-echarts'
@@ -32,28 +31,9 @@ import { DatasetComponent, GridComponent, LegendComponent, TooltipComponent } fr
 
 import { defaultMode } from './store/variables'
 
-Vue.config.productionTip = false
-
-Vue.directive('observe-visibility', ObserveVisibility)
-
-Vue.component('VueLoadImage', VueLoadImage)
-
-Vue.use(VueToast, {
-    duration: 3000,
-})
-
-const isSafari = navigator.userAgent.includes('Safari') && navigator.userAgent.search('Chrome') === -1
-const isTouch = 'ontouchstart' in window || (navigator.maxTouchPoints > 0 && navigator.maxTouchPoints !== 256)
-Vue.use(OverlayScrollbarsPlugin, {
-    className: 'os-theme-light',
-    scrollbars: {
-        visibility: 'auto',
-        autoHide: isSafari && isTouch ? 'scroll' : 'move',
-    },
-})
-
 use([SVGRenderer, LineChart, BarChart, LegendComponent, PieChart, DatasetComponent, GridComponent, TooltipComponent])
-Vue.component('EChart', ECharts)
+
+const pinia = createPinia()
 
 const initLoad = async () => {
     try {
@@ -66,29 +46,41 @@ const initLoad = async () => {
 
         window.console.debug('Loaded config.json')
 
-        await store.dispatch('importConfigJson', file)
+        // TODO(phase-2): funnel config.json into the Pinia root store once the
+        // Vuex modules are ported, e.g. `await useRootStore().importConfigJson(file)`.
+
         const locale = (file.defaultLocale ?? 'en') as string
         await setAndLoadLocale(locale)
 
-        // Handle mode outside store init and before vue mount for consistency in dialog
+        // Handle mode before mount for consistency in the connecting dialog
         const mode = file.defaultMode ?? defaultMode
-        vuetify.framework.theme.dark = mode !== 'light'
+        vuetify.theme.global.name.value = mode === 'light' ? 'light' : 'dark'
     } catch (e) {
         window.console.error('Failed to load config.json')
         window.console.error(e)
     }
-
-    const url = store.getters['socket/getWebsocketUrl']
-    Vue.use(WebSocketPlugin, { url, store })
-    if (store?.state?.instancesDB === 'moonraker') Vue.$socket.connect()
 }
 
-initLoad().then(() =>
-    new Vue({
-        vuetify,
-        router,
-        store,
-        i18n,
-        render: (h) => h(App),
-    }).$mount('#app')
-)
+initLoad().then(() => {
+    const app = createApp(App)
+
+    app.use(pinia)
+    app.use(router)
+    app.use(i18n)
+    app.use(vuetify)
+    app.use(ToastPlugin, { duration: 3000 })
+
+    app.directive('longpress', longpress)
+    app.directive('responsive-class', responsiveClass)
+
+    app.component('EChart', ECharts)
+
+    // TODO(phase-2): construct the WebSocketClient, bridge it to the Pinia
+    // stores (replacing the Vue 2 `Vue.$socket` / `store.dispatch` plugin),
+    // resolve the websocket URL from the socket store, and connect when the
+    // active instance DB is 'moonraker'.
+    // TODO(phase-3): replace the vue-observe-visibility directive and the
+    // overlayscrollbars-vue plugin registrations removed in this phase.
+
+    app.mount('#app')
+})

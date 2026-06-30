@@ -1,8 +1,10 @@
 import throttle from 'lodash.throttle'
-import Vue from 'vue'
+import type { Directive } from 'vue'
 
-Vue.directive('responsive-class', {
-    inserted(el, conds) {
+type ResponsiveConditions = Record<string, (cr: DOMRectReadOnly) => boolean>
+
+const responsiveClass: Directive<HTMLElement, ResponsiveConditions> = {
+    mounted(el, conds) {
         const handleResize = throttle((entries: ResizeObserverEntry[]) => {
             const cr = entries[0].contentRect
             for (const breakpoint in conds.value) {
@@ -13,4 +15,6 @@ Vue.directive('responsive-class', {
         const observer = new ResizeObserver(handleResize)
         observer.observe(el)
     },
-})
+}
+
+export default responsiveClass
