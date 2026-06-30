@@ -1,7 +1,7 @@
-import { Store } from 'vuex'
-import _Vue from 'vue'
-import { RootState } from '@/store/types'
 import { initableServerComponents } from '@/store/variables'
+import { useSocketStore } from '@/store/socket'
+import { useServerStore } from '@/store/server'
+import { dispatchStoreAction } from '@/store/dispatch'
 import type { RPCMethods, RPCParams, RPCResult } from '@/types/moonraker'
 
 export class WebSocketClient {
@@ -13,15 +13,12 @@ export class WebSocketClient {
     keepAliveTimeout = 1000
     messageId: number = 0
     timerId: number | null = null
-    store: Store<RootState> | null = null
     waits: Wait[] = []
     heartbeatTimer: number | null = null
 
-    constructor(options: WebSocketPluginOptions) {
-        this.url = options.url
+    constructor(options: WebSocketClientOptions = {}) {
         this.maxReconnects = options.maxReconnects || 5
         this.reconnectInterval = options.reconnectInterval || 1000
-        this.store = options.store
     }
 
     setUrl(url: string): void {
@@ -46,18 +43,19 @@ export class WebSocketClient {
             }
 
             if (wait) {
+                const socketStore = useSocketStore()
                 const modulename = wait.action?.split('/')[1] ?? null
 
                 if (
                     modulename &&
                     wait.action?.startsWith('server/') &&
                     initableServerComponents.includes(modulename) &&
-                    this.store?.state.socket?.initializationList.length
+                    socketStore.initializationList.length
                 ) {
                     const component = wait.action.replace('server/', '').split('/')[0]
                     window.console.error(`init server component ${component} failed`)
-                    this.store?.dispatch('server/addFailedInitComponent', component)
-                    this.store?.dispatch('socket/removeInitComponent', `server/${component}/`)
+                    useServerStore().addFailedInitComponent(component)
+                    socketStore.removeInitComponent(`server/${component}/`)
                 }
 
                 this.removeWaitById(wait.id)
@@ -66,16 +64,16 @@ export class WebSocketClient {
             return
         }
 
-        // pass it to socket/onMessage, if no wait exists
+        // pass it to the socket store message router, if no wait exists
         if (!wait) {
-            this.store?.dispatch('socket/onMessage', data)
+            useSocketStore().onMessage(data)
             return
         }
 
         // resolve promise if it exists
         if (wait.resolve) wait.resolve(data.result ?? {})
 
-        // pass result to action
+        // pass result to the registered store action
         if (wait.action) {
             let result = data.result
             if (result === 'ok') result = { result }
@@ -85,14 +83,14 @@ export class WebSocketClient {
             if (wait.actionPayload) Object.assign(preload, wait.actionPayload)
             Object.assign(preload, { requestParams: wait.params })
             Object.assign(preload, result as Record<string, unknown>)
-            this.store?.dispatch(wait.action, preload)
+            dispatchStoreAction(wait.action, preload)
         }
 
         this.removeWaitById(wait.id)
     }
 
     async connect() {
-        this.store?.dispatch('socket/setData', {
+        useSocketStore().setData({
             isConnecting: true,
         })
 
@@ -101,12 +99,12 @@ export class WebSocketClient {
 
         this.instance.onopen = () => {
             this.reconnects = 0
-            this.store?.dispatch('socket/onOpen', event)
+            useSocketStore().onOpen()
         }
 
         this.instance.onclose = (e) => {
             if (e.wasClean || this.reconnects >= this.maxReconnects) {
-                this.store?.dispatch('socket/onClose', e)
+                useSocketStore().onClose(e)
                 return
             }
 
@@ -121,8 +119,6 @@ export class WebSocketClient {
         }
 
         this.instance.onmessage = (msg) => {
-            if (this.store === null) return
-
             // websocket is alive
             this.heartbeat()
 
@@ -151,7 +147,7 @@ export class WebSocketClient {
         const index = this.waits.findIndex((wait: Wait) => wait.id === id)
         if (index) {
             const wait = this.waits[index]
-            if (wait.loading) this.store?.dispatch('socket/removeLoading', { name: wait.loading })
+            if (wait.loading) useSocketStore().removeLoading(wait.loading)
             this.waits.splice(index, 1)
         }
     }
@@ -168,7 +164,7 @@ export class WebSocketClient {
             loading: options.loading ?? null,
         })
 
-        if (options.loading) this.store?.dispatch('socket/addLoading', { name: options.loading })
+        if (options.loading) useSocketStore().addLoading(options.loading)
 
         this.instance?.send(
             JSON.stringify({
@@ -199,7 +195,7 @@ export class WebSocketClient {
                 reject,
             })
 
-            if (options.loading) this.store?.dispatch('socket/addLoading', { name: options.loading })
+            if (options.loading) useSocketStore().addLoading(options.loading)
 
             this.instance?.send(
                 JSON.stringify({
@@ -227,7 +223,7 @@ export class WebSocketClient {
                 loading: emitOptions.loading ?? null,
             })
 
-            if (emitOptions.loading) this.store?.dispatch('socket/addLoading', { name: emitOptions.loading })
+            if (emitOptions.loading) useSocketStore().addLoading(emitOptions.loading)
             body.push({
                 jsonrpc: '2.0',
                 method,
@@ -243,25 +239,22 @@ export class WebSocketClient {
         if (this.heartbeatTimer) clearInterval(this.heartbeatTimer)
 
         this.heartbeatTimer = window.setTimeout(() => {
-            if (this.instance?.readyState !== WebSocket.OPEN || !this.store) return
+            if (this.instance?.readyState !== WebSocket.OPEN) return
 
             this.close()
-            this.store?.dispatch('socket/onClose')
+            useSocketStore().onClose()
         }, 10000)
     }
 }
 
-export function WebSocketPlugin(Vue: typeof _Vue, options: WebSocketPluginOptions): void {
-    const socket = new WebSocketClient(options)
-    Vue.prototype.$socket = socket
-    Vue.$socket = socket
-}
+// Singleton instance. Replaces the Vue 2 `Vue.prototype.$socket` plugin; stores
+// and components import this directly. The URL is set from config.json during
+// app bootstrap (see main.ts) before `connect()` is called.
+export const webSocketClient = new WebSocketClient()
 
-export interface WebSocketPluginOptions {
-    url: string
+export interface WebSocketClientOptions {
     maxReconnects?: number
     reconnectInterval?: number
-    store: Store<RootState>
 }
 
 export interface BatchMessage {

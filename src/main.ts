@@ -6,6 +6,8 @@ import App from '@/App.vue'
 import vuetify from '@/plugins/vuetify'
 import i18n, { setAndLoadLocale } from '@/plugins/i18n'
 import router from '@/plugins/router'
+import { webSocketClient } from '@/plugins/webSocketClient'
+import { useSocketStore } from '@/store/socket'
 
 // Toast notifications
 import ToastPlugin from 'vue-toast-notification'
@@ -35,7 +37,7 @@ use([SVGRenderer, LineChart, BarChart, LegendComponent, PieChart, DatasetCompone
 
 const pinia = createPinia()
 
-const initLoad = async () => {
+const initLoad = async (): Promise<Record<string, unknown>> => {
     try {
         // get base url. by default, it is '/'
         const base = import.meta.env.BASE_URL ?? '/'
@@ -46,8 +48,9 @@ const initLoad = async () => {
 
         window.console.debug('Loaded config.json')
 
-        // TODO(phase-2): funnel config.json into the Pinia root store once the
-        // Vuex modules are ported, e.g. `await useRootStore().importConfigJson(file)`.
+        // TODO(phase-2): funnel config.json into the Pinia root/socket stores
+        // (importConfigJson) once the remaining modules are ported, so the
+        // socket hostname/port/path overrides from config are applied.
 
         const locale = (file.defaultLocale ?? 'en') as string
         await setAndLoadLocale(locale)
@@ -55,13 +58,16 @@ const initLoad = async () => {
         // Handle mode before mount for consistency in the connecting dialog
         const mode = file.defaultMode ?? defaultMode
         vuetify.theme.global.name.value = mode === 'light' ? 'light' : 'dark'
+
+        return file
     } catch (e) {
         window.console.error('Failed to load config.json')
         window.console.error(e)
+        return {}
     }
 }
 
-initLoad().then(() => {
+initLoad().then((config) => {
     const app = createApp(App)
 
     app.use(pinia)
@@ -75,12 +81,14 @@ initLoad().then(() => {
 
     app.component('EChart', ECharts)
 
-    // TODO(phase-2): construct the WebSocketClient, bridge it to the Pinia
-    // stores (replacing the Vue 2 `Vue.$socket` / `store.dispatch` plugin),
-    // resolve the websocket URL from the socket store, and connect when the
-    // active instance DB is 'moonraker'.
     // TODO(phase-3): replace the vue-observe-visibility directive and the
-    // overlayscrollbars-vue plugin registrations removed in this phase.
+    // overlayscrollbars-vue plugin registrations removed in Phase 1.
 
     app.mount('#app')
+
+    // Bridge the websocket client to the Pinia socket store and connect.
+    const socketStore = useSocketStore()
+    webSocketClient.setUrl(socketStore.getWebsocketUrl)
+    const instancesDB = (config.instancesDB ?? 'moonraker') as string
+    if (instancesDB === 'moonraker') webSocketClient.connect()
 })
