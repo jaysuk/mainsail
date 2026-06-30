@@ -1,23 +1,44 @@
-import { Module } from 'vuex'
-import { ServerSensorState } from '@/store/server/sensor/types'
-import { actions } from '@/store/server/sensor/actions'
-import { mutations } from '@/store/server/sensor/mutations'
-import { getters } from '@/store/server/sensor/getters'
-import { RootState } from '@/store/types'
+import { defineStore } from 'pinia'
+import { reactive, computed, toRefs } from 'vue'
+import type { ServerSensorState, ServerSensorStateSensor } from '@/store/server/sensor/types'
+import { resetState } from '@/store/helpers'
+import { webSocketClient } from '@/plugins/webSocketClient'
+import { useSocketStore } from '@/store/socket'
 
-export const getDefaultState = (): ServerSensorState => {
-    return {
-        sensors: {},
+export const getDefaultState = (): ServerSensorState => ({
+    sensors: {},
+})
+
+export const useServerSensorStore = defineStore('serverSensor', () => {
+    const state = reactive<ServerSensorState>(getDefaultState())
+
+    const getSensors = computed(() => Object.keys(state.sensors))
+
+    const reset = () => resetState(state, getDefaultState)
+
+    const init = () => {
+        webSocketClient.emit('server.sensors.list', {}, { action: 'server/sensor/getSensors' })
     }
-}
 
-// initial state
-const state = getDefaultState()
+    // RPC-result handler (legacy action path 'server/sensor/getSensors'); named
+    // distinctly from the `getSensors` getter to avoid a Pinia member clash.
+    const getSensorsResponse = (payload: { sensors: Record<string, ServerSensorStateSensor> }) => {
+        state.sensors = payload.sensors
+        useSocketStore().removeInitModule('server/sensor/init')
+    }
 
-export const sensor: Module<ServerSensorState, RootState> = {
-    namespaced: true,
-    state,
-    getters,
-    actions,
-    mutations,
-}
+    const updateSensors = (payload: Record<string, Record<string, number>>) => {
+        Object.keys(payload).forEach((key) => {
+            if (key in state.sensors) state.sensors[key].values = payload[key]
+        })
+    }
+
+    return {
+        ...toRefs(state),
+        getSensors,
+        reset,
+        init,
+        getSensorsResponse,
+        updateSensors,
+    }
+})
