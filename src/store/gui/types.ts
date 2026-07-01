@@ -1,11 +1,5 @@
-import { GuiMacrosState } from '@/store/gui/macros/types'
-import { GuiConsoleState } from '@/store/gui/console/types'
-import { GuiPresetsState } from '@/store/gui/presets/types'
-import { GuiRemoteprintersState } from '@/store/gui/remoteprinters/types'
 import { ServerHistoryStateJob } from '@/store/server/history/types'
-import { GuiNotificationState } from '@/store/gui/notifications/types'
 import { FileStateFile, FileStateGcodefile } from '@/store/files/types'
-import { GuiNavigationState } from '@/store/gui/navigation/types'
 
 export interface GuiState {
     general: {
@@ -17,7 +11,6 @@ export interface GuiState {
         calcEstimateTime: string[] // file, filament are possible values
         calcEtaTime: string[] // file, filament, slicer are possible values
     }
-    console?: GuiConsoleState
     control: {
         style: 'bars' | 'circle' | 'cross'
         hideDuringPrint: boolean
@@ -82,11 +75,6 @@ export interface GuiState {
         showGCodePanel: boolean
         cncMode: boolean
     }
-    macros?: GuiMacrosState
-    navigation: GuiNavigationState
-    notifications?: GuiNotificationState
-    presets?: GuiPresetsState
-    remoteprinters?: GuiRemoteprintersState
     uiSettings: {
         mode: 'dark' | 'light'
         theme: string

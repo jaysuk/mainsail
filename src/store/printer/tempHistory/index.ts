@@ -353,7 +353,7 @@ export const usePrinterTempHistoryStore = defineStore('printerTempHistory', () =
             let colorNumber = 0
 
             masterDatasetKeys.forEach((name: string) => {
-                let color = useGuiStore().getDatasetValue({ name: name, type: 'color' })
+                let color = useGuiStore().getDatasetValue({ name: name, type: 'color' }) as string | undefined
 
                 if (!color) {
                     if (name === 'heater_bed') color = colorHeaterBed

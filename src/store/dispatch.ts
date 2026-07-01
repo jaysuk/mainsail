@@ -23,10 +23,13 @@ import { useServerTimelapseStore } from '@/store/server/timelapse'
 import { useServerSpoolmanStore } from '@/store/server/spoolman'
 import { usePrinterStore } from '@/store/printer'
 import { usePrinterTempHistoryStore } from '@/store/printer/tempHistory'
+import { useGuiStore } from '@/store/gui'
+import { useGuiMaintenanceStore } from '@/store/gui/maintenance'
+import { useGuiWebcamsStore } from '@/store/gui/webcams'
 
 type ActionPayload = Record<string, unknown>
 
-export function dispatchStoreAction(path: string, payload: ActionPayload): void {
+export function dispatchStoreAction(path: string, payload: ActionPayload): void | Promise<void> {
     switch (path) {
         // server
         case 'server/initServerInfo':
@@ -108,7 +111,19 @@ export function dispatchStoreAction(path: string, payload: ActionPayload): void 
         case 'printer/tempHistory/init':
             return usePrinterTempHistoryStore().init(payload as never)
 
-        // TODO(phase-2): add cases as files and gui stores are ported.
+        // gui
+        case 'gui/initStore':
+            return useGuiStore().initStore(payload as never)
+
+        // gui/maintenance
+        case 'gui/maintenance/initStore':
+            return useGuiMaintenanceStore().initStore(payload as never)
+
+        // gui/webcams
+        case 'gui/webcams/initStore':
+            return useGuiWebcamsStore().initStore(payload as never)
+
+        // TODO(phase-2): add cases as the files store is ported.
         default:
             window.console.debug(`[ws] no Pinia handler mapped for RPC-result action "${path}"`, payload)
     }

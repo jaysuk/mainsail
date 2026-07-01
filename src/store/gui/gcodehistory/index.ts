@@ -1,23 +1,41 @@
-import { Module } from 'vuex'
-import { actions } from '@/store/gui/gcodehistory/actions'
-import { mutations } from '@/store/gui/gcodehistory/mutations'
-import { getters } from '@/store/gui/gcodehistory/getters'
-import { GuiGcodehistoryState } from '@/store/gui/gcodehistory/types'
-import { RootState } from '@/store/types'
+import { defineStore } from 'pinia'
+import { reactive, toRefs } from 'vue'
+import type { GuiGcodehistoryState } from '@/store/gui/gcodehistory/types'
+import { maxGcodeHistory } from '@/store/variables'
+import { resetState, deepMerge } from '@/store/helpers'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
-export const getDefaultState = (): GuiGcodehistoryState => {
-    return {
-        entries: [],
+export const getDefaultState = (): GuiGcodehistoryState => ({
+    entries: [],
+})
+
+export const useGuiGcodehistoryStore = defineStore('guiGcodehistory', () => {
+    const state = reactive<GuiGcodehistoryState>(getDefaultState())
+
+    const reset = () => resetState(state, getDefaultState)
+
+    const setData = (payload: Partial<GuiGcodehistoryState>) => deepMerge(state, payload)
+
+    const upload = () => {
+        webSocketClient.emit('server.database.post_item', {
+            namespace: 'mainsail',
+            key: 'gcodehistory.entries',
+            value: state.entries,
+        })
     }
-}
 
-// initial state
-const state = getDefaultState()
+    const addToHistory = (payload: string) => {
+        state.entries.push(payload)
+        while (state.entries.length > maxGcodeHistory) state.entries.splice(0, 1)
 
-export const gcodehistory: Module<GuiGcodehistoryState, RootState> = {
-    namespaced: true,
-    state,
-    getters,
-    actions,
-    mutations,
-}
+        upload()
+    }
+
+    return {
+        ...toRefs(state),
+        reset,
+        setData,
+        upload,
+        addToHistory,
+    }
+})

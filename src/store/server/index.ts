@@ -441,7 +441,7 @@ export const useServerStore = defineStore('server', () => {
             }
         })
 
-        const cleared_since: number = consoleStore.getConsoleClearedSince
+        const cleared_since: number | undefined = consoleStore.getConsoleClearedSince
         events = events.filter((event) => {
             if (!cleared_since) return true
             if (event.time && event.time * 1000 < cleared_since) return false
@@ -450,6 +450,14 @@ export const useServerStore = defineStore('server', () => {
 
         events.forEach((event) => state.events.push(event))
         useSocketStore().removeInitModule('server/gcode_store')
+    }
+
+    const clearGcodeStore = () => {
+        state.events = []
+    }
+
+    const setConsoleClearedThisSession = () => {
+        state.console_cleared_this_session = true
     }
 
     const addRootDirectory = (data: { item: { root: string } }) => {
@@ -547,6 +555,8 @@ export const useServerStore = defineStore('server', () => {
         checkKlippyState,
         getData,
         getGcodeStore,
+        clearGcodeStore,
+        setConsoleClearedThisSession,
         addRootDirectory,
         addEvent,
         serviceStateChanged,
