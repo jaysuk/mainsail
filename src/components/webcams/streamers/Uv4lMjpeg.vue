@@ -1,108 +1,95 @@
 <template>
     <div class="webcamBackground" :style="wrapperStyle">
-        <img
-            ref="image"
-            v-observe-visibility="viewportVisibilityChanged"
-            :style="webcamStyle"
-            class="webcamImage"
-            draggable="false"
-            :alt="camSettings.name"
-            @load="onload" />
+        <img ref="image" :style="webcamStyle" class="webcamImage" draggable="false" :alt="camSettings.name" @load="onload" />
     </div>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop, Ref, Watch } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import { GuiWebcamStateWebcam } from '@/store/gui/webcams/types'
-import WebcamMixin from '@/components/mixins/webcam'
+<script setup lang="ts">
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import type { GuiWebcamStateWebcam } from '@/store/gui/webcams/types'
+import { useWebcam } from '@/composables/useWebcam'
 
-@Component
-export default class Uv4lMjpeg extends Mixins(BaseMixin, WebcamMixin) {
-    aspectRatio: null | number = null
-    isVisible = false
-    isVisibleViewport = false
-    isVisibleDocument = true
+const props = withDefaults(
+    defineProps<{
+        camSettings: GuiWebcamStateWebcam
+        printerUrl?: string | null
+    }>(),
+    { printerUrl: null }
+)
 
-    @Prop({ required: true }) readonly camSettings!: GuiWebcamStateWebcam
-    @Prop({ default: null }) readonly printerUrl!: string | null
+const { convertUrl, getWrapperStyle, generateTransform, updateAspectRatioFromImage } = useWebcam()
 
-    @Ref('image') readonly image!: HTMLImageElement
+const aspectRatio = ref<number | null>(null)
+const isVisibleViewport = ref(false)
+const isVisibleDocument = ref(true)
+const image = ref<HTMLImageElement | null>(null)
+let observer: IntersectionObserver | null = null
 
-    get url() {
-        return this.convertUrl(this.camSettings?.stream_url, this.printerUrl)
-    }
+const url = computed(() => convertUrl(props.camSettings?.stream_url, props.printerUrl))
 
-    get wrapperStyle() {
-        return this.getWrapperStyle(this.aspectRatio, this.camSettings.rotation)
-    }
+const wrapperStyle = computed(() => getWrapperStyle(aspectRatio.value, props.camSettings.rotation))
 
-    get webcamStyle() {
-        return {
-            transform: this.generateTransform(
-                this.camSettings.flip_horizontal ?? false,
-                this.camSettings.flip_vertical ?? false,
-                this.camSettings.rotation ?? 0,
-                this.aspectRatio ?? 1
-            ),
-        }
-    }
+const webcamStyle = computed(() => ({
+    transform: generateTransform(
+        props.camSettings.flip_horizontal ?? false,
+        props.camSettings.flip_vertical ?? false,
+        props.camSettings.rotation ?? 0,
+        aspectRatio.value ?? 1
+    ),
+}))
 
-    mounted() {
-        document.addEventListener('visibilitychange', this.documentVisibilityChanged)
-    }
-
-    beforeDestroy() {
-        document.removeEventListener('visibilitychange', this.documentVisibilityChanged)
-        this.stopStream()
-    }
-
-    startStream() {
-        if (this.isVisible) return
-
-        this.image?.setAttribute('src', this.url)
-    }
-
-    stopStream() {
-        if (!this.image) return
-
-        this.image.removeAttribute('src')
-        URL.revokeObjectURL(this.url)
-    }
-
-    // this function checks if the browser tab was changed
-    documentVisibilityChanged() {
-        const visibility = document.visibilityState
-        this.isVisibleDocument = visibility === 'visible'
-        if (!this.isVisibleDocument) this.stopStream()
-        this.visibilityChanged()
-    }
-
-    // this function checks if the webcam is in the viewport
-    viewportVisibilityChanged(newVal: boolean) {
-        this.isVisibleViewport = newVal
-        this.visibilityChanged()
-    }
-
-    visibilityChanged() {
-        if (this.isVisibleViewport && this.isVisibleDocument) {
-            this.startStream()
-            return
-        }
-
-        this.stopStream()
-    }
-
-    onload() {
-        if (this.aspectRatio !== null) return
-
-        this.aspectRatio = this.updateAspectRatioFromImage(this.image)
-    }
-
-    @Watch('url')
-    async urlChanged() {
-        this.stopStream()
-        this.startStream()
-    }
+function startStream() {
+    image.value?.setAttribute('src', url.value)
 }
+
+function stopStream() {
+    if (!image.value) return
+
+    image.value.removeAttribute('src')
+    URL.revokeObjectURL(url.value)
+}
+
+// checks whether the webcam is in the viewport and whether the browser tab
+// is active, and starts/stops the mjpeg stream accordingly
+function visibilityChanged() {
+    if (isVisibleViewport.value && isVisibleDocument.value) {
+        startStream()
+        return
+    }
+
+    stopStream()
+}
+
+function documentVisibilityChanged() {
+    isVisibleDocument.value = document.visibilityState === 'visible'
+    if (!isVisibleDocument.value) stopStream()
+    visibilityChanged()
+}
+
+function onload() {
+    if (aspectRatio.value !== null) return
+
+    aspectRatio.value = updateAspectRatioFromImage(image.value)
+}
+
+onMounted(() => {
+    document.addEventListener('visibilitychange', documentVisibilityChanged)
+
+    observer = new IntersectionObserver((entries) => {
+        isVisibleViewport.value = entries[0]?.isIntersecting ?? false
+        visibilityChanged()
+    })
+    if (image.value) observer.observe(image.value)
+})
+
+onBeforeUnmount(() => {
+    document.removeEventListener('visibilitychange', documentVisibilityChanged)
+    observer?.disconnect()
+    stopStream()
+})
+
+watch(url, () => {
+    stopStream()
+    startStream()
+})
 </script>

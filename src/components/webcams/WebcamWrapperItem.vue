@@ -1,76 +1,59 @@
 <template>
     <div>
-        <mjpegstreamer-async
-            v-if="service === 'mjpegstreamer'"
-            :cam-settings="webcam"
-            :show-fps="showFps"
-            :printer-url="printerUrl"
-            :page="page" />
-        <mjpegstreamer-adaptive-async
-            v-else-if="service === 'mjpegstreamer-adaptive'"
-            :cam-settings="webcam"
-            :show-fps="showFps"
-            :printer-url="printerUrl" />
+        <mjpegstreamer-async v-if="service === 'mjpegstreamer'" :cam-settings="webcam" :show-fps="showFps" :printer-url="printerUrl" :page="page" />
+        <mjpegstreamer-adaptive-async v-else-if="service === 'mjpegstreamer-adaptive'" :cam-settings="webcam" :show-fps="showFps" :printer-url="printerUrl" />
         <uv4l-mjpeg-async v-else-if="service === 'uv4l-mjpeg'" :cam-settings="webcam" :printer-url="printerUrl" />
         <html-iframe-async v-else-if="service === 'iframe'" :cam-settings="webcam" :printer-url="printerUrl" />
         <html-video-async v-else-if="service === 'html-video'" :cam-settings="webcam" :printer-url="printerUrl" />
         <hlsstreamer-async v-else-if="service === 'hlsstream'" :cam-settings="webcam" :printer-url="printerUrl" />
-        <j-muxer-stream-async
-            v-else-if="service === 'jmuxer-stream'"
-            :cam-settings="webcam"
-            :printer-url="printerUrl" />
-        <webrtc-camera-streamer-async
-            v-else-if="service === 'webrtc-camerastreamer'"
-            :cam-settings="webcam"
-            :printer-url="printerUrl"
-            :page="page" />
+        <j-muxer-stream-async v-else-if="service === 'jmuxer-stream'" :cam-settings="webcam" :printer-url="printerUrl" />
+        <webrtc-camera-streamer-async v-else-if="service === 'webrtc-camerastreamer'" :cam-settings="webcam" :printer-url="printerUrl" :page="page" />
         <janus-streamer-async v-else-if="service === 'webrtc-janus'" :cam-settings="webcam" :printer-url="printerUrl" />
-        <webrtc-media-m-t-x-async
-            v-else-if="service === 'webrtc-mediamtx'"
-            :cam-settings="webcam"
-            :printer-url="printerUrl"
-            :page="page" />
+        <webrtc-media-m-t-x-async v-else-if="service === 'webrtc-mediamtx'" :cam-settings="webcam" :printer-url="printerUrl" :page="page" />
         <webrtc-go2rtc-async v-else-if="service === 'webrtc-go2rtc'" :cam-settings="webcam" :printer-url="printerUrl" />
-        <p v-else class="text-center py-3 font-italic">{{ $t('Panels.WebcamPanel.UnknownWebcamService') }}</p>
+        <p v-else class="text-center py-3 font-italic">{{ t('Panels.WebcamPanel.UnknownWebcamService') }}</p>
     </div>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import { GuiWebcamStateWebcam } from '@/store/gui/webcams/types'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import type { GuiWebcamStateWebcam } from '@/store/gui/webcams/types'
 import { DynamicCamLoader } from '@/components/webcams/streamers/DynamicCamLoader'
 
-@Component({
-    components: {
-        HlsstreamerAsync: DynamicCamLoader('Hlsstreamer'),
-        HtmlVideoAsync: DynamicCamLoader('HtmlVideo'),
-        HtmlIframeAsync: DynamicCamLoader('HtmlIframe'),
-        JanusStreamerAsync: DynamicCamLoader('JanusStreamer'),
-        JMuxerStreamAsync: DynamicCamLoader('JMuxerStream'),
-        MjpegstreamerAsync: DynamicCamLoader('Mjpegstreamer'),
-        MjpegstreamerAdaptiveAsync: DynamicCamLoader('MjpegstreamerAdaptive'),
-        Uv4lMjpegAsync: DynamicCamLoader('Uv4lMjpeg'),
-        WebrtcCameraStreamerAsync: DynamicCamLoader('WebrtcCameraStreamer'),
-        WebrtcMediaMTXAsync: DynamicCamLoader('WebrtcMediaMTX'),
-        WebrtcGo2rtcAsync: DynamicCamLoader('WebrtcGo2rtc'),
-    },
-})
-export default class WebcamWrapperItem extends Mixins(BaseMixin) {
-    @Prop({ type: Object, required: true }) webcam!: GuiWebcamStateWebcam
-    @Prop({ type: Boolean, default: true }) showFps!: boolean
-    @Prop({ default: null }) printerUrl!: string | null
-    @Prop({ type: String, default: null }) page!: string | null
+const HlsstreamerAsync = DynamicCamLoader('Hlsstreamer')
+const HtmlVideoAsync = DynamicCamLoader('HtmlVideo')
+const HtmlIframeAsync = DynamicCamLoader('HtmlIframe')
+const JanusStreamerAsync = DynamicCamLoader('JanusStreamer')
+const JMuxerStreamAsync = DynamicCamLoader('JMuxerStream')
+const MjpegstreamerAsync = DynamicCamLoader('Mjpegstreamer')
+const MjpegstreamerAdaptiveAsync = DynamicCamLoader('MjpegstreamerAdaptive')
+const Uv4lMjpegAsync = DynamicCamLoader('Uv4lMjpeg')
+const WebrtcCameraStreamerAsync = DynamicCamLoader('WebrtcCameraStreamer')
+const WebrtcMediaMTXAsync = DynamicCamLoader('WebrtcMediaMTX')
+const WebrtcGo2rtcAsync = DynamicCamLoader('WebrtcGo2rtc')
 
-    get service() {
-        return this.webcam?.service ?? 'unknown'
+const props = withDefaults(
+    defineProps<{
+        webcam: GuiWebcamStateWebcam
+        showFps?: boolean
+        printerUrl?: string | null
+        page?: string | null
+    }>(),
+    {
+        showFps: true,
+        printerUrl: null,
+        page: null,
     }
-}
+)
+
+const { t } = useI18n()
+
+const service = computed(() => props.webcam?.service ?? 'unknown')
 </script>
 
 <style scoped>
-::v-deep .webcamBackground {
+:deep(.webcamBackground) {
     display: flex;
     justify-content: center;
     overflow: hidden;
@@ -80,13 +63,13 @@ export default class WebcamWrapperItem extends Mixins(BaseMixin) {
     max-height: calc(100vh - 155px);
 }
 
-::v-deep .webcamImage {
+:deep(.webcamImage) {
     width: 100%;
     transform-origin: center center;
     object-fit: contain;
 }
 
-html.theme--light ::v-deep .webcamBackground {
+html.theme--light :deep(.webcamBackground) {
     background: rgba(255, 255, 255, 0.7);
 }
 </style>

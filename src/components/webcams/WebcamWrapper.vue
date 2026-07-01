@@ -4,11 +4,7 @@
             <v-container v-if="webcams" fluid class="pb-4">
                 <v-row dense>
                     <v-col v-for="gridWebcam in webcams" :key="gridWebcam.name" class="col-12 col-md-6">
-                        <webcam-wrapper-item
-                            :webcam="gridWebcam"
-                            :printer-url="printerUrl"
-                            :show-fps="showFps"
-                            :page="page" />
+                        <webcam-wrapper-item :webcam="gridWebcam" :printer-url="printerUrl" :show-fps="showFps" :page="page" />
                     </v-col>
                 </v-row>
             </v-container>
@@ -19,26 +15,27 @@
     </div>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import { GuiWebcamStateWebcam } from '@/store/gui/webcams/types'
+<script setup lang="ts">
+import { computed } from 'vue'
 import WebcamWrapperItem from '@/components/webcams/WebcamWrapperItem.vue'
+import { useGuiWebcamsStore } from '@/store/gui/webcams'
+import type { GuiWebcamStateWebcam } from '@/store/gui/webcams/types'
 
-@Component({
-    components: {
-        WebcamWrapperItem,
-    },
-})
-export default class WebcamWrapper extends Mixins(BaseMixin) {
-    @Prop({ type: Object, required: true }) webcam!: GuiWebcamStateWebcam
-    @Prop({ type: Boolean, default: true }) showFps!: boolean
-    @Prop({ type: String, default: null }) printerUrl!: string | null
-    @Prop({ type: String, default: null }) page!: string | null
-
-    get webcams(): GuiWebcamStateWebcam[] {
-        return this.$store.getters['gui/webcams/getWebcams']
+withDefaults(
+    defineProps<{
+        webcam: GuiWebcamStateWebcam
+        showFps?: boolean
+        printerUrl?: string | null
+        page?: string | null
+    }>(),
+    {
+        showFps: true,
+        printerUrl: null,
+        page: null,
     }
-}
+)
+
+const guiWebcamsStore = useGuiWebcamsStore()
+
+const webcams = computed<GuiWebcamStateWebcam[]>(() => guiWebcamsStore.getWebcams)
 </script>

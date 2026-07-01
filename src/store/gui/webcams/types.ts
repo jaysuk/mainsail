@@ -17,6 +17,7 @@ export interface GuiWebcamStateWebcam {
         | 'webrtc-camerastreamer'
         | 'webrtc-janus'
         | 'webrtc-mediamtx'
+        | 'webrtc-go2rtc'
     enabled: boolean
     icon: string
     target_fps: number

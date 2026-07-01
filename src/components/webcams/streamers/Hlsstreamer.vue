@@ -1,95 +1,91 @@
 <template>
     <div class="webcamBackground" :style="wrapperStyle">
-        <video
-            ref="video"
-            v-observe-visibility="visibilityChanged"
-            autoplay
-            muted
-            :style="webcamStyle"
-            class="webcamImage"
-            @loadedmetadata="onLoadedMetadata" />
+        <video ref="video" autoplay muted :style="webcamStyle" class="webcamImage" @loadedmetadata="onLoadedMetadata" />
     </div>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop, Ref } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref, computed, onMounted, onUpdated, onBeforeUnmount } from 'vue'
 import Hls from 'hls.js'
-import { GuiWebcamStateWebcam } from '@/store/gui/webcams/types'
-import WebcamMixin from '@/components/mixins/webcam'
+import type { GuiWebcamStateWebcam } from '@/store/gui/webcams/types'
+import { useWebcam } from '@/composables/useWebcam'
 
-@Component
-export default class Hlsstreamer extends Mixins(BaseMixin, WebcamMixin) {
-    aspectRatio: null | number = null
-    isVisible = true
-    hls: Hls | null = null
+const props = withDefaults(
+    defineProps<{
+        camSettings: GuiWebcamStateWebcam
+        printerUrl?: string | null
+    }>(),
+    { printerUrl: null }
+)
 
-    @Prop({ required: true }) readonly camSettings!: GuiWebcamStateWebcam
-    @Prop({ default: null }) readonly printerUrl!: string | null
-    @Ref() readonly video!: HTMLVideoElement
+const { convertUrl, getWrapperStyle, generateTransform, updateAspectRatioFromVideo } = useWebcam()
 
-    get url() {
-        return this.convertUrl(this.camSettings?.stream_url, this.printerUrl)
-    }
+const aspectRatio = ref<number | null>(null)
+const isVisible = ref(true)
+const video = ref<HTMLVideoElement | null>(null)
+let hls: Hls | null = null
+let observer: IntersectionObserver | null = null
 
-    get wrapperStyle() {
-        return this.getWrapperStyle(this.aspectRatio, this.camSettings.rotation)
-    }
+const url = computed(() => convertUrl(props.camSettings?.stream_url, props.printerUrl))
 
-    get webcamStyle() {
-        return {
-            transform: this.generateTransform(
-                this.camSettings.flip_horizontal ?? false,
-                this.camSettings.flip_vertical ?? false,
-                this.camSettings.rotation ?? 0,
-                this.aspectRatio ?? 1
-            ),
-        }
-    }
+const wrapperStyle = computed(() => getWrapperStyle(aspectRatio.value, props.camSettings.rotation))
 
-    visibilityChanged(isVisible: boolean) {
-        this.isVisible = isVisible
-    }
+const webcamStyle = computed(() => ({
+    transform: generateTransform(
+        props.camSettings.flip_horizontal ?? false,
+        props.camSettings.flip_vertical ?? false,
+        props.camSettings.rotation ?? 0,
+        aspectRatio.value ?? 1
+    ),
+}))
 
-    mounted() {
-        this.play()
-    }
+function onLoadedMetadata() {
+    aspectRatio.value = updateAspectRatioFromVideo(video.value)
+}
 
-    onLoadedMetadata() {
-        this.aspectRatio = this.updateAspectRatioFromVideo(this.video)
-    }
+function play() {
+    if (!video.value) return
 
-    updated() {
-        this.play()
-    }
+    if (Hls.isSupported()) {
+        hls?.destroy()
 
-    play() {
-        if (Hls.isSupported()) {
-            this.hls?.destroy()
-
-            this.hls = new Hls({
-                enableWorker: true,
-                lowLatencyMode: true,
-                maxLiveSyncPlaybackRate: 2,
-                liveSyncDuration: 0.5,
-                liveMaxLatencyDuration: 2,
-                backBufferLength: 5,
-            })
-            this.hls.loadSource(this.url)
-            this.hls.attachMedia(this.video)
-            this.hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                this.video.play()
-            })
-        } else if (this.video.canPlayType('application/vnd.apple.mpegurl')) {
-            fetch(this.url).then(() => {
-                this.video.src = this.url
-                this.video.play()
-            })
-        }
-    }
-
-    beforeUnmount() {
-        this.hls?.destroy()
+        hls = new Hls({
+            enableWorker: true,
+            lowLatencyMode: true,
+            maxLiveSyncPlaybackRate: 2,
+            liveSyncDuration: 0.5,
+            liveMaxLatencyDuration: 2,
+            backBufferLength: 5,
+        })
+        hls.loadSource(url.value)
+        hls.attachMedia(video.value)
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            video.value?.play()
+        })
+    } else if (video.value.canPlayType('application/vnd.apple.mpegurl')) {
+        fetch(url.value).then(() => {
+            if (!video.value) return
+            video.value.src = url.value
+            video.value.play()
+        })
     }
 }
+
+onMounted(() => {
+    play()
+
+    observer = new IntersectionObserver((entries) => {
+        isVisible.value = entries[0]?.isIntersecting ?? false
+    })
+    if (video.value) observer.observe(video.value)
+})
+
+onUpdated(() => {
+    play()
+})
+
+onBeforeUnmount(() => {
+    observer?.disconnect()
+    hls?.destroy()
+})
 </script>

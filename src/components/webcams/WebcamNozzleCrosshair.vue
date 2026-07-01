@@ -6,62 +6,59 @@
     </div>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop, Ref } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import { GuiWebcamStateWebcam } from '@/store/gui/webcams/types'
-import { Debounce } from 'vue-debounce-decorator'
+<script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import type { GuiWebcamStateWebcam } from '@/store/gui/webcams/types'
 
-@Component
-export default class WebcamWrapper extends Mixins(BaseMixin) {
-    @Prop({ type: Object, required: true }) webcam!: GuiWebcamStateWebcam
-    @Ref() readonly container!: HTMLDivElement
+const props = defineProps<{ webcam: GuiWebcamStateWebcam }>()
 
-    clientHeight = 0
-    resizeObserver: ResizeObserver | null = null
+const container = ref<HTMLDivElement | null>(null)
+const clientHeight = ref(0)
+let resizeObserver: ResizeObserver | null = null
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
-    get color() {
-        return this.webcam.extra_data?.nozzleCrosshairColor ?? '#ff0000'
+const color = computed(() => props.webcam.extra_data?.nozzleCrosshairColor ?? '#ff0000')
+
+const styleLines = computed(() => ({
+    backgroundColor: color.value,
+}))
+
+const styleCircle = computed(() => {
+    const nozzleCrosshairSize = props.webcam.extra_data?.nozzleCrosshairSize ?? 0.1
+    const size = clientHeight.value * nozzleCrosshairSize
+
+    return {
+        borderColor: color.value,
+        width: `${size}px`,
+        height: `${size}px`,
+        marginLeft: `-${size / 2}px`,
+        marginTop: `-${size / 2}px`,
     }
+})
 
-    get styleLines() {
-        return {
-            backgroundColor: this.color,
-        }
-    }
-
-    get styleCircle() {
-        const nozzleCrosshairSize = this.webcam.extra_data?.nozzleCrosshairSize ?? 0.1
-        const size = this.clientHeight * nozzleCrosshairSize
-
-        return {
-            borderColor: this.color,
-            width: `${size}px`,
-            height: `${size}px`,
-            marginLeft: `-${size / 2}px`,
-            marginTop: `-${size / 2}px`,
-        }
-    }
-
-    mounted() {
-        this.handleResize()
-
-        this.resizeObserver = new ResizeObserver(() => this.handleResize())
-        this.resizeObserver.observe(this.container)
-    }
-
-    beforeDestroy() {
-        this.resizeObserver?.disconnect()
-    }
-
-    @Debounce(200)
-    handleResize() {
-        this.$nextTick(() => {
-            this.clientHeight = this.container.clientHeight
+// debounce replaces the removed vue-debounce-decorator @Debounce(200)
+function handleResize() {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+        nextTick(() => {
+            clientHeight.value = container.value?.clientHeight ?? 0
         })
-    }
+    }, 200)
 }
+
+onMounted(() => {
+    handleResize()
+
+    if (container.value) {
+        resizeObserver = new ResizeObserver(() => handleResize())
+        resizeObserver.observe(container.value)
+    }
+})
+
+onBeforeUnmount(() => {
+    resizeObserver?.disconnect()
+    if (debounceTimer) clearTimeout(debounceTimer)
+})
 </script>
 
 <style scoped>

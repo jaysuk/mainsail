@@ -1,4 +1,4 @@
-import Vue from 'vue'
+import { defineAsyncComponent } from 'vue'
 
 type StreamerTypes =
     | 'Hlsstreamer'
@@ -41,5 +41,4 @@ function getDynamicCamImport(componentName: StreamerTypes) {
     }
 }
 
-export const DynamicCamLoader = (componentName: StreamerTypes) =>
-    Vue.component(componentName, getDynamicCamImport(componentName))
+export const DynamicCamLoader = (componentName: StreamerTypes) => defineAsyncComponent(getDynamicCamImport(componentName)!)
