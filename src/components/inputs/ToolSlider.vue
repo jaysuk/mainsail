@@ -1,18 +1,12 @@
 <template>
     <v-row dense>
         <v-col class="pa-0">
-            <v-subheader class="_tool-slider-subheader px-1">
-                <v-icon small class="mr-2">
+            <v-list-subheader class="_tool-slider-subheader px-1">
+                <v-icon size="small" class="mr-2">
                     {{ icon }}
                 </v-icon>
                 <span>{{ label }}</span>
-                <v-btn
-                    v-if="value !== defaultValue && !hasInputField"
-                    x-small
-                    icon
-                    class="ml-2"
-                    :disabled="isLocked"
-                    @click="resetSlider">
+                <v-btn v-if="value !== defaultValue && !hasInputField" size="x-small" icon class="ml-2" :disabled="isLocked" @click="resetSlider">
                     <v-icon>{{ mdiRestart }}</v-icon>
                 </v-btn>
                 <v-spacer></v-spacer>
@@ -26,18 +20,18 @@
                         type="number"
                         hide-spin-buttons
                         hide-details
-                        outlined
-                        dense
+                        variant="outlined"
+                        density="compact"
                         class="_slider-input d-flex align-center pt-1"
                         @blur="numInput = value"
-                        @focus="$event.target.select()"
+                        @focus="($event.target as HTMLInputElement)?.select()"
                         @keydown="checkInvalidChars">
-                        <template v-if="value !== defaultValue || value !== numInput" #append>
-                            <v-icon small @click="resetSlider">{{ mdiRestart }}</v-icon>
+                        <template v-if="value !== defaultValue || value !== numInput" #append-inner>
+                            <v-icon size="small" @click="resetSlider">{{ mdiRestart }}</v-icon>
                         </template>
                     </v-text-field>
                 </form>
-            </v-subheader>
+            </v-list-subheader>
             <transition name="fade">
                 <!-- display errors-->
                 <div v-show="errors().length > 0" class="_error-msg d-flex justify-end">
@@ -45,14 +39,8 @@
                 </div>
             </transition>
             <v-card-text class="pa-0 d-flex align-center">
-                <v-btn
-                    v-if="lockSliders && isTouchDevice"
-                    plain
-                    small
-                    icon
-                    class="_lock-button"
-                    @click="isLocked = !isLocked">
-                    <v-icon small :color="isLocked ? 'red' : ''">
+                <v-btn v-if="lockSliders && isTouchDevice" variant="plain" size="small" icon class="_lock-button" @click="isLocked = !isLocked">
+                    <v-icon size="small" :color="isLocked ? 'red' : ''">
                         {{ isLocked ? mdiLockOutline : mdiLockOpenVariantOutline }}
                     </v-icon>
                 </v-btn>
@@ -64,7 +52,7 @@
                     :max="processedMax"
                     :color="colorBar"
                     hide-details
-                    @change="changeSlider">
+                    @update:model-value="changeSlider">
                     <template #prepend>
                         <v-icon :disabled="isLocked || value <= min" @click="decrement">{{ mdiMinus }}</v-icon>
                     </template>
@@ -80,177 +68,187 @@
     </v-row>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop, Watch } from 'vue-property-decorator'
-import { Debounce } from 'vue-debounce-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { mdiLockOpenVariantOutline, mdiLockOutline, mdiMinus, mdiPlus, mdiRestart } from '@mdi/js'
-import { TranslateResult } from 'vue-i18n'
+import { useBase } from '@/composables/useBase'
+import { useGuiStore } from '@/store/gui'
+import { useServerStore } from '@/store/server'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
-@Component
-export default class ToolSlider extends Mixins(BaseMixin) {
-    mdiRestart = mdiRestart
-    mdiLockOutline = mdiLockOutline
-    mdiLockOpenVariantOutline = mdiLockOpenVariantOutline
-    mdiMinus = mdiMinus
-    mdiPlus = mdiPlus
-
-    declare private timeout: ReturnType<typeof setTimeout>
-    private isLocked: boolean = false
-    private invalidChars: string[] = ['e', 'E', '+']
-
-    private value = 0
-    private numInput = 0
-    private startValue = 0
-    private processedMax = 100
-    private dynamicStep = 50
-
-    @Prop({ type: Number, required: true }) declare readonly target: number
-    @Prop({ type: String, required: true }) declare readonly command: string
-    @Prop({ type: String, default: '' }) declare readonly attributeName: string
-    @Prop({ default: '' }) declare readonly label: string | TranslateResult
-    @Prop({ type: String, default: '' }) declare readonly icon: string
-    @Prop({ type: String, default: '%' }) declare readonly unit: string
-    @Prop({ type: Number, default: 1 }) declare readonly attributeScale: number
-    @Prop({ type: Number, default: 0 }) declare readonly min: number
-    @Prop({ type: Number, default: 100 }) declare readonly max: number
-    @Prop({ type: Boolean, required: false, default: false }) declare readonly hasInputField: boolean
-    @Prop({ type: Boolean, default: false }) declare readonly dynamicRange: boolean
-    @Prop({ type: Number, default: 100 }) declare readonly defaultValue: number
-    @Prop({ type: Number, default: 100 }) declare readonly step: number
-    @Prop({ type: Number, default: 1 }) declare readonly multi: number
-
-    created(): void {
-        this.value = this.target * this.multi
-        this.numInput = this.value
-        this.startValue = this.target * this.multi
-        this.dynamicStep = Math.floor(this.max / 2)
-
-        if (this.value >= this.processedMax) {
-            this.processedMax = (Math.ceil(this.value / this.dynamicStep) + 1) * this.dynamicStep
-        }
+const props = withDefaults(
+    defineProps<{
+        target: number
+        command: string
+        attributeName?: string
+        label?: string
+        icon?: string
+        unit?: string
+        attributeScale?: number
+        min?: number
+        max?: number
+        hasInputField?: boolean
+        dynamicRange?: boolean
+        defaultValue?: number
+        step?: number
+        multi?: number
+    }>(),
+    {
+        attributeName: '',
+        label: '',
+        icon: '',
+        unit: '%',
+        attributeScale: 1,
+        min: 0,
+        max: 100,
+        hasInputField: false,
+        dynamicRange: false,
+        defaultValue: 100,
+        step: 100,
+        multi: 1,
     }
+)
 
-    @Watch('lockSliders', { immediate: true })
-    lockSlidersChanged(): void {
-        this.isLocked = this.lockSliders && this.isTouchDevice
-    }
+const { t } = useI18n()
+const { isTouchDevice } = useBase()
+const guiStore = useGuiStore()
 
-    startLockTimer(): void {
-        const t = this.lockSlidersDelay
-        if (!this.isTouchDevice || !this.lockSliders || t <= 0) return
-        this.timeout = setTimeout(() => (this.isLocked = true), t * 1000)
-    }
+let timeout: ReturnType<typeof setTimeout>
+const isLocked = ref(false)
+const invalidChars: string[] = ['e', 'E', '+']
 
-    resetLockTimer(): void {
-        clearTimeout(this.timeout)
-    }
+const dynamicStep = ref(Math.floor(props.max / 2))
+const value = ref(props.target * props.multi)
+const numInput = ref(value.value)
+const processedMax = ref(value.value >= 100 ? (Math.ceil(value.value / dynamicStep.value) + 1) * dynamicStep.value : 100)
 
-    get lockSliders(): boolean {
-        return this.$store.state.gui.uiSettings.lockSlidersOnTouchDevices
-    }
+const lockSliders = computed(() => guiStore.uiSettings.lockSlidersOnTouchDevices)
+const lockSlidersDelay = computed(() => guiStore.uiSettings.lockSlidersDelay)
+const colorBar = computed<string>(() => (props.max < value.value ? 'warning' : 'primary'))
 
-    get lockSlidersDelay(): number {
-        return this.$store.state.gui.uiSettings.lockSlidersDelay
-    }
+watch(
+    lockSliders,
+    () => {
+        isLocked.value = lockSliders.value && isTouchDevice.value
+    },
+    { immediate: true }
+)
 
-    get colorBar(): string {
-        return this.max < this.value ? 'warning' : 'primary'
-    }
-
-    @Debounce(250)
-    changeSlider(): void {
-        this.sendCmd()
-
-        if (!this.dynamicRange) return
-        if (this.value >= this.processedMax) {
-            this.processedMax = this.value + this.dynamicStep
-        }
-    }
-
-    @Watch('value', { immediate: true })
-    valueChanged(newVal: number): void {
-        this.numInput = newVal
-    }
-
-    @Watch('target', { immediate: true })
-    targetChanged(newVal: number): void {
-        this.value = Math.round(newVal * this.multi)
-
-        if (!this.dynamicRange) return
-        if (this.value >= this.processedMax) {
-            this.processedMax = this.value + this.dynamicStep
-        }
-    }
-
-    @Watch('max', { immediate: true })
-    maxChanged(newVal: number): void {
-        this.processedMax = newVal > this.value ? newVal : Math.ceil(this.value / this.dynamicStep) * this.dynamicStep
-    }
-
-    // input validation //
-    checkInvalidChars(event: KeyboardEvent): void {
-        // add '-' to invalid characters if no negative input is allowed
-        if (this.min >= 0) this.invalidChars.push('-')
-        if (this.invalidChars.includes(event.key)) event.preventDefault()
-    }
-
-    errors() {
-        const errors = []
-        if (this.numInput.toString() === '') {
-            // "Input must not be empty!"
-            errors.push(this.$t('App.NumberInput.NoEmptyAllowedError'))
-        }
-        if (this.numInput < this.min) {
-            // "Must be grater or equal than {min}!"
-            errors.push(this.$t('App.NumberInput.GreaterOrEqualError', { min: this.min }))
-        }
-        if ((!this.dynamicRange && this.numInput > this.max) || this.numInput < this.min) {
-            // "Must be between {min} and {max}!"
-            errors.push(this.$t('App.NumberInput.MustBeBetweenError', { min: this.min, max: this.max }))
-        }
-        return errors
-    }
-
-    submitInput(): void {
-        if (this.errors().length > 0) return
-        if (!this.dynamicRange && this.numInput > this.max) this.value = this.max
-        else this.value = this.numInput
-        this.sendCmd()
-    }
-
-    resetSlider(): void {
-        this.value = this.defaultValue
-        this.numInput = this.defaultValue
-        this.processedMax = this.max
-        if (this.value >= this.processedMax) {
-            this.processedMax = (Math.ceil(this.value / this.dynamicStep) + 1) * this.dynamicStep
-        }
-
-        this.sendCmd()
-    }
-
-    sendCmd(): void {
-        const val = (Math.max(1, this.value) * this.attributeScale).toFixed(0)
-        const gcode = `${this.command} ${this.attributeName}${val}`
-
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode })
-
-        this.startLockTimer()
-    }
-
-    decrement(): void {
-        this.value = this.value > this.min ? Math.round(this.value - this.step) : this.min
-        this.sendCmd()
-    }
-
-    increment(): void {
-        this.value =
-            this.value < this.processedMax || this.dynamicRange ? Math.round(this.value + this.step) : this.processedMax
-        this.sendCmd()
-    }
+function startLockTimer(): void {
+    const t = lockSlidersDelay.value
+    if (!isTouchDevice.value || !lockSliders.value || t <= 0) return
+    timeout = setTimeout(() => (isLocked.value = true), t * 1000)
 }
+
+function resetLockTimer(): void {
+    clearTimeout(timeout)
+}
+
+function sendCmd(): void {
+    const val = (Math.max(1, value.value) * props.attributeScale).toFixed(0)
+    const gcode = `${props.command} ${props.attributeName}${val}`
+
+    useServerStore().addEvent({ message: gcode, type: 'command' })
+    webSocketClient.emit('printer.gcode.script', { script: gcode })
+
+    startLockTimer()
+}
+
+// debounce replaces the removed vue-debounce-decorator @Debounce(250)
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
+function changeSlider(): void {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+        sendCmd()
+
+        if (!props.dynamicRange) return
+        if (value.value >= processedMax.value) {
+            processedMax.value = value.value + dynamicStep.value
+        }
+    }, 250)
+}
+
+watch(
+    value,
+    (newVal) => {
+        numInput.value = newVal
+    },
+    { immediate: true }
+)
+
+watch(
+    () => props.target,
+    (newVal) => {
+        value.value = Math.round(newVal * props.multi)
+
+        if (!props.dynamicRange) return
+        if (value.value >= processedMax.value) {
+            processedMax.value = value.value + dynamicStep.value
+        }
+    },
+    { immediate: true }
+)
+
+watch(
+    () => props.max,
+    (newVal) => {
+        processedMax.value = newVal > value.value ? newVal : Math.ceil(value.value / dynamicStep.value) * dynamicStep.value
+    },
+    { immediate: true }
+)
+
+function checkInvalidChars(event: KeyboardEvent): void {
+    if (props.min >= 0 && !invalidChars.includes('-')) invalidChars.push('-')
+    if (invalidChars.includes(event.key)) event.preventDefault()
+}
+
+function errors() {
+    const errors = []
+    if (numInput.value.toString() === '') {
+        errors.push(t('App.NumberInput.NoEmptyAllowedError'))
+    }
+    if (numInput.value < props.min) {
+        errors.push(t('App.NumberInput.GreaterOrEqualError', { min: props.min }))
+    }
+    if ((!props.dynamicRange && numInput.value > props.max) || numInput.value < props.min) {
+        errors.push(t('App.NumberInput.MustBeBetweenError', { min: props.min, max: props.max }))
+    }
+    return errors
+}
+
+function submitInput(): void {
+    if (errors().length > 0) return
+    if (!props.dynamicRange && numInput.value > props.max) value.value = props.max
+    else value.value = numInput.value
+    sendCmd()
+}
+
+function resetSlider(): void {
+    value.value = props.defaultValue
+    numInput.value = props.defaultValue
+    processedMax.value = props.max
+    if (value.value >= processedMax.value) {
+        processedMax.value = (Math.ceil(value.value / dynamicStep.value) + 1) * dynamicStep.value
+    }
+
+    sendCmd()
+}
+
+function decrement(): void {
+    value.value = value.value > props.min ? Math.round(value.value - props.step) : props.min
+    sendCmd()
+}
+
+function increment(): void {
+    value.value = value.value < processedMax.value || props.dynamicRange ? Math.round(value.value + props.step) : processedMax.value
+    sendCmd()
+}
+
+onBeforeUnmount(() => {
+    clearTimeout(timeout)
+    if (debounceTimer) clearTimeout(debounceTimer)
+})
 </script>
 
 <style scoped>
@@ -290,16 +288,16 @@ export default class ToolSlider extends Mixins(BaseMixin) {
     margin-left: 12px;
 }
 
-._slider-input >>> .v-input__slot {
+._slider-input :deep(.v-input__slot) {
     min-height: 1rem !important;
 }
 
-._slider-input >>> .v-text-field__slot input {
+._slider-input :deep(.v-text-field__slot input) {
     padding-top: 4px;
     padding-bottom: 4px;
 }
 
-._slider-input >>> .v-input__append-inner {
+._slider-input :deep(.v-input__append-inner) {
     margin: auto -5px auto 0 !important;
 }
 </style>

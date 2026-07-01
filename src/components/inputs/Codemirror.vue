@@ -1,28 +1,29 @@
 <template>
     <div class="vue-codemirror">
-        <div ref="editor" v-observe-visibility="visibilityChanged"></div>
+        <div ref="editor"></div>
     </div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 // Inspired by this repo: https://github.com/surmon-china/vue-codemirror
 
-import { Component, Mixins, Prop, Ref, Watch } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import ThemeMixin from '@/components/mixins/theme'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { basicSetup } from 'codemirror'
 import { EditorView, keymap } from '@codemirror/view'
 import { EditorState, Prec } from '@codemirror/state'
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode'
 import { HighlightStyle, indentUnit, StreamLanguage, syntaxHighlighting } from '@codemirror/language'
 import { klipper_config } from '@/plugins/StreamParserKlipperConfig'
-import { gcode } from '@/plugins/StreamParserGcode'
+import { gcode as gcodeLanguage } from '@/plugins/StreamParserGcode'
 import { KlipperDocsTooltip } from '@/plugins/KlipperDocsTooltip'
 import { insertTab, indentLess } from '@codemirror/commands'
 import { json } from '@codemirror/lang-json'
 import { css } from '@codemirror/lang-css'
 import { yaml, yamlLanguage } from '@codemirror/lang-yaml'
 import { tags } from '@lezer/highlight'
+import { useBase } from '@/composables/useBase'
+import { useMainsailTheme } from '@/composables/useMainsailTheme'
+import { useGuiStore } from '@/store/gui'
 
 const yamlDarkHighlightStyle = HighlightStyle.define(
     [
@@ -44,127 +45,124 @@ const yamlLightHighlightStyle = HighlightStyle.define(
     { scope: yamlLanguage, themeType: 'light' }
 )
 
-@Component
-export default class Codemirror extends Mixins(BaseMixin, ThemeMixin) {
-    private content = ''
-    private codemirror: null | EditorView = null
-    private cminstance: null | EditorView = null
+const props = withDefaults(
+    defineProps<{
+        code?: string
+        name?: string
+        fileExtension?: string
+    }>(),
+    {
+        code: '',
+        name: 'codemirror',
+        fileExtension: '',
+    }
+)
 
-    @Ref('editor') editor!: HTMLElement
+const emit = defineEmits<{
+    ready: [view: EditorView]
+    lineChange: [line: number]
+}>()
 
-    @Prop({ required: false, default: '' })
-    declare readonly code: string
+const modelValue = defineModel<string>({ default: '' })
 
-    @Prop({ required: false, default: '' })
-    declare value: string
+const { klipperConfigReference } = useBase()
+const { themeMode } = useMainsailTheme()
+const guiStore = useGuiStore()
 
-    @Prop({ required: false, default: 'codemirror' })
-    declare readonly name: string
+const editor = ref<HTMLElement | null>(null)
+const content = ref('')
+let observer: IntersectionObserver | null = null
 
-    @Prop({ required: false, default: '' })
-    declare readonly fileExtension: string
+let codemirror: EditorView | null = null
+let cminstance: EditorView | null = null
 
-    @Watch('value')
-    valueChanged(newVal: string) {
-        const cm_value = this.cminstance?.state?.doc.toString()
-        if (newVal !== cm_value) {
-            this.setCmValue(newVal)
-        }
+const tabSize = computed(() => guiStore.editor.tabSize || 2)
+const klipperDocsTooltips = computed(() => guiStore.editor.klipperDocsTooltips ?? true)
+const vscodeTheme = computed(() => (themeMode.value === 'dark' ? vscodeDark : vscodeLight))
+
+const cmExtensions = computed(() => {
+    const extensions = [
+        EditorView.theme({}, { dark: themeMode.value === 'dark' }),
+        basicSetup,
+        vscodeTheme.value,
+        indentUnit.of(' '.repeat(tabSize.value)),
+        keymap.of([
+            { key: 'Tab', run: insertTab },
+            { key: 'Shift-Tab', run: indentLess },
+        ]),
+        EditorView.updateListener.of((update) => {
+            if (update.selectionSet) {
+                const line = cminstance?.state?.doc.lineAt(cminstance?.state?.selection.main.head).number
+                if (line !== undefined) emit('lineChange', line)
+            }
+            content.value = update.state?.doc.toString()
+            modelValue.value = content.value
+        }),
+    ]
+
+    if (klipperDocsTooltips.value && props.fileExtension === 'cfg') {
+        extensions.push(KlipperDocsTooltip(klipperConfigReference.value))
     }
 
-    mounted(): void {
-        this.initialize()
-    }
+    if (['cfg', 'conf'].includes(props.fileExtension)) extensions.push(StreamLanguage.define(klipper_config))
+    else if (['gcode'].includes(props.fileExtension)) extensions.push(StreamLanguage.define(gcodeLanguage))
+    else if (['json'].includes(props.fileExtension)) extensions.push(json())
+    else if (['yaml', 'yml'].includes(props.fileExtension)) {
+        extensions.push(yaml(), Prec.highest(syntaxHighlighting(yamlDarkHighlightStyle)), Prec.highest(syntaxHighlighting(yamlLightHighlightStyle)))
+    } else if (['css', 'scss', 'sass'].includes(props.fileExtension)) extensions.push(css())
 
-    beforeDestroy() {
-        this.destroy()
-    }
+    return extensions
+})
 
-    destroy() {
-        this.cminstance?.destroy()
-    }
-
-    initialize() {
-        this.codemirror = new EditorView({
-            parent: this.editor,
-        })
-        this.cminstance = this.codemirror
-
-        this.$nextTick(() => {
-            this.setCmValue(this.code || this.value || this.content)
-
-            this.$emit('ready', this.codemirror)
-        })
-    }
-
-    setCmValue(content: string) {
-        this.cminstance?.setState(EditorState.create({ doc: content, extensions: this.cmExtensions }))
-    }
-
-    get cmExtensions() {
-        const extensions = [
-            EditorView.theme({}, { dark: this.themeMode === 'dark' }),
-            basicSetup,
-            this.vscodeTheme,
-            indentUnit.of(' '.repeat(this.tabSize)),
-            keymap.of([
-                { key: 'Tab', run: insertTab },
-                { key: 'Shift-Tab', run: indentLess },
-            ]),
-            EditorView.updateListener.of((update) => {
-                if (update.selectionSet) {
-                    const line = this.cminstance?.state?.doc.lineAt(this.cminstance?.state?.selection.main.head).number
-                    this.$emit('lineChange', line)
-                }
-                this.content = update.state?.doc.toString()
-                if (this.$emit) {
-                    this.$emit('input', this.content)
-                }
-            }),
-        ]
-
-        if (this.klipperDocsTooltips && this.fileExtension === 'cfg') {
-            extensions.push(KlipperDocsTooltip(this.klipperConfigReference))
-        }
-
-        if (['cfg', 'conf'].includes(this.fileExtension)) extensions.push(StreamLanguage.define(klipper_config))
-        else if (['gcode'].includes(this.fileExtension)) extensions.push(StreamLanguage.define(gcode))
-        else if (['json'].includes(this.fileExtension)) extensions.push(json())
-        else if (['yaml', 'yml'].includes(this.fileExtension)) {
-            extensions.push(
-                yaml(),
-                Prec.highest(syntaxHighlighting(yamlDarkHighlightStyle)),
-                Prec.highest(syntaxHighlighting(yamlLightHighlightStyle))
-            )
-        } else if (['css', 'scss', 'sass'].includes(this.fileExtension)) extensions.push(css())
-
-        return extensions
-    }
-
-    visibilityChanged(isVisible: boolean) {
-        if (isVisible) this.cminstance?.focus()
-    }
-
-    get tabSize() {
-        return this.$store.state.gui.editor.tabSize || 2
-    }
-
-    get vscodeTheme() {
-        return this.themeMode === 'dark' ? vscodeDark : vscodeLight
-    }
-
-    gotoLine(line: number) {
-        const l = this.cminstance?.state?.doc.line(line)
-        if (!l) return
-
-        this.cminstance?.dispatch({
-            selection: { head: l.from, anchor: l.to },
-            scrollIntoView: true,
-        })
-    }
-
-    get klipperDocsTooltips() {
-        return this.$store.state.gui.editor.klipperDocsTooltips ?? true
-    }
+function setCmValue(value: string) {
+    cminstance?.setState(EditorState.create({ doc: value, extensions: cmExtensions.value }))
 }
+
+function gotoLine(line: number) {
+    const l = cminstance?.state?.doc.line(line)
+    if (!l) return
+
+    cminstance?.dispatch({
+        selection: { head: l.from, anchor: l.to },
+        scrollIntoView: true,
+    })
+}
+
+function initialize() {
+    if (!editor.value) return
+
+    codemirror = new EditorView({
+        parent: editor.value,
+    })
+    cminstance = codemirror
+
+    nextTick(() => {
+        setCmValue(props.code || modelValue.value || content.value)
+
+        emit('ready', codemirror as EditorView)
+    })
+}
+
+watch(modelValue, (newVal) => {
+    const cm_value = cminstance?.state?.doc.toString()
+    if (newVal !== undefined && newVal !== cm_value) {
+        setCmValue(newVal)
+    }
+})
+
+onMounted(() => {
+    initialize()
+
+    observer = new IntersectionObserver((entries) => {
+        if (entries[0]?.isIntersecting) cminstance?.focus()
+    })
+    observer.observe(editor.value as HTMLElement)
+})
+
+onBeforeUnmount(() => {
+    observer?.disconnect()
+    cminstance?.destroy()
+})
+
+defineExpose({ gotoLine })
 </script>

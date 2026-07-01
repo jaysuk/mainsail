@@ -5,41 +5,40 @@
                 v-model.number="value"
                 suffix="°C"
                 type="number"
-                dense
-                outlined
+                density="compact"
+                variant="outlined"
                 hide-details
                 hide-spin-buttons
                 class="_temp-input"
                 :style="inputStyle"
                 @blur="value = target"
-                @focus="$event.target.select()" />
+                @focus="($event.target as HTMLInputElement)?.select()" />
         </form>
-        <v-menu v-if="presets" :offset-y="true" left title="Preheat">
-            <template #activator="{ on, attrs }">
+        <v-menu v-if="presets.length" location="bottom end" title="Preheat">
+            <template #activator="{ props: activatorProps }">
                 <v-btn
                     :disabled="['printing', 'paused'].includes(printer_state)"
                     tabindex="-1"
-                    x-small
-                    plain
-                    v-bind="attrs"
+                    size="x-small"
+                    variant="plain"
+                    v-bind="activatorProps"
                     class="pa-0"
-                    style="min-width: 24px"
-                    v-on="on">
+                    style="min-width: 24px">
                     <v-icon>{{ mdiMenuDown }}</v-icon>
                 </v-btn>
             </template>
-            <v-list dense class="py-0">
+            <v-list density="compact" class="py-0">
                 <v-list-item
                     v-for="preset of presets"
-                    :key="preset.index"
+                    :key="preset.value"
                     link
                     style="min-height: 32px"
                     @click="doSend(`${command} ${attributeName}=${name} TARGET=${preset.value}`)">
                     <div class="_preset">
-                        <v-icon v-if="preset.value === 0" else color="primary" small class="_preset-icon">
+                        <v-icon v-if="preset.value === 0" color="primary" size="small" class="_preset-icon">
                             {{ mdiSnowflake }}
                         </v-icon>
-                        <v-icon v-else small class="_preset-icon">{{ mdiFire }}</v-icon>
+                        <v-icon v-else size="small" class="_preset-icon">{{ mdiFire }}</v-icon>
                         <span style="padding-top: 2px">{{ preset.value }}°C</span>
                     </div>
                 </v-list-item>
@@ -48,93 +47,95 @@
     </div>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop, Watch } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import ControlMixin from '@/components/mixins/control'
+<script setup lang="ts">
+import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useToast } from 'vue-toast-notification'
 import { mdiSnowflake, mdiFire, mdiMenuDown } from '@mdi/js'
+import { useControl } from '@/composables/useControl'
 
-@Component
-export default class TemperatureInput extends Mixins(BaseMixin, ControlMixin) {
-    mdiSnowflake = mdiSnowflake
-    mdiFire = mdiFire
-    mdiMenuDown = mdiMenuDown
-
-    value: number | string = 0
-
-    @Prop({ type: String, required: true }) declare readonly name: string
-    @Prop({ type: Number, required: true, default: 0 }) declare readonly target: number
-    @Prop({ type: Number, required: true }) declare readonly min_temp: number
-    @Prop({ type: Number, required: true }) declare readonly max_temp: number
-    @Prop({ type: String, required: true }) declare readonly command: string
-    @Prop({ type: String, required: true }) declare readonly attributeName: string
-    @Prop({ type: Array, default: [] }) declare presets: number[]
-    @Prop({ type: Number, default: 3 }) declare readonly inputDigits: number
-
-    get inputStyle() {
-        const PER_DIGIT = 10
-        const WIDTH_C_GRAD = 21
-        const PADDING = 20
-        const SPACE_FOR_DECIMAL = 10
-
-        const width = this.inputDigits * PER_DIGIT + WIDTH_C_GRAD + PADDING + SPACE_FOR_DECIMAL
-
-        return {
-            width: `${width}px`,
-        }
+const props = withDefaults(
+    defineProps<{
+        name: string
+        target: number
+        min_temp: number
+        max_temp: number
+        command: string
+        attributeName: string
+        presets?: { value: number; text: string }[]
+        inputDigits?: number
+    }>(),
+    {
+        presets: () => [],
+        inputDigits: 3,
     }
+)
 
-    private normalizeValue(raw: number | string | null): number {
-        if (typeof raw === 'string') raw = parseFloat(raw)
-        if (raw === null || isNaN(raw)) return 0
-        return raw
-    }
+const { t } = useI18n()
+const { printer_state, doSend } = useControl()
 
-    setTemps(): void {
-        const temp = this.normalizeValue(this.value)
+const value = ref<number | string>(0)
 
-        if (temp > this.max_temp) {
-            this.value = this.target
-            const key = 'Panels.TemperaturePanel.TempTooHigh'
-            const msg = this.$t(key, { name: this.name, max: this.max_temp }).toString()
-            this.$toast.error(msg)
-            return
-        }
+const inputStyle = computed(() => {
+    const PER_DIGIT = 10
+    const WIDTH_C_GRAD = 21
+    const PADDING = 20
+    const SPACE_FOR_DECIMAL = 10
 
-        if (temp < this.min_temp && temp !== 0) {
-            this.value = this.target
-            const key = 'Panels.TemperaturePanel.TempTooLow'
-            const msg = this.$t(key, { name: this.name, min: this.min_temp }).toString()
-            this.$toast.error(msg)
-            return
-        }
+    const width = props.inputDigits * PER_DIGIT + WIDTH_C_GRAD + PADDING + SPACE_FOR_DECIMAL
 
-        // don't send a command if the temperature is unchanged
-        if (this.target === temp) return
+    return { width: `${width}px` }
+})
 
-        this.doSend(`${this.command} ${this.attributeName}=${this.name} TARGET=${temp}`)
-    }
-
-    mounted() {
-        this.value = this.target
-    }
-
-    @Watch('target')
-    targetChanged(newVal: number): void {
-        this.value = newVal
-    }
+function normalizeValue(raw: number | string | null): number {
+    if (typeof raw === 'string') raw = parseFloat(raw)
+    if (raw === null || isNaN(raw)) return 0
+    return raw
 }
+
+function setTemps(): void {
+    const temp = normalizeValue(value.value)
+
+    if (temp > props.max_temp) {
+        value.value = props.target
+        const msg = t('Panels.TemperaturePanel.TempTooHigh', { name: props.name, max: props.max_temp })
+        useToast().error(msg)
+        return
+    }
+
+    if (temp < props.min_temp && temp !== 0) {
+        value.value = props.target
+        const msg = t('Panels.TemperaturePanel.TempTooLow', { name: props.name, min: props.min_temp })
+        useToast().error(msg)
+        return
+    }
+
+    // don't send a command if the temperature is unchanged
+    if (props.target === temp) return
+
+    doSend(`${props.command} ${props.attributeName}=${props.name} TARGET=${temp}`)
+}
+
+onMounted(() => {
+    value.value = props.target
+})
+
+watch(
+    () => props.target,
+    (newVal) => {
+        value.value = newVal
+    }
+)
 </script>
 
 <style scoped>
-._temp-input >>> .v-input__slot {
+._temp-input :deep(.v-input__slot) {
     min-height: 1rem !important;
     padding-left: 8px !important;
     padding-right: 8px !important;
 }
 
-._temp-input >>> .v-text-field__slot input {
+._temp-input :deep(.v-text-field__slot input) {
     padding-top: 4px;
     padding-bottom: 4px;
 }
