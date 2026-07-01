@@ -1,134 +1,106 @@
 <template>
-    <v-list-item three-line>
-        <v-list-item-content :class="listItemContentClass">
+    <v-list-item lines="three" :class="listItemContentClass">
+        <template #title>
             <div :class="overlineClass">#{{ id }} | {{ vendor }}</div>
-            <v-list-item-title :class="listItemTitleClass">
+            <div :class="listItemTitleClass">
                 <span class="cursor-pointer" @click="clickSpool">{{ name }}</span>
-            </v-list-item-title>
-            <v-list-item-subtitle>{{ subtitle }}</v-list-item-subtitle>
-        </v-list-item-content>
-
-        <v-list-item-avatar tile :size="avatarSize">
-            <spool-icon
-                :color="color"
-                :multi-color-hexes="multi_color_hexes"
-                :multi-color-direction="multi_color_direction"
-                @click-spool="clickSpool" />
-        </v-list-item-avatar>
+            </div>
+        </template>
+        <template #subtitle>
+            {{ subtitle }}
+        </template>
+        <template #append>
+            <v-avatar tile :size="avatarSize">
+                <spool-icon :color="color" :multi-color-hexes="multi_color_hexes" :multi-color-direction="multi_color_direction" @click-spool="clickSpool" />
+            </v-avatar>
+        </template>
     </v-list-item>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import Panel from '@/components/ui/Panel.vue'
-import SpoolmanChangeSpoolDialog from '@/components/dialogs/SpoolmanChangeSpoolDialog.vue'
-import { ServerSpoolmanStateSpool } from '@/store/server/spoolman/types'
+<script setup lang="ts">
+import { computed } from 'vue'
+import SpoolIcon from '@/components/ui/SpoolIcon.vue'
+import type { ServerSpoolmanStateSpool } from '@/store/server/spoolman/types'
+import { useServerSpoolmanStore } from '@/store/server/spoolman'
 
-@Component({
-    components: { Panel, SpoolmanChangeSpoolDialog },
+const props = withDefaults(
+    defineProps<{
+        small?: boolean
+    }>(),
+    { small: false }
+)
+
+const emit = defineEmits<{ 'change-spool': [] }>()
+
+const serverSpoolmanStore = useServerSpoolmanStore()
+
+const listItemContentClass = computed(() => (props.small ? 'my-0' : ''))
+
+const overlineClass = computed(() => {
+    const classes = ['text-overline', 'mb-1']
+    if (props.small) classes.push('line-height-auto')
+
+    return classes
 })
-export default class SpoolmanPanelActiveSpool extends Mixins(BaseMixin) {
-    @Prop({ required: false, default: false }) readonly small!: boolean
 
-    get listItemContentClass() {
-        if (this.small) return 'my-0'
+const listItemTitleClass = computed(() => (props.small ? ['text-h6', 'mb-1'] : ['text-h5', 'mb-1']))
 
-        return ''
-    }
+const avatarSize = computed(() => (props.small ? 60 : 80))
 
-    get overlineClass() {
-        const classes = ['text-overline', 'mb-1']
-        if (this.small) classes.push('line-height-auto')
+const active_spool = computed<ServerSpoolmanStateSpool | null>(() => serverSpoolmanStore.active_spool ?? null)
 
-        return classes
-    }
+const color = computed(() => {
+    const color = active_spool.value?.filament.color_hex ?? null
+    if (color === null) return '#000'
 
-    get listItemTitleClass() {
-        if (this.small) return ['text-h6', 'mb-1']
+    return `#${color}`
+})
 
-        return ['text-h5', 'mb-1']
-    }
+const multi_color_hexes = computed(() => active_spool.value?.filament?.multi_color_hexes)
+const multi_color_direction = computed(() => active_spool.value?.filament?.multi_color_direction)
+const id = computed(() => active_spool.value?.id ?? 'XX')
+const vendor = computed(() => active_spool.value?.filament?.vendor?.name ?? 'Unknown')
+const name = computed(() => active_spool.value?.filament.name ?? 'Unknown')
 
-    get avatarSize() {
-        if (this.small) return 60
+const materialOutput = computed(() => {
+    const material = active_spool.value?.filament.material ?? null
+    if (material === null) return null
 
-        return 80
-    }
+    return material
+})
 
-    get active_spool(): ServerSpoolmanStateSpool | null {
-        return this.$store.state.server.spoolman.active_spool ?? null
-    }
+const weightOutput = computed(() => {
+    let remaining = active_spool.value?.remaining_weight ?? null
+    const total = active_spool.value?.filament.weight ?? null
 
-    get color() {
-        const color = this.active_spool?.filament.color_hex ?? null
-        if (color === null) return '#000'
+    if (remaining === null || total === null) return null
+    remaining = Math.round(remaining)
+    let totalRound = Math.floor(total / 1000)
 
-        return `#${color}`
-    }
-
-    get multi_color_hexes() {
-        return this.active_spool?.filament?.multi_color_hexes
-    }
-
-    get multi_color_direction() {
-        return this.active_spool?.filament?.multi_color_direction
-    }
-
-    get id() {
-        return this.active_spool?.id ?? 'XX'
-    }
-
-    get vendor() {
-        return this.active_spool?.filament?.vendor?.name ?? 'Unknown'
-    }
-
-    get name() {
-        return this.active_spool?.filament.name ?? 'Unknown'
-    }
-
-    get materialOutput() {
-        const material = this.active_spool?.filament.material ?? null
-        if (material === null) return null
-
-        return material
-    }
-
-    get weightOutput() {
-        let remaining = this.active_spool?.remaining_weight ?? null
-        const total = this.active_spool?.filament.weight ?? null
-
-        if (remaining === null || total === null) return null
-        remaining = Math.round(remaining)
-        let totalRound = Math.floor(total / 1000)
-
-        if (total >= 1000) {
-            if (totalRound !== total / 1000) {
-                totalRound = Math.round(total / 100) / 10
-            }
-
-            return `${remaining}g / ${totalRound}kg`
+    if (total >= 1000) {
+        if (totalRound !== total / 1000) {
+            totalRound = Math.round(total / 100) / 10
         }
 
-        return `${remaining} / ${total}g`
+        return `${remaining}g / ${totalRound}kg`
     }
 
-    get lengthOutput() {
-        let remaining = this.active_spool?.remaining_length ?? null
+    return `${remaining} / ${total}g`
+})
 
-        if (remaining === null) return null
-        remaining = Math.round(remaining / 1000)
+const lengthOutput = computed(() => {
+    let remaining = active_spool.value?.remaining_length ?? null
 
-        return `${remaining}m`
-    }
+    if (remaining === null) return null
+    remaining = Math.round(remaining / 1000)
 
-    get subtitle() {
-        return [this.materialOutput, this.weightOutput, this.lengthOutput].filter((v) => v !== null).join(' | ')
-    }
+    return `${remaining}m`
+})
 
-    clickSpool() {
-        this.$emit('change-spool')
-    }
+const subtitle = computed(() => [materialOutput.value, weightOutput.value, lengthOutput.value].filter((v) => v !== null).join(' | '))
+
+function clickSpool() {
+    emit('change-spool')
 }
 </script>
 

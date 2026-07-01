@@ -1,15 +1,15 @@
 <template>
-    <v-menu :offset-y="true" :close-on-content-click="false" left>
-        <template #activator="{ on, attrs }">
-            <v-btn icon tile v-bind="attrs" v-on="on">
+    <v-menu location="bottom end" :close-on-content-click="false">
+        <template #activator="{ props: activatorProps }">
+            <v-btn icon tile v-bind="activatorProps">
                 <v-icon>{{ mdiSwapVertical }}</v-icon>
             </v-btn>
         </template>
-        <v-list dense>
+        <v-list density="compact">
             <v-list-item>
-                <v-btn small @click="showChangeSpoolDialog = true">
-                    <v-icon left>{{ mdiSwapVertical }}</v-icon>
-                    {{ $t('Panels.SpoolmanPanel.ActiveSpool') }}
+                <v-btn size="small" @click="showChangeSpoolDialog = true">
+                    <v-icon start>{{ mdiSwapVertical }}</v-icon>
+                    {{ t('Panels.SpoolmanPanel.ActiveSpool') }}
                 </v-btn>
             </v-list-item>
             <spoolman-tools-dropdown-item v-for="tool in tools" :key="tool" :object-name="tool" />
@@ -18,20 +18,21 @@
     </v-menu>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { mdiSwapVertical } from '@mdi/js'
 import SpoolmanToolsDropdownItem from '@/components/panels/Spoolman/SpoolmanToolsDropdownItem.vue'
+import SpoolmanChangeSpoolDialog from '@/components/dialogs/SpoolmanChangeSpoolDialog.vue'
 
-@Component({
-    components: { SpoolmanToolsDropdownItem },
-})
-export default class SpoolmanToolsDropdown extends Mixins(BaseMixin) {
-    mdiSwapVertical = mdiSwapVertical
+withDefaults(
+    defineProps<{
+        tools?: string[]
+    }>(),
+    { tools: () => [] }
+)
 
-    showChangeSpoolDialog = false
+const { t } = useI18n()
 
-    @Prop({ required: false, default: false }) readonly tools!: string[]
-}
+const showChangeSpoolDialog = ref(false)
 </script>
