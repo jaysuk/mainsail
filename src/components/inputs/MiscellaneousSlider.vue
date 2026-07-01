@@ -100,7 +100,7 @@ const props = withDefaults(
         type?: string
         controllable?: boolean
         pwm?: boolean
-        rpm?: number | boolean
+        rpm?: number | boolean | null
         multi?: number
         off_below?: number
         colorOrder?: string

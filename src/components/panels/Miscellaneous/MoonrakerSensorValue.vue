@@ -1,66 +1,64 @@
 <template>
     <div class="d-flex w-100 flex-row align-center">
-        <v-icon small left>{{ unitToSymbol(unit) }}</v-icon>
+        <v-icon size="small" start>{{ unitToSymbol((unit ?? '') as string) }}</v-icon>
         <span class="flex-grow-1">{{ name }}:</span>
         <span>{{ output }}</span>
     </div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { computed } from 'vue'
 import { convertName, unitToSymbol } from '@/plugins/helpers'
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+import { useServerStore } from '@/store/server'
+import { useServerSensorStore } from '@/store/server/sensor'
 
-@Component
-export default class MoonrakerSensorValue extends Mixins(BaseMixin) {
-    convertName = convertName
-    unitToSymbol = unitToSymbol
+const props = defineProps<{
+    sensor: string
+    valueName: string
+}>()
 
-    @Prop({ type: String, required: true }) declare readonly sensor: string
-    @Prop({ type: String, required: true }) declare readonly valueName: string
+const serverStore = useServerStore()
+const serverSensorStore = useServerSensorStore()
 
-    get sensorData() {
-        const sensors = this.$store.state.server.sensor.sensors
-        if (!(this.sensor in sensors)) return {}
+const sensorData = computed(() => {
+    const sensors = serverSensorStore.sensors
+    if (!(props.sensor in sensors)) return {}
 
-        return sensors[this.sensor].values
-    }
+    return sensors[props.sensor].values
+})
 
-    get sensorConfig() {
-        const name = `sensor ${this.sensor}`
-        const serverConfig = this.$store.state.server.config?.config ?? {}
-        if (!(name in serverConfig)) return {}
+const sensorConfig = computed(() => {
+    const name = `sensor ${props.sensor}`
+    const serverConfig = serverStore.config?.config ?? {}
+    if (!(name in serverConfig)) return {}
 
-        return serverConfig[name]
-    }
+    return serverConfig[name]
+})
 
-    get parameterConfig() {
-        const name = `parameter_${this.valueName}`
-        if (!(name in this.sensorConfig)) return {}
+const parameterConfig = computed(() => {
+    const name = `parameter_${props.valueName}`
+    if (!(name in sensorConfig.value)) return {}
 
-        return this.sensorConfig[name]
-    }
+    return sensorConfig.value[name]
+})
 
-    get unit() {
-        if (!('units' in this.parameterConfig)) return null
+const unit = computed(() => {
+    if (!('units' in parameterConfig.value)) return null
 
-        return this.parameterConfig.units
-    }
+    return parameterConfig.value.units
+})
 
-    get value() {
-        if (!(this.valueName in this.sensorData)) return '--'
+const value = computed(() => {
+    if (!(props.valueName in sensorData.value)) return '--'
 
-        return Math.round(this.sensorData[this.valueName] * 1000) / 1000
-    }
+    return Math.round(sensorData.value[props.valueName] * 1000) / 1000
+})
 
-    get output() {
-        if (this.unit === null) return this.value
+const output = computed(() => {
+    if (unit.value === null) return value.value
 
-        return `${this.value} ${this.unit}`
-    }
+    return `${value.value} ${unit.value}`
+})
 
-    get name() {
-        return this.convertName(this.valueName)
-    }
-}
+const name = computed(() => convertName(props.valueName))
 </script>

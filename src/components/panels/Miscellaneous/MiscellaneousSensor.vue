@@ -2,40 +2,41 @@
     <v-container class="px-0 py-2">
         <v-row>
             <v-col class="pb-3">
-                <v-subheader class="_miscellaneous-sensor-subheader">
-                    <v-icon small class="mr-2">{{ unitToSymbol(unit) }}</v-icon>
+                <v-list-subheader class="_miscellaneous-sensor-subheader">
+                    <v-icon size="small" class="mr-2">{{ unitToSymbol(unit) }}</v-icon>
                     <span>{{ convertName(name) }}</span>
                     <v-spacer />
                     <span>{{ output }}</span>
-                </v-subheader>
+                </v-list-subheader>
             </v-col>
         </v-row>
     </v-container>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { computed } from 'vue'
 import { convertName, unitToSymbol } from '@/plugins/helpers'
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import {} from '@mdi/js'
 
-@Component()
-export default class MiscellaneousSensor extends Mixins(BaseMixin) {
-    convertName = convertName
-    unitToSymbol = unitToSymbol
+const props = withDefaults(
+    defineProps<{
+        name: string
+        value: number
+        unit?: string
+    }>(),
+    { unit: '' }
+)
 
-    @Prop({ type: String, required: true }) declare readonly name: string
-    @Prop({ type: Number, required: true }) declare readonly value: number
-    @Prop({ type: String, required: false }) declare readonly unit: string
+const output = computed(() => {
+    const value = isNaN(props.value) ? '--' : props.value
 
-    get output() {
-        const value = isNaN(this.value) ? '--' : this.value
+    // sensors without a real unit are reported with unit: '' (never null,
+    // despite the historical null-check here -- that branch was dead code
+    // and every unit-less sensor rendered "value undefined"/"value " instead
+    // of just the value)
+    if (props.unit === '') return props.value
 
-        if (this.unit === null) return this.value
-
-        return `${value} ${this.unit}`
-    }
-}
+    return `${value} ${props.unit}`
+})
 </script>
 
 <style scoped>
