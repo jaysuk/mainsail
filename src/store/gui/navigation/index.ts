@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { reactive, toRefs } from 'vue'
 import type { GuiNavigationState, GuiNavigationStateEntry } from '@/store/gui/navigation/types'
-import type { NaviPoint } from '@/components/mixins/navigation'
+import type { NaviPoint } from '@/composables/useNavigation'
 import { resetState, deepMerge } from '@/store/helpers'
 import { webSocketClient } from '@/plugins/webSocketClient'
 
