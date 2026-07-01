@@ -13,32 +13,32 @@
             :dec="dec"
             hide-spin-buttons
             hide-details="auto"
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
             class="d-flex align-top"
             @blur="value = target.toString()"
-            @focus="$event.target.select()"
+            @focus="($event.target as HTMLInputElement)?.select()"
             @keydown="checkInvalidChars">
-            <template v-if="defaultValue !== null" #append>
+            <template v-if="defaultValue !== null" #append-inner>
                 <v-icon @click="resetToDefault">{{ value !== defaultValue.toString() ? mdiRestart : '' }}</v-icon>
             </template>
-            <template v-if="hasSpinner" #append-outer>
+            <template v-if="hasSpinner" #append>
                 <div class="_spin_button_group">
                     <v-btn
-                        :disabled="(value >= max && max !== null) || error || disabled"
+                        :disabled="(max !== null && inputValue >= max) || invalidInput || disabled"
                         class="mt-n3"
                         icon
-                        plain
-                        small
+                        variant="plain"
+                        size="small"
                         @click="incrementValue">
                         <v-icon>{{ mdiChevronUp }}</v-icon>
                     </v-btn>
                     <v-btn
-                        :disabled="value <= min || error || disabled"
+                        :disabled="inputValue <= min || invalidInput || disabled"
                         class="mb-n3"
                         icon
-                        plain
-                        small
+                        variant="plain"
+                        size="small"
                         @click="decrementValue">
                         <v-icon>{{ mdiChevronDown }}</v-icon>
                     </v-btn>
@@ -48,116 +48,106 @@
     </form>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop, Watch } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { mdiChevronDown, mdiChevronUp, mdiRestart } from '@mdi/js'
-import { TranslateResult } from 'vue-i18n'
 
-@Component
-export default class NumberInput extends Mixins(BaseMixin) {
-    mdiRestart = mdiRestart
-    mdiChevronUp = mdiChevronUp
-    mdiChevronDown = mdiChevronDown
+const props = withDefaults(
+    defineProps<{
+        label: string
+        param: string
+        target: number
+        defaultValue?: number | null
+        min: number
+        max?: number | null
+        dec: number
+        step?: number
+        unit?: string
+        hasSpinner?: boolean
+        spinnerFactor?: number
+        disabled?: boolean
+        outputErrorMsg?: boolean
+    }>(),
+    {
+        defaultValue: null,
+        max: null,
+        step: 1,
+        unit: undefined,
+        hasSpinner: false,
+        spinnerFactor: 1,
+        disabled: false,
+        outputErrorMsg: false,
+    }
+)
 
-    private value: string = '0'
-    private error: boolean = false
-    private invalidChars: string[] = ['e', 'E', '+']
+const emit = defineEmits<{ submit: [{ name: string; value: number }] }>()
 
-    // input field name and identifier
-    @Prop({ required: true }) declare readonly label: TranslateResult | string
-    @Prop({ type: String, required: true }) declare readonly param: string
-    // props defining incoming data
-    @Prop({ type: Number, required: true }) declare readonly target: number
-    @Prop({ type: Number, required: false, default: null }) declare readonly defaultValue: number
-    // props for internal processing
-    @Prop({ type: Number, required: true }) declare readonly min: number
-    @Prop({ default: null }) declare readonly max: number | null
-    @Prop({ type: Number, required: true }) declare readonly dec: number
-    @Prop({ type: Number, required: false, default: 1 }) declare readonly step: number
-    @Prop({ type: String, required: false }) declare readonly unit: string
-    // spinner related props
-    @Prop({ type: Boolean, required: false, default: false }) declare readonly hasSpinner: boolean
-    @Prop({ type: Number, required: false, default: 1 }) declare readonly spinnerFactor: number
-    // props for general internal behaviour
-    @Prop({ type: Boolean, required: false, default: false }) declare readonly disabled: boolean
-    @Prop({ type: Boolean, required: false, default: false }) declare readonly outputErrorMsg: boolean
+const { t } = useI18n()
 
-    created(): void {
-        this.value = this.target.toString()
+const value = ref(props.target.toString())
+const invalidChars: string[] = ['e', 'E', '+']
+
+watch(
+    () => props.target,
+    () => {
+        value.value = props.target.toString()
+    }
+)
+
+// this only parses `value`, to escape an empty input
+const inputValue = computed<number>(() => {
+    if (value.value.toString() === '') return 0
+
+    return parseFloat(value.value.replace(',', '.'))
+})
+
+const inputErrors = computed(() => {
+    if (!props.outputErrorMsg) return []
+
+    const errors = []
+    if (props.max === null && inputValue.value < props.min) {
+        errors.push(t('App.NumberInput.GreaterOrEqualError', { min: props.min }))
+    }
+    if (props.max !== null && (inputValue.value > props.max || inputValue.value < props.min)) {
+        errors.push(t('App.NumberInput.MustBeBetweenError', { min: props.min, max: props.max }))
     }
 
-    @Watch('target')
-    updateTarget(): void {
-        this.value = this.target.toString()
-    }
+    return errors
+})
 
-    incrementValue(): void {
-        if (this.inputValue + this.step * this.spinnerFactor < this.max! || this.max === null) {
-            this.value = (
-                Math.round((this.inputValue + this.step * this.spinnerFactor) * 10 ** this.dec) /
-                10 ** this.dec
-            ).toString()
-        } else this.value = this.max.toString()
+const invalidInput = computed(() => inputErrors.value.length > 0)
 
-        this.submit()
-    }
+function submit(): void {
+    if (invalidInput.value) return
+    emit('submit', { name: props.param, value: inputValue.value })
+}
 
-    decrementValue(): void {
-        if (this.inputValue - this.step * this.spinnerFactor > this.min) {
-            this.value = (
-                Math.round((this.inputValue - this.step * this.spinnerFactor) * 10 ** this.dec) /
-                10 ** this.dec
-            ).toString()
-        } else this.value = this.min.toString()
+function incrementValue(): void {
+    if (inputValue.value + props.step * props.spinnerFactor < props.max! || props.max === null) {
+        value.value = (Math.round((inputValue.value + props.step * props.spinnerFactor) * 10 ** props.dec) / 10 ** props.dec).toString()
+    } else value.value = props.max.toString()
 
-        this.submit()
-    }
+    submit()
+}
 
-    resetToDefault(): void {
-        this.value = this.defaultValue?.toString()
-        this.submit()
-    }
+function decrementValue(): void {
+    if (inputValue.value - props.step * props.spinnerFactor > props.min) {
+        value.value = (Math.round((inputValue.value - props.step * props.spinnerFactor) * 10 ** props.dec) / 10 ** props.dec).toString()
+    } else value.value = props.min.toString()
 
-    submit(): void {
-        if (this.invalidInput) return
-        this.$emit('submit', { name: this.param, value: this.inputValue })
-    }
+    submit()
+}
 
-    // input validation //
-    checkInvalidChars(event: KeyboardEvent): void {
-        // add '-' to invalid characters if no negative input is allowed
-        if (this.min >= 0) this.invalidChars.push('-')
-        if (this.invalidChars.includes(event.key)) event.preventDefault()
-    }
+function resetToDefault(): void {
+    value.value = props.defaultValue?.toString() ?? '0'
+    submit()
+}
 
-    // this function only parse this.value, to escape an empty input
-    get inputValue(): number {
-        if (this.value.toString() === '') return 0
-
-        return parseFloat(this.value.replace(',', '.'))
-    }
-
-    get invalidInput(): boolean {
-        return this.inputErrors.length > 0
-    }
-
-    get inputErrors() {
-        if (!this.outputErrorMsg) return []
-
-        const errors = []
-        if (this.max === null && this.inputValue < this.min) {
-            // "Must be grater or equal than {min}!"
-            errors.push(this.$t('App.NumberInput.GreaterOrEqualError', { min: this.min }))
-        }
-        if (this.max !== null && (this.inputValue > this.max! || this.inputValue < this.min)) {
-            // "Must be between {min} and {max}!"
-            errors.push(this.$t('App.NumberInput.MustBeBetweenError', { min: this.min, max: this.max }))
-        }
-
-        return errors
-    }
+function checkInvalidChars(event: KeyboardEvent): void {
+    // add '-' to invalid characters if no negative input is allowed
+    if (props.min >= 0 && !invalidChars.includes('-')) invalidChars.push('-')
+    if (invalidChars.includes(event.key)) event.preventDefault()
 }
 </script>
 
