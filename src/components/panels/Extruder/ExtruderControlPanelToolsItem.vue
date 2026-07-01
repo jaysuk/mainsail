@@ -1,102 +1,96 @@
 <template>
-    <v-btn :disabled="printerIsPrintingOnly" dense class="flex-grow-1 px-0" :style="buttonStyle" @click="changeTool">
+    <v-btn :disabled="printerIsPrintingOnly" density="compact" class="flex-grow-1 px-0" :style="buttonStyle" @click="changeTool">
         <span v-if="color != null" class="_extruderColorState mr-1" :style="dotStyle" />
         {{ name.toUpperCase() }}
     </v-btn>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import ControlMixin from '@/components/mixins/control'
-import { ServerSpoolmanStateSpool } from '@/store/server/spoolman/types'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useTheme } from 'vuetify'
+import type { ServerSpoolmanStateSpool } from '@/store/server/spoolman/types'
+import { useBase } from '@/composables/useBase'
+import { useControl } from '@/composables/useControl'
+import { usePrinterStore } from '@/store/printer'
+import { useServerSpoolmanStore } from '@/store/server/spoolman'
+import { useGuiStore } from '@/store/gui'
 
-@Component({
-    components: {},
+const props = defineProps<{ name: string }>()
+
+const { printerIsPrintingOnly } = useBase()
+const { homedAxes, doSend } = useControl()
+const printerStore = usePrinterStore()
+const serverSpoolmanStore = useServerSpoolmanStore()
+const guiStore = useGuiStore()
+const vuetifyTheme = useTheme()
+
+const macro = computed(() => {
+    const objectName = Object.keys(printerStore).find((key) => key.toLowerCase() === `gcode_macro ${props.name?.toLowerCase()}`)
+    if (!objectName) return undefined
+
+    return printerStore[objectName] ?? {}
 })
-export default class ExtruderControlPanel extends Mixins(BaseMixin, ControlMixin) {
-    @Prop({ type: String }) name!: string
 
-    get macro() {
-        const objectName = Object.keys(this.$store.state.printer).find(
-            (key) => key.toLowerCase() === `gcode_macro ${this.name?.toLowerCase()}`
-        )
-        if (!objectName) return undefined
+const active = computed(() => macro.value?.active ?? false)
 
-        return this.$store.state.printer[objectName] ?? {}
+const color = computed(() => {
+    if (spool.value) {
+        return spool.value.filament?.color_hex ?? '000000'
     }
 
-    get active() {
-        return this.macro?.active ?? false
+    const color = macro.value?.color ?? macro.value?.colour ?? null
+    if (color === '' || color === 'undefined') return null
+
+    return color
+})
+
+const spoolId = computed(() => macro.value?.spool_id ?? null)
+
+const spool = computed(() => {
+    const spools = serverSpoolmanStore.spools ?? []
+
+    return spools.find((spool: ServerSpoolmanStateSpool) => spool.id === spoolId.value) ?? null
+})
+
+const primaryColor = computed<string>(() => guiStore.uiSettings.primary)
+
+const primaryTextColor = computed<string>(() => {
+    const splits = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(primaryColor.value)
+    if (splits) {
+        const r = parseInt(splits[1], 16) * 0.2126
+        const g = parseInt(splits[2], 16) * 0.7152
+        const b = parseInt(splits[3], 16) * 0.0722
+        const perceivedLightness = (r + g + b) / 255
+
+        return perceivedLightness > 0.7 ? '#222' : '#fff'
     }
 
-    get color() {
-        if (this.spool) {
-            return this.spool.filament?.color_hex ?? '000000'
-        }
+    return '#ffffff'
+})
 
-        const color = this.macro?.color ?? this.macro?.colour ?? null
-        if (color === '' || color === 'undefined') return null
+const warningColor = computed<string>(() => vuetifyTheme.current.value.colors?.warning?.toString() ?? '#ff8300')
 
-        return color
+const buttonStyle = computed(() => {
+    let backgroundColor = ''
+    if (active.value) {
+        backgroundColor = homedAxes.value.includes('xyz') ? primaryColor.value : warningColor.value
     }
 
-    get spoolId() {
-        return this.macro?.spool_id ?? null
+    const textColor = active.value ? primaryTextColor.value : ''
+
+    return {
+        color: textColor,
+        'background-color': backgroundColor,
     }
+})
 
-    get spool() {
-        const spools = this.$store.state.server.spoolman.spools ?? []
+const dotStyle = computed(() => ({
+    'border-color': active.value ? primaryTextColor.value : '',
+    'background-color': '#' + color.value,
+}))
 
-        return spools.find((spool: ServerSpoolmanStateSpool) => spool.id === this.spoolId) ?? null
-    }
-
-    get primaryColor(): string {
-        return this.$store.state.gui.uiSettings.primary
-    }
-
-    get primaryTextColor(): string {
-        const splits = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(this.primaryColor)
-        if (splits) {
-            const r = parseInt(splits[1], 16) * 0.2126
-            const g = parseInt(splits[2], 16) * 0.7152
-            const b = parseInt(splits[3], 16) * 0.0722
-            const perceivedLightness = (r + g + b) / 255
-
-            return perceivedLightness > 0.7 ? '#222' : '#fff'
-        }
-
-        return '#ffffff'
-    }
-
-    get warningColor(): string {
-        return this.$vuetify?.theme?.currentTheme?.warning?.toString() ?? '#ff8300'
-    }
-
-    get buttonStyle() {
-        let backgroundColor = ''
-        if (this.active) {
-            backgroundColor = this.homedAxes.includes('xyz') ? this.primaryColor : this.warningColor
-        }
-
-        const textColor = this.active ? this.primaryTextColor : ''
-
-        return {
-            color: textColor,
-            'background-color': backgroundColor,
-        }
-    }
-
-    get dotStyle() {
-        return {
-            'border-color': this.active ? this.primaryTextColor : '',
-            'background-color': '#' + this.color,
-        }
-    }
-
-    changeTool() {
-        this.doSend(this.name.toUpperCase())
-    }
+function changeTool() {
+    doSend(props.name.toUpperCase())
 }
 </script>
 

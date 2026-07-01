@@ -10,28 +10,24 @@
     </div>
 </template>
 
-<script lang="ts">
-import { mdiPrinter3dNozzle } from '@mdi/js'
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import ControlMixin from '@/components/mixins/control'
+<script setup lang="ts">
+import { computed } from 'vue'
+import ExtruderControlPanelToolsItem from '@/components/panels/Extruder/ExtruderControlPanelToolsItem.vue'
+import { useControl } from '@/composables/useControl'
 
-@Component({})
-export default class ExtruderControlPanel extends Mixins(BaseMixin, ControlMixin) {
-    mdiPrinter3dNozzle = mdiPrinter3dNozzle
+const { toolchangeMacros } = useControl()
 
-    get rows() {
-        const len = this.toolchangeMacros.length
-        const cols = Math.ceil(len / Math.ceil(len / 6))
-        const rows = []
+const rows = computed(() => {
+    const len = toolchangeMacros.value.length
+    const cols = Math.ceil(len / Math.ceil(len / 6))
+    const output = []
 
-        for (let i = 0; i < this.toolchangeMacros.length; i += cols) {
-            rows.push(this.toolchangeMacros.slice(i, i + cols))
-        }
-
-        return rows
+    for (let i = 0; i < toolchangeMacros.value.length; i += cols) {
+        output.push(toolchangeMacros.value.slice(i, i + cols))
     }
-}
+
+    return output
+})
 </script>
 
 <style scoped>

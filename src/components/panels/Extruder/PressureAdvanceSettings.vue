@@ -2,11 +2,10 @@
     <v-row>
         <v-col :class="{ 'col-6': !isSmall, 'col-12': isSmall }">
             <number-input
-                :label="$t('Panels.ExtruderControlPanel.PressureAdvanceSettings.Advance')"
+                :label="t('Panels.ExtruderControlPanel.PressureAdvanceSettings.Advance')"
                 param="ADVANCE"
                 :target="pressureAdvance"
                 :default-value="defaultPressureAdvance"
-                :extruder="extruder"
                 :output-error-msg="true"
                 :has-spinner="true"
                 :min="0"
@@ -18,11 +17,10 @@
         </v-col>
         <v-col :class="{ 'col-6': !isSmall, 'col-12': isSmall }">
             <number-input
-                :label="$t('Panels.ExtruderControlPanel.PressureAdvanceSettings.SmoothTime')"
+                :label="t('Panels.ExtruderControlPanel.PressureAdvanceSettings.SmoothTime')"
                 param="SMOOTH_TIME"
                 :target="smoothTime"
                 :default-value="defaultSmoothTime"
-                :extruder="extruder"
                 :output-error-msg="true"
                 :has-spinner="true"
                 :spinner-factor="10"
@@ -36,67 +34,63 @@
     </v-row>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import { Debounce } from 'vue-debounce-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { computed, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import NumberInput from '@/components/inputs/NumberInput.vue'
-import Responsive from '@/components/ui/Responsive.vue'
+import { usePrinterStore } from '@/store/printer'
+import { useServerStore } from '@/store/server'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
 const PRECISION = 1000
 const DEFAULT_SMOOTH_TIME = 0.04
 
-@Component({
-    components: { NumberInput, Responsive },
+const props = withDefaults(
+    defineProps<{
+        isSmall?: boolean
+        extruder: string
+    }>(),
+    { isSmall: false }
+)
+
+const { t } = useI18n()
+const printerStore = usePrinterStore()
+
+const extruderObject = computed(() => printerStore[props.extruder] ?? undefined)
+
+const extruderSettings = computed(() => {
+    const settings = printerStore.configfile?.settings ?? {}
+
+    return settings[props.extruder] ?? undefined
 })
-export default class PressureAdvanceSettings extends Mixins(BaseMixin) {
-    @Prop({ default: false }) readonly isSmall!: boolean
-    @Prop({ required: true }) readonly extruder!: string
 
-    get extruderObject() {
-        return this.$store.state.printer?.[this.extruder] ?? undefined
-    }
+function roundToThreeDecimals(value: number): number {
+    return Math.floor(value * PRECISION) / PRECISION
+}
 
-    get extruderSettings() {
-        const settings = this.$store.state.printer.configfile?.settings ?? {}
+const pressureAdvance = computed<number>(() => roundToThreeDecimals(extruderObject.value?.pressure_advance ?? 0))
 
-        return settings[this.extruder] ?? undefined
-    }
+const smoothTime = computed(() => roundToThreeDecimals(extruderObject.value?.smooth_time ?? DEFAULT_SMOOTH_TIME))
 
-    get pressureAdvance(): number {
-        return this.roundToThreeDecimals(this.extruderObject?.pressure_advance ?? 0)
-    }
+const defaultPressureAdvance = computed(() => roundToThreeDecimals(extruderSettings.value?.pressure_advance ?? 0))
 
-    get smoothTime() {
-        return this.roundToThreeDecimals(this.extruderObject?.smooth_time ?? DEFAULT_SMOOTH_TIME)
-    }
+const defaultSmoothTime = computed(() => roundToThreeDecimals(extruderSettings.value?.pressure_advance_smooth_time ?? extruderSettings.value?.smooth_time ?? DEFAULT_SMOOTH_TIME))
 
-    get defaultPressureAdvance() {
-        return this.roundToThreeDecimals(this.extruderSettings?.pressure_advance ?? 0)
-    }
-
-    get defaultSmoothTime() {
-        return this.roundToThreeDecimals(
-            this.extruderSettings?.pressure_advance_smooth_time ??
-                this.extruderSettings?.smooth_time ??
-                DEFAULT_SMOOTH_TIME
-        )
-    }
-
-    private roundToThreeDecimals(value: number): number {
-        return Math.floor(value * PRECISION) / PRECISION
-    }
-
-    @Debounce(500)
-    sendCmd(params: { name: string; value: number }) {
-        const extruder = this.extruder.startsWith('extruder_stepper ')
-            ? this.extruder.substring('extruder_stepper '.length)
-            : this.extruder
+// debounce replaces the removed vue-debounce-decorator @Debounce(500)
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
+function sendCmd(params: { name: string; value: number }) {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+        const extruder = props.extruder.startsWith('extruder_stepper ') ? props.extruder.substring('extruder_stepper '.length) : props.extruder
 
         const gcode = `SET_PRESSURE_ADVANCE EXTRUDER=${extruder} ${params.name}=${params.value}`
 
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode })
-    }
+        useServerStore().addEvent({ message: gcode, type: 'command' })
+        webSocketClient.emit('printer.gcode.script', { script: gcode })
+    }, 500)
 }
+
+onBeforeUnmount(() => {
+    if (debounceTimer) clearTimeout(debounceTimer)
+})
 </script>
