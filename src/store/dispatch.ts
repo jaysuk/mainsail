@@ -26,6 +26,7 @@ import { usePrinterTempHistoryStore } from '@/store/printer/tempHistory'
 import { useGuiStore } from '@/store/gui'
 import { useGuiMaintenanceStore } from '@/store/gui/maintenance'
 import { useGuiWebcamsStore } from '@/store/gui/webcams'
+import { useFilesStore } from '@/store/files'
 
 type ActionPayload = Record<string, unknown>
 
@@ -123,7 +124,15 @@ export function dispatchStoreAction(path: string, payload: ActionPayload): void 
         case 'gui/webcams/initStore':
             return useGuiWebcamsStore().initStore(payload as never)
 
-        // TODO(phase-2): add cases as the files store is ported.
+        // files
+        case 'files/getDirectory':
+            return useFilesStore().getDirectoryResponse(payload as never)
+        case 'files/getScanMetadata':
+            return useFilesStore().getScanMetadata(payload as never)
+        case 'files/getMetadata':
+            return useFilesStore().getMetadata(payload as never)
+
+        // TODO(phase-2): add cases as farm/editor/root store are ported.
         default:
             window.console.debug(`[ws] no Pinia handler mapped for RPC-result action "${path}"`, payload)
     }
