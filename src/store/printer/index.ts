@@ -85,6 +85,20 @@ export const usePrinterStore = defineStore('printer', () => {
         }
     }
 
+    // Object-model subscription hooks (Phase 4's window.Mainsail plugin API):
+    // Pinia's own $subscribe() watches `pinia.state.value[$id]`, a separate
+    // object from the one bridgeKeys() above updates, so it never fires for
+    // printer data (see the reactivity note above). Plugins/composables that
+    // need to react to real Klipper object-model updates subscribe here
+    // instead, fed directly from getData() - the one function every
+    // notify_status_update and printer.objects.query response flows through.
+    const updateSubscribers = new Set<(printerState: PrinterState) => void>()
+
+    const subscribeToUpdates = (callback: (printerState: PrinterState) => void): (() => void) => {
+        updateSubscribers.add(callback)
+        return () => updateSubscribers.delete(callback)
+    }
+
     // --- print progress getters ---
     const getPrintPercentByFilepositionRelative = computed<number>(() => {
         if (
@@ -947,6 +961,7 @@ export const usePrinterStore = defineStore('printer', () => {
         }
 
         setData(data)
+        updateSubscribers.forEach((callback) => callback(state))
     }
 
     const initGcodes = async () => {
@@ -1041,6 +1056,7 @@ export const usePrinterStore = defineStore('printer', () => {
         setEndstopStatus,
         removeBedMeshProfile,
         clearScrewsTiltAdjust,
+        subscribeToUpdates,
         reset,
         init,
         getInfo,

@@ -60,7 +60,7 @@ import type { LongpressEvent } from '@/directives/longpress'
 import { convertName } from '@/plugins/helpers'
 import { mdiCog, mdiFan, mdiFire, mdiMemory, mdiPrinter3dNozzle, mdiPrinter3dNozzleAlert, mdiRadiator, mdiRadiatorDisabled, mdiSnowflake, mdiThermometer } from '@mdi/js'
 import { additionalSensors, opacityHeaterActive, opacityHeaterInactive } from '@/store/variables'
-import { CLOSE_CONTEXT_MENU, EventBus } from '@/plugins/eventBus'
+import { CLOSE_CONTEXT_MENU, on, off, emit } from '@/plugins/mainsail'
 import TemperaturePanelListItemAdditionalSensor from '@/components/panels/Temperature/TemperaturePanelListItemAdditionalSensor.vue'
 import TemperaturePanelListItemEdit from '@/components/panels/Temperature/TemperaturePanelListItemEdit.vue'
 import TemperatureInput from '@/components/inputs/TemperatureInput.vue'
@@ -252,7 +252,7 @@ const isHeater = computed(() => availableHeaters.value.includes(props.objectName
 const isHeaterActive = computed(() => target.value > 0)
 
 function openContextMenu(event: MouseEvent | LongpressEvent) {
-    EventBus.$emit(CLOSE_CONTEXT_MENU)
+    emit(CLOSE_CONTEXT_MENU)
 
     showContextMenu.value = true
     contextMenuX.value = event?.clientX || event?.pageX || window.screenX / 2
@@ -275,11 +275,11 @@ function turnOffHeater() {
 }
 
 onMounted(() => {
-    EventBus.$on(CLOSE_CONTEXT_MENU, closeContextMenu)
+    on(CLOSE_CONTEXT_MENU, closeContextMenu)
 })
 
 onBeforeUnmount(() => {
-    EventBus.$off(CLOSE_CONTEXT_MENU, closeContextMenu)
+    off(CLOSE_CONTEXT_MENU, closeContextMenu)
 })
 </script>
 

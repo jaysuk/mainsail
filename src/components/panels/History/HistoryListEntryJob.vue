@@ -120,7 +120,7 @@ import type { FileStateFileThumbnail, FileStateGcodefile } from '@/store/files/t
 import type { ServerHistoryStateJob, HistoryListPanelCol } from '@/store/server/history/types'
 import { thumbnailBigMin, thumbnailSmallMax, thumbnailSmallMin } from '@/store/variables'
 import { mdiDelete, mdiFile, mdiFileCancel, mdiNoteEditOutline, mdiNotePlusOutline, mdiNoteTextOutline, mdiPlaylistPlus, mdiPrinter, mdiTextBoxSearch } from '@mdi/js'
-import { CLOSE_CONTEXT_MENU, EventBus } from '@/plugins/eventBus'
+import { CLOSE_CONTEXT_MENU, on, off, emit as emitEvent } from '@/plugins/mainsail'
 import { convertPrintStatusIcon, convertPrintStatusIconColor, escapePath, formatFilesize, formatPrintTime } from '@/plugins/helpers'
 import { useBase } from '@/composables/useBase'
 import { useFilesStore } from '@/store/files'
@@ -211,7 +211,7 @@ function select(newVal: boolean) {
 
 function showContextMenu(e: MouseEvent | LongpressEvent) {
     e?.preventDefault()
-    EventBus.$emit(CLOSE_CONTEXT_MENU)
+    emitEvent(CLOSE_CONTEXT_MENU)
 
     contextMenuX.value = e?.clientX || e?.pageX || window.screenX / 2
     contextMenuY.value = e?.clientY || e?.pageY || window.screenY / 2
@@ -289,10 +289,10 @@ function outputValue(col: HistoryListPanelCol, item: ServerHistoryStateJob) {
 }
 
 onMounted(() => {
-    EventBus.$on(CLOSE_CONTEXT_MENU, closeContextMenu)
+    on(CLOSE_CONTEXT_MENU, closeContextMenu)
 })
 
 onBeforeUnmount(() => {
-    EventBus.$off(CLOSE_CONTEXT_MENU, closeContextMenu)
+    off(CLOSE_CONTEXT_MENU, closeContextMenu)
 })
 </script>

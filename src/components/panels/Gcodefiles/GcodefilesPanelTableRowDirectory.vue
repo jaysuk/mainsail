@@ -41,7 +41,7 @@ import { useI18n } from 'vue-i18n'
 import type { LongpressEvent } from '@/directives/longpress'
 import type { FileStateGcodefile } from '@/store/files/types'
 import { mdiDelete, mdiFolder, mdiRenameBox } from '@mdi/js'
-import { CLOSE_CONTEXT_MENU, EventBus } from '@/plugins/eventBus'
+import { CLOSE_CONTEXT_MENU, on, off, emit } from '@/plugins/mainsail'
 import GcodefilesRenameDirectoryDialog from '@/components/dialogs/GcodefilesRenameDirectoryDialog.vue'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
 import { useGcodefiles } from '@/composables/useGcodefiles'
@@ -73,7 +73,7 @@ const trClasses = computed(() => ({
 
 function showContextMenuAction(e: MouseEvent | LongpressEvent) {
     e?.preventDefault()
-    EventBus.$emit(CLOSE_CONTEXT_MENU)
+    emit(CLOSE_CONTEXT_MENU)
 
     showContextMenuX.value = e?.clientX || e?.pageX || window.screenX / 2
     showContextMenuY.value = e?.clientY || e?.pageY || window.screenY / 2
@@ -130,11 +130,11 @@ function onDrag(e: DragEvent) {
 }
 
 onMounted(() => {
-    EventBus.$on(CLOSE_CONTEXT_MENU, closeContextMenu)
+    on(CLOSE_CONTEXT_MENU, closeContextMenu)
 })
 
 onBeforeUnmount(() => {
-    EventBus.$off(CLOSE_CONTEXT_MENU, closeContextMenu)
+    off(CLOSE_CONTEXT_MENU, closeContextMenu)
 })
 </script>
 

@@ -55,7 +55,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { LongpressEvent } from '@/directives/longpress'
 import { mdiAdjust, mdiAlarm, mdiAlarmMultiple, mdiCalendar, mdiDelete, mdiNotebook, mdiNotebookCheck, mdiTextBoxSearch } from '@mdi/js'
-import { CLOSE_CONTEXT_MENU, EventBus } from '@/plugins/eventBus'
+import { CLOSE_CONTEXT_MENU, on, off, emit as emitEvent } from '@/plugins/mainsail'
 import type { HistoryListPanelCol } from '@/store/server/history/types'
 import type { GuiMaintenanceStateEntry } from '@/store/gui/maintenance/types'
 import HistoryListPanelDetailMaintenance from '@/components/dialogs/HistoryListPanelDetailMaintenance.vue'
@@ -171,7 +171,7 @@ function select(newVal: boolean) {
 
 function showContextMenu(e: MouseEvent | LongpressEvent) {
     e?.preventDefault()
-    EventBus.$emit(CLOSE_CONTEXT_MENU)
+    emitEvent(CLOSE_CONTEXT_MENU)
 
     contextMenuX.value = e?.clientX || e?.pageX || window.screenX / 2
     contextMenuY.value = e?.clientY || e?.pageY || window.screenY / 2
@@ -190,10 +190,10 @@ function deleteEntry() {
 }
 
 onMounted(() => {
-    EventBus.$on(CLOSE_CONTEXT_MENU, closeContextMenu)
+    on(CLOSE_CONTEXT_MENU, closeContextMenu)
 })
 
 onBeforeUnmount(() => {
-    EventBus.$off(CLOSE_CONTEXT_MENU, closeContextMenu)
+    off(CLOSE_CONTEXT_MENU, closeContextMenu)
 })
 </script>

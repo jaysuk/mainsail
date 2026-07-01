@@ -77,7 +77,7 @@ import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
 import GcodefilesRenameFileDialog from '@/components/dialogs/GcodefilesRenameFileDialog.vue'
 import { convertPrintStatusIcon, convertPrintStatusIconColor, escapePath, formatPrintTime } from '@/plugins/helpers'
 import GcodefilesThumbnail from '@/components/panels/Gcodefiles/GcodefilesThumbnail.vue'
-import { CLOSE_CONTEXT_MENU, EventBus } from '@/plugins/eventBus'
+import { CLOSE_CONTEXT_MENU, on, off, emit } from '@/plugins/mainsail'
 import { useBase } from '@/composables/useBase'
 import { useControl } from '@/composables/useControl'
 import { useEditorStore } from '@/store/editor'
@@ -137,7 +137,7 @@ const filename = computed(() => props.item.filename.slice(props.item.filename.la
 
 function showContextMenu(e: MouseEvent | LongpressEvent) {
     e?.preventDefault()
-    EventBus.$emit(CLOSE_CONTEXT_MENU)
+    emit(CLOSE_CONTEXT_MENU)
 
     contextMenuX.value = e?.clientX || e?.pageX || window.screenX / 2
     contextMenuY.value = e?.clientY || e?.pageY || window.screenY / 2
@@ -186,10 +186,10 @@ function removeFile() {
 }
 
 onMounted(() => {
-    EventBus.$on(CLOSE_CONTEXT_MENU, closeContextMenu)
+    on(CLOSE_CONTEXT_MENU, closeContextMenu)
 })
 
 onBeforeUnmount(() => {
-    EventBus.$off(CLOSE_CONTEXT_MENU, closeContextMenu)
+    off(CLOSE_CONTEXT_MENU, closeContextMenu)
 })
 </script>

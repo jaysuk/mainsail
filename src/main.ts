@@ -9,6 +9,8 @@ import router from '@/plugins/router'
 import { webSocketClient } from '@/plugins/webSocketClient'
 import { useSocketStore } from '@/store/socket'
 import { useRootStore } from '@/store'
+import { installMainsailApi } from '@/plugins/mainsail'
+import { loadPlugins } from '@/plugins/mainsail/pluginLoader'
 
 // Toast notifications
 import ToastPlugin from 'vue-toast-notification'
@@ -41,6 +43,11 @@ const pinia = createPinia()
 // created, so the Pinia instance must be made active explicitly first.
 setActivePinia(pinia)
 
+// window.Mainsail must exist before any plugin module loads (its install()
+// call is the whole point of loading it), and doesn't depend on the app/
+// router/vuetify being mounted yet - install it as early as possible.
+installMainsailApi()
+
 const initLoad = async (): Promise<void> => {
     try {
         // get base url. by default, it is '/'
@@ -60,6 +67,9 @@ const initLoad = async (): Promise<void> => {
         // Handle mode before mount for consistency in the connecting dialog
         const mode = file.defaultMode ?? defaultMode
         vuetify.theme.global.name.value = mode === 'light' ? 'light' : 'dark'
+
+        const pluginUrls = Array.isArray(file.plugins) ? (file.plugins as string[]) : []
+        if (pluginUrls.length) await loadPlugins(pluginUrls)
     } catch (e) {
         window.console.error('Failed to load config.json')
         window.console.error(e)
@@ -79,9 +89,6 @@ initLoad().then(() => {
     app.directive('responsive-class', responsiveClass)
 
     app.component('EChart', ECharts)
-
-    // TODO(phase-3): replace the vue-observe-visibility directive and the
-    // overlayscrollbars-vue plugin registrations removed in Phase 1.
 
     app.mount('#app')
 

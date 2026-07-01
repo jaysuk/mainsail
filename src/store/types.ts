@@ -19,6 +19,10 @@ export interface ConfigJson {
     path?: string | null
     instancesDB?: 'moonraker' | 'browser' | 'json'
     instances?: ConfigJsonInstance[]
+    // URLs of Mainsail plugin ES modules to dynamically import at boot, each
+    // exporting an `install(api: MainsailPluginApi)` function. See
+    // src/plugins/mainsail/pluginLoader.ts.
+    plugins?: string[]
 }
 
 export interface ConfigJsonInstance {

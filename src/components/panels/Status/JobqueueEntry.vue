@@ -46,7 +46,7 @@ import type { ServerJobQueueStateJob } from '@/store/server/jobQueue/types'
 import { mdiCloseThick, mdiCounter, mdiDragVertical, mdiPlay, mdiPlaylistRemove } from '@mdi/js'
 import GcodefilesThumbnail from '@/components/panels/Gcodefiles/GcodefilesThumbnail.vue'
 import JobqueueEntryChangeCountDialog from '@/components/dialogs/JobqueueEntryChangeCountDialog.vue'
-import { CLOSE_CONTEXT_MENU, EventBus } from '@/plugins/eventBus'
+import { CLOSE_CONTEXT_MENU, on, off, emit } from '@/plugins/mainsail'
 import { useBase } from '@/composables/useBase'
 import { useServerJobQueueStore } from '@/store/server/jobQueue'
 
@@ -134,7 +134,7 @@ const description = computed(() => {
 
 function openContextMenu(e: MouseEvent | LongpressEvent) {
     e?.preventDefault()
-    EventBus.$emit(CLOSE_CONTEXT_MENU)
+    emit(CLOSE_CONTEXT_MENU)
 
     contextMenuX.value = e?.clientX || e?.pageX || window.screenX / 2
     contextMenuY.value = e?.clientY || e?.pageY || window.screenY / 2
@@ -161,10 +161,10 @@ function removeFromJobqueue() {
 }
 
 onMounted(() => {
-    EventBus.$on(CLOSE_CONTEXT_MENU, closeContextMenu)
+    on(CLOSE_CONTEXT_MENU, closeContextMenu)
 })
 
 onBeforeUnmount(() => {
-    EventBus.$off(CLOSE_CONTEXT_MENU, closeContextMenu)
+    off(CLOSE_CONTEXT_MENU, closeContextMenu)
 })
 </script>
