@@ -1,88 +1,67 @@
-<style scoped></style>
-
 <template>
-    <panel
-        v-if="klipperReadyForGui && macros.length > 0 && macrogroupStatus"
-        :icon="mdiCodeTags"
-        :title="macrogroup.name"
-        :collapsible="true"
-        :card-class="'macrogroup_' + panelId + '_panel'">
+    <panel v-if="klipperReadyForGui && macros.length > 0 && macrogroupStatus" :icon="mdiCodeTags" :title="macrogroup.name" :collapsible="true" :card-class="'macrogroup_' + panelId + '_panel'">
         <v-card-text class="py-2">
             <v-row>
                 <v-col class="text-center">
-                    <macro-button
-                        v-for="(macro, index) in macros"
-                        :key="'macroparam_' + index"
-                        :macro="macro"
-                        :color="getColor(macro)"
-                        class="mx-1 my-1" />
+                    <macro-button v-for="(macro, index) in macros" :key="'macroparam_' + index" :macro="macro" :color="getColor(macro)" class="mx-1 my-1" />
                 </v-col>
             </v-row>
         </v-card-text>
     </panel>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '../mixins/base'
+<script setup lang="ts">
+import { computed } from 'vue'
 import Panel from '@/components/ui/Panel.vue'
 import MacroButton from '@/components/inputs/MacroButton.vue'
-import { PrinterStateMacro } from '@/store/printer/types'
-import { GuiMacrosStateMacrogroupMacro } from '@/store/gui/macros/types'
+import type { PrinterStateMacro } from '@/store/printer/types'
+import type { GuiMacrosStateMacrogroupMacro } from '@/store/gui/macros/types'
 import { mdiCodeTags } from '@mdi/js'
-@Component({
-    components: { MacroButton, Panel },
-})
-export default class MacrogroupPanel extends Mixins(BaseMixin) {
-    mdiCodeTags = mdiCodeTags
+import { useBase } from '@/composables/useBase'
+import { usePrinterStore } from '@/store/printer'
+import { useGuiMacrosStore } from '@/store/gui/macros'
 
-    @Prop({ required: true }) declare panelId: string
+const props = defineProps<{
+    panelId: string
+}>()
 
-    get macrogroup() {
-        return this.$store.getters['gui/macros/getMacrogroup'](this.panelId)
-    }
+const { klipperReadyForGui, printer_state } = useBase()
+const printerStore = usePrinterStore()
+const guiMacrosStore = useGuiMacrosStore()
 
-    get allMacros() {
-        return this.$store.getters['printer/getMacros'] ?? []
-    }
+const macrogroup = computed(() => guiMacrosStore.getMacrogroup(props.panelId))
 
-    get macros() {
-        let macros = this.macrogroup?.macros ?? []
+const allMacros = computed(() => printerStore.getMacros ?? [])
 
-        macros = macros.filter((macro: GuiMacrosStateMacrogroupMacro) => {
-            if (
-                !this.allMacros.find(
-                    (existMacro: PrinterStateMacro) => existMacro.name.toLowerCase() === macro.name.toLowerCase()
-                )
-            )
-                return false
+const macros = computed(() => {
+    let macros = macrogroup.value?.macros ?? []
 
-            return (
-                (macro.showInStandby && ['standby', 'cancelled', 'complete', 'error'].includes(this.printer_state)) ||
-                (macro.showInPause && this.printer_state === 'paused') ||
-                (macro.showInPrinting && this.printer_state === 'printing')
-            )
-        })
+    macros = macros.filter((macro: GuiMacrosStateMacrogroupMacro) => {
+        if (!allMacros.value.find((existMacro: PrinterStateMacro) => existMacro.name.toLowerCase() === macro.name.toLowerCase())) return false
 
-        return macros.sort((a: GuiMacrosStateMacrogroupMacro, b: GuiMacrosStateMacrogroupMacro) => a.pos - b.pos)
-    }
-
-    get macrogroupStatus() {
         return (
-            (this.macrogroup.showInStandby &&
-                ['standby', 'cancelled', 'complete', 'error'].includes(this.printer_state)) ||
-            (this.macrogroup.showInPause && this.printer_state === 'paused') ||
-            (this.macrogroup.showInPrinting && this.printer_state === 'printing')
+            (macro.showInStandby && ['standby', 'cancelled', 'complete', 'error'].includes(printer_state.value)) ||
+            (macro.showInPause && printer_state.value === 'paused') ||
+            (macro.showInPrinting && printer_state.value === 'printing')
         )
+    })
+
+    return macros.sort((a: GuiMacrosStateMacrogroupMacro, b: GuiMacrosStateMacrogroupMacro) => a.pos - b.pos)
+})
+
+const macrogroupStatus = computed(
+    () =>
+        (macrogroup.value.showInStandby && ['standby', 'cancelled', 'complete', 'error'].includes(printer_state.value)) ||
+        (macrogroup.value.showInPause && printer_state.value === 'paused') ||
+        (macrogroup.value.showInPrinting && printer_state.value === 'printing')
+)
+
+function getColor(macro: GuiMacrosStateMacrogroupMacro) {
+    if (macro.color === 'group') {
+        if (macrogroup.value.color === 'custom') return macrogroup.value.colorCustom
+        else return macrogroup.value.color
     }
 
-    getColor(macro: GuiMacrosStateMacrogroupMacro) {
-        if (macro.color === 'group') {
-            if (this.macrogroup.color === 'custom') return this.macrogroup.colorCustom
-            else return this.macrogroup.color
-        }
-
-        return macro.color
-    }
+    return macro.color
 }
 </script>

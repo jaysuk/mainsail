@@ -1,12 +1,5 @@
-<style scoped></style>
-
 <template>
-    <panel
-        v-if="showMiscellaneousPanel"
-        :icon="mdiDipSwitch"
-        :title="$t('Panels.MiscellaneousPanel.Headline')"
-        :collapsible="true"
-        card-class="miscellaneous-panel">
+    <panel v-if="showMiscellaneousPanel" :icon="mdiDipSwitch" :title="t('Panels.MiscellaneousPanel.Headline')" :collapsible="true" card-class="miscellaneous-panel">
         <div v-for="(object, index) of miscellaneous" :key="index">
             <v-divider v-if="index" />
             <miscellaneous-slider
@@ -26,34 +19,22 @@
         </div>
         <div v-for="(sensor, index) of filamentSensors" :key="'sensor_' + index">
             <v-divider v-if="index || miscellaneous.length || lights.length" />
-            <filament-sensor
-                :type="sensor.type"
-                :name="sensor.name"
-                :enabled="sensor.enabled"
-                :filament_detected="sensor.filament_detected"
-                :filament_diameter="sensor.filament_diameter" />
+            <filament-sensor :type="sensor.type" :name="sensor.name" :enabled="sensor.enabled" :filament_detected="sensor.filament_detected" :filament_diameter="sensor.filament_diameter" />
         </div>
         <div v-for="(sensor, index) of miscellaneousSensors" :key="'miscellaneous_sensor_' + index">
             <v-divider v-if="index || miscellaneous.length || lights.length || filamentSensors.length" />
             <miscellaneous-sensor :name="sensor.name" :value="sensor.value" :unit="sensor.unit" />
         </div>
         <div v-for="(sensor, index) of moonrakerSensors" :key="'moonraker_sensor_' + index">
-            <v-divider
-                v-if="
-                    index ||
-                    miscellaneous.length ||
-                    lights.length ||
-                    filamentSensors.length ||
-                    miscellaneousSensors.length
-                " />
+            <v-divider v-if="index || miscellaneous.length || lights.length || filamentSensors.length || miscellaneousSensors.length" />
             <moonraker-sensor :name="sensor" />
         </div>
     </panel>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import MiscellaneousSlider from '@/components/inputs/MiscellaneousSlider.vue'
 import FilamentSensor from '@/components/inputs/FilamentSensor.vue'
 import MiscellaneousLight from '@/components/panels/Miscellaneous/MiscellaneousLight.vue'
@@ -61,40 +42,24 @@ import MiscellaneousSensor from '@/components/panels/Miscellaneous/Miscellaneous
 import MoonrakerSensor from '@/components/panels/Miscellaneous/MoonrakerSensor.vue'
 import Panel from '@/components/ui/Panel.vue'
 import { mdiDipSwitch } from '@mdi/js'
-import MiscellaneousMixin from '@/components/mixins/miscellaneous'
-@Component({
-    components: {
-        Panel,
-        FilamentSensor,
-        MiscellaneousSlider,
-        MiscellaneousLight,
-        MiscellaneousSensor,
-        MoonrakerSensor,
-    },
-})
-export default class MiscellaneousPanel extends Mixins(BaseMixin, MiscellaneousMixin) {
-    mdiDipSwitch = mdiDipSwitch
+import { useBase } from '@/composables/useBase'
+import { useMiscellaneous } from '@/composables/useMiscellaneous'
+import { usePrinterStore } from '@/store/printer'
+import { useServerSensorStore } from '@/store/server/sensor'
 
-    get filamentSensors() {
-        return this.$store.getters['printer/getFilamentSensors'] ?? []
-    }
+const { t } = useI18n()
+const { klipperReadyForGui } = useBase()
+const { lights } = useMiscellaneous()
+const printerStore = usePrinterStore()
+const serverSensorStore = useServerSensorStore()
 
-    get miscellaneous() {
-        return this.$store.getters['printer/getMiscellaneous'] ?? []
-    }
+const filamentSensors = computed(() => printerStore.getFilamentSensors ?? [])
 
-    get miscellaneousSensors() {
-        return this.$store.getters['printer/getMiscellaneousSensors'] ?? []
-    }
+const miscellaneous = computed(() => printerStore.getMiscellaneous ?? [])
 
-    get moonrakerSensors() {
-        return this.$store.getters['server/sensor/getSensors'] ?? []
-    }
+const miscellaneousSensors = computed(() => printerStore.getMiscellaneousSensors ?? [])
 
-    get showMiscellaneousPanel() {
-        return (
-            this.klipperReadyForGui && (this.miscellaneous.length || this.filamentSensors.length || this.lights.length)
-        )
-    }
-}
+const moonrakerSensors = computed(() => serverSensorStore.getSensors ?? [])
+
+const showMiscellaneousPanel = computed(() => klipperReadyForGui.value && (miscellaneous.value.length || filamentSensors.value.length || lights.value.length))
 </script>

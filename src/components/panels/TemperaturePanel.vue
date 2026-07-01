@@ -1,10 +1,5 @@
 <template>
-    <panel
-        v-if="klipperReadyForGui"
-        :icon="mdiThermometerLines"
-        :title="$t('Panels.TemperaturePanel.Headline')"
-        :collapsible="true"
-        card-class="temperature-panel">
+    <panel v-if="klipperReadyForGui" :icon="mdiThermometerLines" :title="t('Panels.TemperaturePanel.Headline')" :collapsible="true" card-class="temperature-panel">
         <template #buttons>
             <temperature-panel-presets />
             <temperature-panel-settings />
@@ -19,31 +14,21 @@
     </panel>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins } from 'vue-property-decorator'
-import { capitalize, convertName } from '@/plugins/helpers'
-import BaseMixin from '@/components/mixins/base'
-import ControlMixin from '@/components/mixins/control'
-import TempChart from '@/components/charts/TempChart.vue'
-import TemperatureInput from '@/components/inputs/TemperatureInput.vue'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Panel from '@/components/ui/Panel.vue'
-import Responsive from '@/components/ui/Responsive.vue'
-import { mdiCloseThick, mdiThermometerLines } from '@mdi/js'
+import TempChart from '@/components/charts/TempChart.vue'
+import { mdiThermometerLines } from '@mdi/js'
 import TemperaturePanelPresets from '@/components/panels/Temperature/TemperaturePanelPresets.vue'
+import TemperaturePanelSettings from '@/components/panels/Temperature/TemperaturePanelSettings.vue'
+import TemperaturePanelList from '@/components/panels/Temperature/TemperaturePanelList.vue'
+import { useBase } from '@/composables/useBase'
+import { useGuiStore } from '@/store/gui'
 
-@Component({
-    components: { Panel, TempChart, TemperatureInput, Responsive, TemperaturePanelPresets },
-})
-export default class TemperaturePanel extends Mixins(BaseMixin, ControlMixin) {
-    mdiCloseThick = mdiCloseThick
-    mdiThermometerLines = mdiThermometerLines
+const { t } = useI18n()
+const { klipperReadyForGui } = useBase()
+const guiStore = useGuiStore()
 
-    convertName = convertName
-    capitalize = capitalize
-
-    get boolTempchart(): boolean {
-        return this.$store.state.gui.view.tempchart.boolTempchart ?? false
-    }
-}
+const boolTempchart = computed<boolean>(() => guiStore.view.tempchart.boolTempchart ?? false)
 </script>

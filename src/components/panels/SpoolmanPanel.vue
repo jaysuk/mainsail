@@ -2,26 +2,26 @@
     <panel :icon="mdiAdjust" :title="title" card-class="spoolman-panel" :collapsible="true">
         <template #buttons>
             <spoolman-tools-dropdown v-if="toolsWithSpoolId.length > 0" :tools="toolsWithSpoolId" />
-            <v-btn v-else icon tile :title="changeSpoolTooltip" @click="showChangeSpoolDialog = true">
+            <v-btn v-else icon="" variant="text" :title="changeSpoolTooltip" @click="showChangeSpoolDialog = true">
                 <v-icon>{{ mdiSwapVertical }}</v-icon>
             </v-btn>
-            <v-menu :offset-y="true" :close-on-content-click="false" left>
-                <template #activator="{ on, attrs }">
-                    <v-btn icon tile v-bind="attrs" v-on="on">
+            <v-menu :close-on-content-click="false" location="bottom end">
+                <template #activator="{ props: activatorProps }">
+                    <v-btn icon="" variant="text" v-bind="activatorProps">
                         <v-icon>{{ mdiDotsVertical }}</v-icon>
                     </v-btn>
                 </template>
-                <v-list dense>
+                <v-list density="compact">
                     <v-list-item>
-                        <v-btn small class="w-100" @click="showEjectSpoolDialog = true">
-                            <v-icon left>{{ mdiEject }}</v-icon>
-                            {{ $t('Panels.SpoolmanPanel.EjectSpool') }}
+                        <v-btn size="small" class="w-100" @click="showEjectSpoolDialog = true">
+                            <v-icon start>{{ mdiEject }}</v-icon>
+                            {{ t('Panels.SpoolmanPanel.EjectSpool') }}
                         </v-btn>
                     </v-list-item>
                     <v-list-item v-if="spoolManagerUrl">
-                        <v-btn small class="w-100" @click="openSpoolManager">
-                            <v-icon left>{{ mdiOpenInNew }}</v-icon>
-                            {{ $t('Panels.SpoolmanPanel.OpenSpoolManager') }}
+                        <v-btn size="small" class="w-100" @click="openSpoolManager">
+                            <v-icon start>{{ mdiOpenInNew }}</v-icon>
+                            {{ t('Panels.SpoolmanPanel.OpenSpoolManager') }}
                         </v-btn>
                     </v-list-item>
                 </v-list>
@@ -30,9 +30,9 @@
         <v-card-text v-if="active_spool === null">
             <v-row>
                 <v-col class="text-center">
-                    <p class="text--disabled">{{ $t('Panels.SpoolmanPanel.NoActiveSpool') }}</p>
-                    <v-btn small color="primary" @click="showChangeSpoolDialog = true">
-                        {{ $t('Panels.SpoolmanPanel.SelectSpool') }}
+                    <p class="text-disabled">{{ t('Panels.SpoolmanPanel.NoActiveSpool') }}</p>
+                    <v-btn size="small" color="primary" @click="showChangeSpoolDialog = true">
+                        {{ t('Panels.SpoolmanPanel.SelectSpool') }}
                     </v-btn>
                 </v-col>
             </v-row>
@@ -41,78 +41,70 @@
         <spoolman-change-spool-dialog v-model="showChangeSpoolDialog" />
         <confirmation-dialog
             v-model="showEjectSpoolDialog"
-            :title="$t('Panels.SpoolmanPanel.EjectSpool')"
-            :text="$t('Panels.SpoolmanPanel.EjectSpoolQuestion')"
-            :action-button-text="$t('Panels.SpoolmanPanel.EjectSpool')"
+            :title="t('Panels.SpoolmanPanel.EjectSpool')"
+            :text="t('Panels.SpoolmanPanel.EjectSpoolQuestion')"
+            :action-button-text="t('Panels.SpoolmanPanel.EjectSpool')"
             action-button-color="primary"
             :icon="mdiEject"
             @action="ejectSpool" />
     </panel>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Panel from '@/components/ui/Panel.vue'
 import { mdiAdjust, mdiDotsVertical, mdiEject, mdiOpenInNew, mdiSwapVertical } from '@mdi/js'
 import SpoolmanChangeSpoolDialog from '@/components/dialogs/SpoolmanChangeSpoolDialog.vue'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
-import { ServerSpoolmanStateSpool } from '@/store/server/spoolman/types'
+import type { ServerSpoolmanStateSpool } from '@/store/server/spoolman/types'
 import SpoolmanPanelActiveSpool from '@/components/panels/Spoolman/SpoolmanPanelActiveSpool.vue'
+import SpoolmanToolsDropdown from '@/components/panels/Spoolman/SpoolmanToolsDropdown.vue'
+import { useBase } from '@/composables/useBase'
+import { useServerSpoolmanStore } from '@/store/server/spoolman'
+import { usePrinterStore } from '@/store/printer'
 
-@Component({
-    components: { ConfirmationDialog, SpoolmanPanelActiveSpool, Panel, SpoolmanChangeSpoolDialog },
+const { t } = useI18n()
+const { spoolManagerUrl } = useBase()
+const spoolmanStore = useServerSpoolmanStore()
+const printerStore = usePrinterStore()
+
+const showChangeSpoolDialog = ref(false)
+const showEjectSpoolDialog = ref(false)
+
+const health = computed(() => spoolmanStore.health ?? '')
+
+const title = computed(() => {
+    const headline = t('Panels.SpoolmanPanel.Headline')
+
+    if (health.value === '' || health.value === 'healthy') return headline
+
+    return `${headline} (${health.value})`
 })
-export default class SpoolmanPanel extends Mixins(BaseMixin) {
-    mdiAdjust = mdiAdjust
-    mdiDotsVertical = mdiDotsVertical
-    mdiEject = mdiEject
-    mdiOpenInNew = mdiOpenInNew
-    mdiSwapVertical = mdiSwapVertical
 
-    showChangeSpoolDialog = false
-    showEjectSpoolDialog = false
+const active_spool = computed<ServerSpoolmanStateSpool | null>(() => spoolmanStore.active_spool ?? null)
 
-    get health() {
-        return this.$store.state.server.spoolman.health ?? ''
-    }
+const changeSpoolTooltip = computed<string>(() => {
+    if (active_spool.value === null) return t('Panels.SpoolmanPanel.SelectSpool')
 
-    get title() {
-        const headline = this.$t('Panels.SpoolmanPanel.Headline') as string
+    return t('Panels.SpoolmanPanel.ChangeSpool')
+})
 
-        if (this.health === '' || this.health === 'healthy') return headline
+const toolsWithSpoolId = computed(() =>
+    Object.keys(printerStore)
+        .filter((key) => /^gcode_macro T\d+$/i.test(key.toLowerCase()))
+        .filter((keys) => {
+            const object = (printerStore as unknown as Record<string, Record<string, unknown>>)[keys] ?? {}
 
-        return `${headline} (${this.health})`
-    }
+            return Object.keys(object).some((key) => key.toLowerCase() === 'spool_id')
+        })
+)
 
-    get changeSpoolTooltip(): string {
-        if (this.active_spool === null) return this.$t('Panels.SpoolmanPanel.SelectSpool') as string
+function openSpoolManager() {
+    window.open(spoolManagerUrl.value, '_blank')
+}
 
-        return this.$t('Panels.SpoolmanPanel.ChangeSpool') as string
-    }
-
-    get active_spool(): ServerSpoolmanStateSpool | null {
-        return this.$store.state.server.spoolman.active_spool ?? null
-    }
-
-    get toolsWithSpoolId() {
-        return Object.keys(this.$store.state.printer)
-            .filter((key) => /^gcode_macro T\d+$/i.test(key.toLowerCase()))
-            .filter((keys) => {
-                const object = this.$store.state.printer[keys] ?? {}
-
-                return Object.keys(object).some((key) => key.toLowerCase() === 'spool_id')
-            })
-    }
-
-    openSpoolManager() {
-        window.open(this.spoolManagerUrl, '_blank')
-    }
-
-    ejectSpool() {
-        this.$store.dispatch('server/spoolman/setActiveSpool', null)
-    }
+function ejectSpool() {
+    spoolmanStore.setActiveSpool(null)
 }
 </script>
-
-<style scoped></style>

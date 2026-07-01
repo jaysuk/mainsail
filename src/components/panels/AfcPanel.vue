@@ -1,10 +1,5 @@
 <template>
-    <panel
-        v-if="klipperReadyForGui"
-        :title="$t('Panels.AfcPanel.Headline')"
-        :icon="afcIconLogo"
-        :collapsible="true"
-        card-class="afc-control-panel">
+    <panel v-if="klipperReadyForGui" :title="t('Panels.AfcPanel.Headline')" :icon="afcIconLogo" :collapsible="true" card-class="afc-control-panel">
         <template #buttons>
             <afc-panel-buttons />
             <afc-panel-settings />
@@ -17,22 +12,26 @@
         </v-card-text>
     </panel>
 </template>
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import AfcMixin from '@/components/mixins/afc'
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { afcIconLogo } from '@/plugins/afcIcons'
+import Panel from '@/components/ui/Panel.vue'
+import AfcPanelButtons from '@/components/panels/Afc/AfcPanelButtons.vue'
+import AfcPanelSettings from '@/components/panels/Afc/AfcPanelSettings.vue'
+import AfcPanelMessage from '@/components/panels/Afc/AfcPanelMessage.vue'
+import AfcPanelBypass from '@/components/panels/Afc/AfcPanelBypass.vue'
+import AfcPanelExtruder from '@/components/panels/Afc/AfcPanelExtruder.vue'
+import AfcPanelUnit from '@/components/panels/Afc/AfcPanelUnit.vue'
+import { useBase } from '@/composables/useBase'
+import { useAfc } from '@/composables/useAfc'
 
-@Component
-export default class AfcPanel extends Mixins(BaseMixin, AfcMixin) {
-    afcIconLogo = afcIconLogo
+const { t } = useI18n()
+const { klipperReadyForGui } = useBase()
+const { afcExtruders, afcUnits, afcHiddenExtruders, afcHiddenUnits } = useAfc()
 
-    get filteredExtruders() {
-        return this.afcExtruders.filter((extruder) => !this.afcHiddenExtruders.includes(extruder))
-    }
+const filteredExtruders = computed(() => afcExtruders.value.filter((extruder) => !afcHiddenExtruders.value.includes(extruder)))
 
-    get filteredUnits() {
-        return this.afcUnits.filter((unit) => !this.afcHiddenUnits.includes(unit))
-    }
-}
+const filteredUnits = computed(() => afcUnits.value.filter((unit) => !afcHiddenUnits.value.includes(unit)))
 </script>

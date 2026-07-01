@@ -1,10 +1,5 @@
 <template>
-    <panel
-        v-if="klipperReadyForGui"
-        :icon="mdiEngine"
-        :title="$t('Panels.MachineSettingsPanel.Headline')"
-        :collapsible="true"
-        card-class="machine-settings-panel">
+    <panel v-if="klipperReadyForGui" :icon="mdiEngine" :title="t('Panels.MachineSettingsPanel.Headline')" :collapsible="true" card-class="machine-settings-panel">
         <responsive
             :breakpoints="{
                 small: (el) => el.width < 375,
@@ -15,7 +10,7 @@
                     <v-row>
                         <v-col :class="{ 'col-12': el.is.small, 'col-6': el.is.medium }">
                             <number-input
-                                :label="$t('Panels.MachineSettingsPanel.MotionSettings.Velocity')"
+                                :label="t('Panels.MachineSettingsPanel.MotionSettings.Velocity')"
                                 param="VELOCITY"
                                 :target="velocity"
                                 :default-value="defaultVelocity"
@@ -31,7 +26,7 @@
                         </v-col>
                         <v-col :class="{ 'col-12': el.is.small, 'col-6': el.is.medium }">
                             <number-input
-                                :label="$t('Panels.MachineSettingsPanel.MotionSettings.SquareCornerVelocity')"
+                                :label="t('Panels.MachineSettingsPanel.MotionSettings.SquareCornerVelocity')"
                                 param="SQUARE_CORNER_VELOCITY"
                                 :target="squareCornerVelocity"
                                 :default-value="defaultSquareCornerVelocity"
@@ -48,7 +43,7 @@
                     <v-row>
                         <v-col :class="{ 'col-12': el.is.small, 'col-6': el.is.medium }">
                             <number-input
-                                :label="$t('Panels.MachineSettingsPanel.MotionSettings.Acceleration')"
+                                :label="t('Panels.MachineSettingsPanel.MotionSettings.Acceleration')"
                                 param="ACCEL"
                                 :target="accel"
                                 :default-value="defaultAccel"
@@ -65,7 +60,7 @@
                         <v-col :class="{ 'col-12': el.is.small, 'col-6': el.is.medium }">
                             <number-input
                                 v-if="minimumCruiseRatio === null"
-                                :label="$t('Panels.MachineSettingsPanel.MotionSettings.MaxAccelToDecel')"
+                                :label="t('Panels.MachineSettingsPanel.MotionSettings.MaxAccelToDecel')"
                                 param="ACCEL_TO_DECEL"
                                 :target="accelToDecel"
                                 :default-value="defaultAccelToDecel"
@@ -80,7 +75,7 @@
                                 @submit="sendCmd" />
                             <number-input
                                 v-else
-                                :label="$t('Panels.MachineSettingsPanel.MotionSettings.MinimumCruiseRatio')"
+                                :label="t('Panels.MachineSettingsPanel.MotionSettings.MinimumCruiseRatio')"
                                 param="MINIMUM_CRUISE_RATIO"
                                 :target="minimumCruiseRatio"
                                 :default-value="defaultMinimumCruiseRatio"
@@ -101,93 +96,75 @@
     </panel>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Panel from '@/components/ui/Panel.vue'
 import { mdiEngine } from '@mdi/js'
-import { Debounce } from 'vue-debounce-decorator'
 import NumberInput from '@/components/inputs/NumberInput.vue'
 import Responsive from '@/components/ui/Responsive.vue'
+import { useBase } from '@/composables/useBase'
+import { usePrinterStore } from '@/store/printer'
+import { useServerStore } from '@/store/server'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
-@Component({
-    components: {
-        NumberInput,
-        Panel,
-        Responsive,
-    },
+const { t } = useI18n()
+const { klipperReadyForGui } = useBase()
+const printerStore = usePrinterStore()
+
+const toolhead = computed(() => printerStore.toolhead ?? {})
+
+const configPrinter = computed(() => printerStore.configfile?.settings?.printer ?? {})
+
+const velocity = computed<number>(() => Math.trunc(toolhead.value.max_velocity ?? 300))
+
+const accel = computed<number>(() => Math.trunc(toolhead.value.max_accel ?? 3000))
+
+const accelToDecel = computed<number>(() => Math.trunc(toolhead.value.max_accel_to_decel ?? accel.value / 2))
+
+const minimumCruiseRatio = computed<number | null>(() => {
+    const value = toolhead.value.minimum_cruise_ratio ?? null
+
+    if (value === null) return null
+
+    return Math.round(value * 100)
 })
-export default class MachineSettingsPanel extends Mixins(BaseMixin) {
-    mdiEngine = mdiEngine
 
-    get toolhead() {
-        return this.$store.state.printer?.toolhead ?? {}
-    }
+const squareCornerVelocity = computed<number>(() => Math.floor((toolhead.value.square_corner_velocity ?? 8) * 10) / 10)
 
-    get configPrinter() {
-        return this.$store.state.printer?.configfile?.settings?.printer ?? {}
-    }
+const defaultVelocity = computed<number>(() => Math.trunc(configPrinter.value.max_velocity ?? 300))
 
-    get velocity(): number {
-        return Math.trunc(this.toolhead.max_velocity ?? 300)
-    }
+const defaultAccel = computed<number>(() => Math.trunc(configPrinter.value.max_accel ?? 3000))
 
-    get accel(): number {
-        return Math.trunc(this.toolhead.max_accel ?? 3000)
-    }
+const defaultAccelToDecel = computed<number>(() => Math.trunc(configPrinter.value.max_accel_to_decel ?? 1500))
 
-    get accelToDecel(): number {
-        return Math.trunc(this.toolhead.max_accel_to_decel ?? this.accel / 2)
-    }
+const defaultMinimumCruiseRatio = computed<number>(() => {
+    const value = configPrinter.value.minimum_cruise_ratio ?? 0.5
 
-    get minimumCruiseRatio(): number | null {
-        const value = this.toolhead.minimum_cruise_ratio ?? null
+    return Math.round(value * 100)
+})
 
-        if (value === null) return null
+const defaultSquareCornerVelocity = computed<number>(() => {
+    const value = configPrinter.value.square_corner_velocity ?? 8
 
-        return Math.round(value * 100)
-    }
+    return Math.floor(value * 10) / 10
+})
 
-    get squareCornerVelocity(): number {
-        return Math.floor((this.toolhead.square_corner_velocity ?? 8) * 10) / 10
-    }
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
-    get defaultVelocity(): number {
-        return Math.trunc(this.configPrinter.max_velocity ?? 300)
-    }
-
-    get defaultAccel(): number {
-        return Math.trunc(this.configPrinter.max_accel ?? 3000)
-    }
-
-    get defaultAccelToDecel(): number {
-        return Math.trunc(this.configPrinter.max_accel_to_decel ?? 1500)
-    }
-
-    get defaultMinimumCruiseRatio(): number {
-        const value = this.configPrinter.minimum_cruise_ratio ?? 0.5
-
-        return Math.round(value * 100)
-    }
-
-    get defaultSquareCornerVelocity(): number {
-        const value = this.configPrinter.square_corner_velocity ?? 8
-
-        return Math.floor(value * 10) / 10
-    }
-
-    sendCruiseRatioCmd(params: { name: string; value: number }): void {
-        params.value = params.value / 100
-
-        this.sendCmd(params)
-    }
-
-    @Debounce(500)
-    sendCmd(params: { name: string; value: number }): void {
+function sendCmd(params: { name: string; value: number }): void {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
         const gcode = `SET_VELOCITY_LIMIT ${params.name}=${params.value}`
 
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode })
-    }
+        useServerStore().addEvent({ message: gcode, type: 'command' })
+        webSocketClient.emit('printer.gcode.script', { script: gcode })
+    }, 500)
+}
+
+function sendCruiseRatioCmd(params: { name: string; value: number }): void {
+    params.value = params.value / 100
+
+    sendCmd(params)
 }
 </script>

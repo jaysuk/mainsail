@@ -1,40 +1,28 @@
-<style scoped></style>
-
 <template>
-    <panel
-        v-if="socketIsConnected"
-        :icon="mdiWebcam"
-        :title="$t('Panels.WebcamPanel.Headline')"
-        :collapsible="$route.fullPath !== '/cam'"
-        card-class="webcam-panel"
-        :margin-bottom="currentPage !== 'page'">
+    <panel v-if="socketIsConnected" :icon="mdiWebcam" :title="t('Panels.WebcamPanel.Headline')" :collapsible="route.fullPath !== '/cam'" card-class="webcam-panel" :margin-bottom="currentPage !== 'page'">
         <template #buttons>
-            <v-menu v-if="showSwitch" :offset-y="true">
-                <template #activator="{ on, attrs }">
-                    <v-btn text tile v-bind="attrs" v-on="on">
-                        <v-icon v-if="'icon' in currentCam" small class="mr-2">
+            <v-menu v-if="showSwitch">
+                <template #activator="{ props: activatorProps }">
+                    <v-btn variant="text" v-bind="activatorProps">
+                        <v-icon v-if="'icon' in currentCam" size="small" class="mr-2">
                             {{ convertWebcamIcon(currentCam.icon) }}
                         </v-icon>
                         <span class="d-none d-md-block">{{ currentCam.name ?? 'unknown' }}</span>
-                        <v-icon small>{{ mdiMenuDown }}</v-icon>
+                        <v-icon size="small">{{ mdiMenuDown }}</v-icon>
                     </v-btn>
                 </template>
-                <v-list dense class="py-0">
+                <v-list density="compact" class="py-0">
                     <v-list-item link @click="currentCamId = 'all'">
-                        <v-list-item-icon class="mr-2">
-                            <v-icon small class="mt-1">{{ mdiViewGrid }}</v-icon>
-                        </v-list-item-icon>
-                        <v-list-item-content>
-                            <v-list-item-title>{{ $t('Panels.WebcamPanel.All') }}</v-list-item-title>
-                        </v-list-item-content>
+                        <template #prepend>
+                            <v-icon size="small" class="mt-1 mr-2">{{ mdiViewGrid }}</v-icon>
+                        </template>
+                        <v-list-item-title>{{ t('Panels.WebcamPanel.All') }}</v-list-item-title>
                     </v-list-item>
                     <v-list-item v-for="webcam of webcams" :key="webcam.name" link @click="currentCamId = webcam.name">
-                        <v-list-item-icon class="mr-2">
-                            <v-icon small class="mt-1">{{ convertWebcamIcon(webcam.icon) }}</v-icon>
-                        </v-list-item-icon>
-                        <v-list-item-content>
-                            <v-list-item-title v-text="webcam.name" />
-                        </v-list-item-content>
+                        <template #prepend>
+                            <v-icon size="small" class="mt-1 mr-2">{{ convertWebcamIcon(webcam.icon) }}</v-icon>
+                        </template>
+                        <v-list-item-title>{{ webcam.name }}</v-list-item-title>
                     </v-list-item>
                 </v-list>
             </v-menu>
@@ -47,66 +35,67 @@
             </v-row>
         </v-card-text>
         <v-card-text v-else>
-            <p class="text-center mb-0 text--disabled">{{ $t('Panels.WebcamPanel.NoWebcam') }}</p>
+            <p class="text-center mb-0 text-disabled">{{ t('Panels.WebcamPanel.NoWebcam') }}</p>
         </v-card-text>
     </panel>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '../mixins/base'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import Panel from '@/components/ui/Panel.vue'
-import { GuiWebcamStateWebcam } from '@/store/gui/webcams/types'
+import WebcamWrapper from '@/components/webcams/WebcamWrapper.vue'
+import type { GuiWebcamStateWebcam } from '@/store/gui/webcams/types'
 import { mdiMenuDown, mdiViewGrid, mdiWebcam } from '@mdi/js'
-import WebcamMixin from '@/components/mixins/webcam'
+import { useBase } from '@/composables/useBase'
+import { useWebcam } from '@/composables/useWebcam'
+import { useGuiWebcamsStore } from '@/store/gui/webcams'
+import { useGuiStore } from '@/store/gui'
 
-@Component({
-    components: {
-        Panel,
-    },
-})
-export default class WebcamPanel extends Mixins(BaseMixin, WebcamMixin) {
-    @Prop({ default: 'dashboard' }) declare currentPage?: string
-
-    mdiWebcam = mdiWebcam
-    mdiMenuDown = mdiMenuDown
-    mdiViewGrid = mdiViewGrid
-
-    get webcams(): GuiWebcamStateWebcam[] {
-        return this.$store.getters['gui/webcams/getWebcams']
+const props = withDefaults(
+    defineProps<{
+        currentPage?: 'dashboard' | 'page'
+    }>(),
+    {
+        currentPage: 'dashboard',
     }
+)
 
-    get showSwitch() {
-        return this.webcams.length > 1
-    }
+const { t } = useI18n()
+const route = useRoute()
+const { socketIsConnected } = useBase()
+const { convertWebcamIcon } = useWebcam()
+const guiWebcamsStore = useGuiWebcamsStore()
+const guiStore = useGuiStore()
 
-    // id changed to name with the refactoring of using moonraker webcam API
-    get currentCamId(): string {
-        if (this.webcams.length === 1) return this.webcams[0].name ?? 'all'
+const webcams = computed<GuiWebcamStateWebcam[]>(() => guiWebcamsStore.getWebcams)
 
-        const currentCamId = this.$store.state.gui.view.webcam.currentCam[this.currentPage ?? ''] ?? 'all'
-        if (this.webcams.findIndex((webcam: GuiWebcamStateWebcam) => webcam.name === currentCamId) !== -1)
-            return currentCamId
-        else if (currentCamId !== undefined && this.webcams.length === 1) return this.webcams[0].name ?? ''
+const showSwitch = computed(() => webcams.value.length > 1)
+
+// id changed to name with the refactoring of using moonraker webcam API
+const currentCamId = computed<string>({
+    get: () => {
+        if (webcams.value.length === 1) return webcams.value[0].name ?? 'all'
+
+        const currentCamId = guiStore.view.webcam.currentCam[props.currentPage] ?? 'all'
+        if (webcams.value.findIndex((webcam: GuiWebcamStateWebcam) => webcam.name === currentCamId) !== -1) return currentCamId
+        else if (currentCamId !== undefined && webcams.value.length === 1) return webcams.value[0].name ?? ''
         else return 'all'
-    }
+    },
+    set: (newVal) => guiStore.setCurrentWebcam({ page: props.currentPage, value: newVal }),
+})
 
-    set currentCamId(newVal: string) {
-        this.$store.dispatch('gui/setCurrentWebcam', { page: this.currentPage, value: newVal })
-    }
+const currentCam = computed<GuiWebcamStateWebcam>(() => {
+    const cam = webcams.value.find((cam: GuiWebcamStateWebcam) => cam.name === currentCamId.value)
 
-    get currentCam(): GuiWebcamStateWebcam {
-        const cam = this.webcams.find((cam: GuiWebcamStateWebcam) => cam.name === this.currentCamId)
-
-        return (
-            cam ??
-            ({
-                name: this.$t('Panels.WebcamPanel.All').toString(),
-                service: 'grid',
-                icon: mdiViewGrid,
-            } as GuiWebcamStateWebcam)
-        )
-    }
-}
+    return (
+        cam ??
+        ({
+            name: t('Panels.WebcamPanel.All'),
+            service: 'grid',
+            icon: mdiViewGrid,
+        } as GuiWebcamStateWebcam)
+    )
+})
 </script>

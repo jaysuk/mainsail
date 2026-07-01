@@ -1,5 +1,5 @@
 <template>
-    <panel :title="$t('Files.GCodeFiles')" :icon="mdiFileDocumentMultipleOutline" card-class="gcode-files-panel">
+    <panel :title="t('Files.GCodeFiles')" :icon="mdiFileDocumentMultipleOutline" card-class="gcode-files-panel">
         <v-card-text>
             <gcodefiles-panel-header />
             <gcodefiles-panel-header-path-size />
@@ -9,18 +9,13 @@
     </panel>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import GcodefilesMixin from '@/components/mixins/gcodefiles'
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+import Panel from '@/components/ui/Panel.vue'
 import GcodefilesPanelHeader from '@/components/panels/Gcodefiles/GcodefilesPanelHeader.vue'
 import { mdiFileDocumentMultipleOutline } from '@mdi/js'
 import GcodefilesPanelHeaderPathSize from '@/components/panels/Gcodefiles/GcodefilesPanelHeaderPathSize.vue'
+import GcodefilesPanelTable from '@/components/panels/Gcodefiles/GcodefilesPanelTable.vue'
 
-@Component({
-    components: { GcodefilesPanelHeaderPathSize, GcodefilesPanelHeader },
-})
-export default class GcodefilesPanel extends Mixins(BaseMixin, GcodefilesMixin) {
-    mdiFileDocumentMultipleOutline = mdiFileDocumentMultipleOutline
-}
+const { t } = useI18n()
 </script>
