@@ -1,10 +1,6 @@
 <template>
     <v-dialog v-model="showDialog" persistent max-width="800">
-        <panel
-            :title="$t('Machine.UpdatePanel.UpgradeableSystemPackages')"
-            :icon="mdiPackageVariantClosed"
-            :margin-bottom="false"
-            card-class="machine-update-system-packages-list-dialog">
+        <panel :title="t('Machine.UpdatePanel.UpgradeableSystemPackages')" :icon="mdiPackageVariantClosed" :margin-bottom="false" card-class="machine-update-system-packages-list-dialog">
             <template #buttons>
                 <v-btn icon tile @click="closeDialog">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
@@ -13,38 +9,32 @@
             <v-card-text>
                 <v-row>
                     <v-col>
-                        <p>{{ $t('Machine.UpdatePanel.ThesePackagesCanBeUpgrade') }}</p>
+                        <p>{{ t('Machine.UpdatePanel.ThesePackagesCanBeUpgrade') }}</p>
                         <p class="system-packages-list">{{ packagesList.join(', ') }}</p>
                     </v-col>
                 </v-row>
             </v-card-text>
             <v-card-actions>
                 <v-spacer />
-                <v-btn text color="primary" @click="closeDialog">{{ $t('Buttons.Close') }}</v-btn>
+                <v-btn variant="text" color="primary" @click="closeDialog">{{ t('Buttons.Close') }}</v-btn>
             </v-card-actions>
         </panel>
     </v-dialog>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop, VModel } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { mdiCloseThick, mdiPackageVariantClosed } from '@mdi/js'
 import Panel from '@/components/ui/Panel.vue'
 
-@Component({
-    components: { Panel },
-})
-export default class SystemPackagesList extends Mixins(BaseMixin) {
-    mdiCloseThick = mdiCloseThick
-    mdiPackageVariantClosed = mdiPackageVariantClosed
+defineProps<{ packagesList: string[] }>()
 
-    @VModel({ type: Boolean }) showDialog!: boolean
-    @Prop({ required: true }) readonly packagesList!: string[]
+const { t } = useI18n()
 
-    closeDialog() {
-        this.showDialog = false
-    }
+const showDialog = defineModel<boolean>({ required: true })
+
+function closeDialog() {
+    showDialog.value = false
 }
 </script>
 

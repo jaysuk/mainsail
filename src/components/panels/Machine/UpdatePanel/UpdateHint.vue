@@ -1,10 +1,6 @@
 <template>
     <v-dialog v-model="showDialog" persistent max-width="600">
-        <panel
-            :title="$t('Machine.UpdatePanel.AreYouSure')"
-            :icon="mdiProgressQuestion"
-            :margin-bottom="false"
-            card-class="machine-update-hint-dialog">
+        <panel :title="t('Machine.UpdatePanel.AreYouSure')" :icon="mdiProgressQuestion" :margin-bottom="false" card-class="machine-update-hint-dialog">
             <template #buttons>
                 <v-btn icon tile @click="closeDialog">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
@@ -15,10 +11,7 @@
                     <v-col>
                         <update-hint-alert :repo="repo" @open-commit-history="openCommitHistory" />
                         <div>
-                            <v-checkbox
-                                v-model="checkboxUpdateQuestion"
-                                :label="$t('Machine.UpdatePanel.IUnderstandTheRisks')"
-                                hide-details />
+                            <v-checkbox v-model="checkboxUpdateQuestion" :label="t('Machine.UpdatePanel.IUnderstandTheRisks')" hide-details />
                         </div>
                     </v-col>
                 </v-row>
@@ -26,46 +19,42 @@
             <v-divider />
             <v-card-actions>
                 <v-spacer />
-                <v-btn text @click="closeDialog">{{ $t('Machine.UpdatePanel.Abort') }}</v-btn>
-                <v-btn text color="primary" :disabled="!checkboxUpdateQuestion" @click="doUpdate">
-                    {{ $t('Machine.UpdatePanel.StartUpdate') }}
+                <v-btn variant="text" @click="closeDialog">{{ t('Machine.UpdatePanel.Abort') }}</v-btn>
+                <v-btn variant="text" color="primary" :disabled="!checkboxUpdateQuestion" @click="doUpdate">
+                    {{ t('Machine.UpdatePanel.StartUpdate') }}
                 </v-btn>
             </v-card-actions>
         </panel>
     </v-dialog>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop, VModel } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import { ServerUpdateManagerStateGitRepo } from '@/store/server/updateManager/types'
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import type { ServerUpdateManagerStateGitRepo } from '@/store/server/updateManager/types'
 import { mdiProgressQuestion, mdiCloseThick } from '@mdi/js'
 import Panel from '@/components/ui/Panel.vue'
-import GitCommitsListDay from '@/components/panels/Machine/UpdatePanel/GitCommitsListDay.vue'
 import UpdateHintAlert from '@/components/panels/Machine/UpdatePanel/UpdateHintAlert.vue'
 
-@Component({
-    components: { GitCommitsListDay, Panel, UpdateHintAlert },
-})
-export default class UpdateHint extends Mixins(BaseMixin) {
-    mdiCloseThick = mdiCloseThick
-    mdiProgressQuestion = mdiProgressQuestion
+defineProps<{ repo: ServerUpdateManagerStateGitRepo }>()
 
-    checkboxUpdateQuestion = false
+const emit = defineEmits<{ 'do-update': []; 'open-commit-history': [] }>()
 
-    @VModel({ type: Boolean }) showDialog!: boolean
-    @Prop({ required: true }) readonly repo!: ServerUpdateManagerStateGitRepo
+const { t } = useI18n()
 
-    doUpdate() {
-        this.$emit('do-update')
-    }
+const checkboxUpdateQuestion = ref(false)
 
-    openCommitHistory() {
-        this.$emit('open-commit-history')
-    }
+const showDialog = defineModel<boolean>({ required: true })
 
-    closeDialog() {
-        this.showDialog = false
-    }
+function doUpdate() {
+    emit('do-update')
+}
+
+function openCommitHistory() {
+    emit('open-commit-history')
+}
+
+function closeDialog() {
+    showDialog.value = false
 }
 </script>
