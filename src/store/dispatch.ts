@@ -81,6 +81,8 @@ export function dispatchStoreAction(path: string, payload: ActionPayload): void 
             return useServerHistoryStore().getHistory(payload)
         case 'server/history/getTotals':
             return useServerHistoryStore().getTotals(payload as never)
+        case 'server/history/getDeletedJobs':
+            return useServerHistoryStore().getDeletedJobs(payload as never)
         case 'server/history/initHistoryNotes':
             return useServerHistoryStore().initHistoryNotes(payload as never)
 

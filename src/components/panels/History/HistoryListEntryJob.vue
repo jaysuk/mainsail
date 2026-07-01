@@ -1,50 +1,42 @@
 <template>
-    <tr
-        :key="item.job_id"
-        v-longpress:600="showContextMenu"
-        :class="cssClasses"
-        @contextmenu="showContextMenu($event)"
-        @click="detailsDialogBool = true">
+    <tr v-longpress:600="showContextMenu" :class="cssClasses" @contextmenu="showContextMenu($event)" @click="detailsDialogBool = true">
         <td class="pr-0">
-            <v-simple-checkbox v-ripple :value="isSelected" class="pa-0 mr-0" @click.stop="select(!isSelected)" />
+            <v-checkbox-btn :model-value="isSelected" class="pa-0 mr-0" @click.stop="select(!isSelected)" />
         </td>
         <td class="px-0 text-center" style="width: 32px">
             <template v-if="!item.exists">
-                <v-icon class="text--disabled">{{ mdiFileCancel }}</v-icon>
+                <v-icon class="text-disabled">{{ mdiFileCancel }}</v-icon>
             </template>
             <template v-else-if="smallThumbnail && bigThumbnail">
-                <v-tooltip top>
-                    <template #activator="{ on, attrs }">
-                        <vue-load-image>
-                            <img
-                                slot="image"
-                                :alt="item.filename"
-                                :src="smallThumbnail"
-                                width="32"
-                                height="32"
-                                v-bind="attrs"
-                                v-on="on" />
-                            <div slot="preloader">
+                <v-tooltip location="top">
+                    <template #activator="{ props: activatorProps }">
+                        <load-image :src="smallThumbnail">
+                            <template #image>
+                                <img :alt="item.filename" :src="smallThumbnail" width="32" height="32" v-bind="activatorProps" />
+                            </template>
+                            <template #preloader>
                                 <v-progress-circular indeterminate color="primary" />
-                            </div>
-                            <div slot="error">
+                            </template>
+                            <template #error>
                                 <v-icon>{{ mdiFile }}</v-icon>
-                            </div>
-                        </vue-load-image>
+                            </template>
+                        </load-image>
                     </template>
                     <span><img :alt="item.filename" :src="bigThumbnail" width="250" /></span>
                 </v-tooltip>
             </template>
             <template v-else-if="smallThumbnail">
-                <vue-load-image>
-                    <img slot="image" :alt="item.filename" :src="smallThumbnail" width="32" height="32" />
-                    <div slot="preloader">
+                <load-image :src="smallThumbnail">
+                    <template #image>
+                        <img :alt="item.filename" :src="smallThumbnail" width="32" height="32" />
+                    </template>
+                    <template #preloader>
                         <v-progress-circular indeterminate color="primary" />
-                    </div>
-                    <div slot="error">
+                    </template>
+                    <template #error>
                         <v-icon>{{ mdiFile }}</v-icon>
-                    </div>
-                </vue-load-image>
+                    </template>
+                </load-image>
             </template>
             <template v-else>
                 <v-icon>{{ mdiFile }}</v-icon>
@@ -53,19 +45,19 @@
         <td>{{ item.filename }}</td>
         <td class="text-right text-no-wrap">
             <template v-if="'note' in item && item.note">
-                <v-tooltip top>
-                    <template #activator="{ on, attrs }">
-                        <v-icon small class="mr-2" v-bind="attrs" v-on="on">
+                <v-tooltip location="top">
+                    <template #activator="{ props: activatorProps }">
+                        <v-icon size="small" class="mr-2" v-bind="activatorProps">
                             {{ mdiNoteTextOutline }}
                         </v-icon>
                     </template>
                     <span v-html="item.note.replaceAll('\n', '<br />')" />
                 </v-tooltip>
             </template>
-            <v-tooltip top>
-                <template #activator="{ on, attrs }">
-                    <span v-bind="attrs" v-on="on">
-                        <v-icon small :color="statusColor" :disabled="!item.exists">
+            <v-tooltip location="top">
+                <template #activator="{ props: activatorProps }">
+                    <span v-bind="activatorProps">
+                        <v-icon size="small" :color="statusColor" :disabled="!item.exists">
                             {{ statusIcon }}
                         </v-icon>
                     </span>
@@ -75,284 +67,232 @@
         </td>
         <td v-for="col in tableFields" :key="col.value" class="text-no-wrap" v-html="outputValue(col, item)" />
         <!-- Context menu -->
-        <v-menu v-model="contextMenuBool" :position-x="contextMenuX" :position-y="contextMenuY" absolute offset-y>
+        <v-menu v-model="contextMenuBool" :target="[contextMenuX, contextMenuY]">
             <v-list>
                 <v-list-item @click="detailsDialogBool = true">
                     <v-icon class="mr-1">{{ mdiTextBoxSearch }}</v-icon>
-                    {{ $t('History.Details') }}
+                    {{ t('History.Details') }}
                 </v-list-item>
                 <v-list-item v-if="item.note" @click="editNote">
                     <v-icon class="mr-1">{{ mdiNoteEditOutline }}</v-icon>
-                    {{ $t('History.EditNote') }}
+                    {{ t('History.EditNote') }}
                 </v-list-item>
                 <v-list-item v-else @click="createNote">
                     <v-icon class="mr-1">{{ mdiNotePlusOutline }}</v-icon>
-                    {{ $t('History.AddNote') }}
+                    {{ t('History.AddNote') }}
                 </v-list-item>
-                <v-list-item
-                    v-if="item.exists && file"
-                    :disabled="printerIsPrinting || !klipperReadyForGui"
-                    @click="startPrintDialogBool = true">
+                <v-list-item v-if="item.exists && file" :disabled="printerIsPrinting || !klipperReadyForGui" @click="startPrintDialogBool = true">
                     <v-icon class="mr-1">{{ mdiPrinter }}</v-icon>
-                    {{ $t('History.Reprint') }}
+                    {{ t('History.Reprint') }}
                 </v-list-item>
                 <v-list-item v-if="item.exists && isJobQueueAvailable" @click="addToQueue">
                     <v-icon class="mr-1">{{ mdiPlaylistPlus }}</v-icon>
-                    {{ $t('Files.AddToQueue') }}
+                    {{ t('Files.AddToQueue') }}
                 </v-list-item>
                 <v-list-item v-if="item.exists && isJobQueueAvailable" @click="addBatchToQueueDialogBool = true">
                     <v-icon class="mr-1">{{ mdiPlaylistPlus }}</v-icon>
-                    {{ $t('Files.AddBatchToQueue') }}
+                    {{ t('Files.AddBatchToQueue') }}
                 </v-list-item>
-                <v-list-item class="red--text" @click="deleteJob">
+                <v-list-item class="text-red" @click="deleteJob">
                     <v-icon class="mr-1" color="error">{{ mdiDelete }}</v-icon>
-                    {{ $t('Buttons.Delete') }}
+                    {{ t('Buttons.Delete') }}
                 </v-list-item>
             </v-list>
         </v-menu>
         <history-list-panel-details-dialog v-model="detailsDialogBool" :job="item" />
         <history-list-panel-note-dialog v-model="noteDialogBool" :type="noteDialogType" :job="item" />
         <add-batch-to-queue-dialog v-model="addBatchToQueueDialogBool" :show-toast="true" :filename="item.filename" />
-        <start-print-dialog
-            v-if="item.exists && file"
-            v-model="startPrintDialogBool"
-            :file="file"
-            :current-path="currentPath" />
+        <start-print-dialog v-if="item.exists && file" v-model="startPrintDialogBool" :file="file" :current-path="currentPath" />
     </tr>
 </template>
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
+
+<script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useToast } from 'vue-toast-notification'
 import type { LongpressEvent } from '@/directives/longpress'
 import HistoryListPanelDetailsDialog from '@/components/dialogs/HistoryListPanelDetailsDialog.vue'
-import Panel from '@/components/ui/Panel.vue'
-import BaseMixin from '@/components/mixins/base'
 import StartPrintDialog from '@/components/dialogs/StartPrintDialog.vue'
-import { FileStateFileThumbnail, FileStateGcodefile } from '@/store/files/types'
-import { ServerHistoryStateJob } from '@/store/server/history/types'
-import { thumbnailBigMin, thumbnailSmallMax, thumbnailSmallMin } from '@/store/variables'
-import {
-    mdiCloseThick,
-    mdiDelete,
-    mdiFile,
-    mdiFileCancel,
-    mdiNoteEditOutline,
-    mdiNotePlusOutline,
-    mdiNoteTextOutline,
-    mdiPlaylistPlus,
-    mdiPrinter,
-    mdiTextBoxSearch,
-} from '@mdi/js'
-import { CLOSE_CONTEXT_MENU, EventBus } from '@/plugins/eventBus'
-import {
-    convertPrintStatusIcon,
-    convertPrintStatusIconColor,
-    escapePath,
-    formatFilesize,
-    formatPrintTime,
-} from '@/plugins/helpers'
-import { HistoryListPanelCol } from '@/store/server/history/types'
 import HistoryListPanelNoteDialog from '@/components/dialogs/HistoryListPanelNoteDialog.vue'
 import AddBatchToQueueDialog from '@/components/dialogs/AddBatchToQueueDialog.vue'
+import LoadImage from '@/components/ui/LoadImage.vue'
+import type { FileStateFileThumbnail, FileStateGcodefile } from '@/store/files/types'
+import type { ServerHistoryStateJob, HistoryListPanelCol } from '@/store/server/history/types'
+import { thumbnailBigMin, thumbnailSmallMax, thumbnailSmallMin } from '@/store/variables'
+import { mdiDelete, mdiFile, mdiFileCancel, mdiNoteEditOutline, mdiNotePlusOutline, mdiNoteTextOutline, mdiPlaylistPlus, mdiPrinter, mdiTextBoxSearch } from '@mdi/js'
+import { CLOSE_CONTEXT_MENU, EventBus } from '@/plugins/eventBus'
+import { convertPrintStatusIcon, convertPrintStatusIconColor, escapePath, formatFilesize, formatPrintTime } from '@/plugins/helpers'
+import { useBase } from '@/composables/useBase'
+import { useFilesStore } from '@/store/files'
+import { useServerJobQueueStore } from '@/store/server/jobQueue'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
-@Component({
-    components: {
-        AddBatchToQueueDialog,
-        HistoryListPanelNoteDialog,
-        HistoryListPanelDetailsDialog,
-        Panel,
-        StartPrintDialog,
-    },
+const props = defineProps<{
+    item: ServerHistoryStateJob
+    tableFields: HistoryListPanelCol[]
+    isSelected: boolean
+}>()
+
+const emit = defineEmits<{ select: [value: boolean] }>()
+
+const { t } = useI18n()
+const { apiUrl, printerIsPrinting, klipperReadyForGui, moonrakerComponents, formatDateTime } = useBase()
+const filesStore = useFilesStore()
+
+const detailsDialogBool = ref(false)
+
+const contextMenuBool = ref(false)
+const contextMenuX = ref(0)
+const contextMenuY = ref(0)
+
+const noteDialogBool = ref(false)
+const noteDialogType = ref<'create' | 'edit'>('create')
+
+const addBatchToQueueDialogBool = ref(false)
+const startPrintDialogBool = ref(false)
+
+const file = computed(() => (filesStore.getFile('gcodes/' + props.item.filename) as FileStateGcodefile | undefined) ?? undefined)
+
+const currentPath = computed(() => {
+    const lastSlash = props.item.filename.lastIndexOf('/')
+    return lastSlash > 0 ? '/' + props.item.filename.slice(0, lastSlash) : ''
 })
-export default class HistoryListPanel extends Mixins(BaseMixin) {
-    mdiCloseThick = mdiCloseThick
-    mdiDelete = mdiDelete
-    mdiFile = mdiFile
-    mdiFileCancel = mdiFileCancel
-    mdiNoteEditOutline = mdiNoteEditOutline
-    mdiNotePlusOutline = mdiNotePlusOutline
-    mdiNoteTextOutline = mdiNoteTextOutline
-    mdiPrinter = mdiPrinter
-    mdiTextBoxSearch = mdiTextBoxSearch
-    mdiPlaylistPlus = mdiPlaylistPlus
 
-    detailsDialogBool = false
-
-    contextMenuBool = false
-    contextMenuX = 0
-    contextMenuY = 0
-
-    noteDialogBool = false
-    noteDialogType: 'create' | 'edit' = 'create'
-
-    addBatchToQueueDialogBool = false
-    startPrintDialogBool = false
-
-    @Prop({ type: Object, required: true }) readonly item!: ServerHistoryStateJob
-    @Prop({ type: Array, required: true }) readonly tableFields!: HistoryListPanelCol[]
-    @Prop({ type: Boolean, required: true }) readonly isSelected!: boolean
-
-    get file(): FileStateGcodefile | undefined {
-        return this.$store.getters['files/getFile']('gcodes/' + this.item.filename) ?? undefined
+function createThumbnailUrl(thumbnail: FileStateFileThumbnail) {
+    let relative_url = ''
+    if (props.item.filename.lastIndexOf('/') !== -1) {
+        relative_url = props.item.filename.substring(0, props.item.filename.lastIndexOf('/') + 1)
     }
 
-    get currentPath(): string {
-        const lastSlash = this.item.filename.lastIndexOf('/')
-        return lastSlash > 0 ? '/' + this.item.filename.slice(0, lastSlash) : ''
+    return `${apiUrl.value}/server/files/gcodes/${escapePath(relative_url + thumbnail.relative_path)}?timestamp=${props.item.metadata.modified}`
+}
+
+const smallThumbnail = computed<string | false>(() => {
+    if ((props.item.metadata?.thumbnails?.length ?? 0) < 1) return false
+
+    const thumbnail = props.item.metadata?.thumbnails?.find(
+        (thumb) => thumb.width >= thumbnailSmallMin && thumb.width <= thumbnailSmallMax && thumb.height >= thumbnailSmallMin && thumb.height <= thumbnailSmallMax
+    )
+
+    return thumbnail ? createThumbnailUrl(thumbnail) : false
+})
+
+const bigThumbnail = computed<string | false>(() => {
+    if ((props.item.metadata?.thumbnails?.length ?? 0) < 1) return false
+
+    const thumbnail = props.item.metadata?.thumbnails?.find((thumb) => thumb.width >= thumbnailBigMin)
+
+    return thumbnail ? createThumbnailUrl(thumbnail) : false
+})
+
+const statusIcon = computed(() => convertPrintStatusIcon(props.item.status))
+const statusColor = computed(() => convertPrintStatusIconColor(props.item.status))
+
+const statusName = computed(() => {
+    // check if translation exists
+    if (!t(`History.StatusValues.${props.item.status}`)) return props.item.status.replace(/_/g, ' ')
+
+    return t(`History.StatusValues.${props.item.status}`)
+})
+
+const cssClasses = computed(() => {
+    const output = ['file-list-cursor', 'user-select-none']
+
+    if (!props.item.exists) output.push('text-disabled')
+
+    return output
+})
+
+const isJobQueueAvailable = computed(() => moonrakerComponents.value.includes('job_queue'))
+
+function select(newVal: boolean) {
+    emit('select', newVal)
+}
+
+function showContextMenu(e: MouseEvent | LongpressEvent) {
+    e?.preventDefault()
+    EventBus.$emit(CLOSE_CONTEXT_MENU)
+
+    contextMenuX.value = e?.clientX || e?.pageX || window.screenX / 2
+    contextMenuY.value = e?.clientY || e?.pageY || window.screenY / 2
+
+    contextMenuBool.value = true
+}
+
+function closeContextMenu() {
+    contextMenuBool.value = false
+}
+
+function createNote() {
+    noteDialogType.value = 'create'
+    noteDialogBool.value = true
+}
+
+function editNote() {
+    noteDialogType.value = 'edit'
+    noteDialogBool.value = true
+}
+
+function addToQueue() {
+    useServerJobQueueStore().addToQueue([props.item.filename])
+    useToast().info(t('History.AddToQueueSuccessful', { filename: props.item.filename }))
+}
+
+function deleteJob() {
+    webSocketClient.emit('server.history.delete_job', { uid: props.item.job_id }, { action: 'server/history/getDeletedJobs' })
+}
+
+function outputValue(col: HistoryListPanelCol, item: ServerHistoryStateJob) {
+    const key = col.value
+    let value: string | number | null = null
+    if (key in item) {
+        const raw = item[key as keyof ServerHistoryStateJob]
+        if (typeof raw === 'string' || typeof raw === 'number') value = raw
+    } else if (key in item.metadata) {
+        const raw = item.metadata[key]
+        if (typeof raw === 'string' || typeof raw === 'number') value = raw
     }
 
-    get smallThumbnail() {
-        if ((this.item.metadata?.thumbnails?.length ?? 0) < 1) return false
-
-        const thumbnail = this.item.metadata?.thumbnails?.find(
-            (thumb) =>
-                thumb.width >= thumbnailSmallMin &&
-                thumb.width <= thumbnailSmallMax &&
-                thumb.height >= thumbnailSmallMin &&
-                thumb.height <= thumbnailSmallMax
-        )
-
-        return thumbnail ? this.createThumbnailUrl(thumbnail) : false
+    if (key.startsWith('history_field_')) {
+        const fieldName = key.replace('history_field_', '')
+        const field = item.auxiliary_data?.find((field) => field.name === fieldName)
+        if (field && !Array.isArray(field.value)) return `${Math.round(field.value * 1000) / 1000} ${field.units}`
     }
 
-    get bigThumbnail() {
-        if ((this.item.metadata?.thumbnails?.length ?? 0) < 1) return false
+    if (value === null) return '--'
 
-        const thumbnail = this.item.metadata?.thumbnails?.find((thumb) => thumb.width >= thumbnailBigMin)
+    if (key === 'slicer') return `${value}<br />${item.metadata.slicer_version}`
 
-        return thumbnail ? this.createThumbnailUrl(thumbnail) : false
-    }
+    if (typeof value !== 'number') return value
 
-    get statusIcon() {
-        return convertPrintStatusIcon(this.item.status)
-    }
+    switch (col.outputType) {
+        case 'filesize':
+            return formatFilesize(value)
 
-    get statusColor() {
-        return convertPrintStatusIconColor(this.item.status)
-    }
+        case 'date':
+            return formatDateTime(value * 1000)
 
-    get statusName() {
-        // check if translation exists
-        if (!this.$t(`History.StatusValues.${this.item.status}`, 'en')) return this.item.status.replace(/_/g, ' ')
+        case 'time':
+            return formatPrintTime(value, false)
 
-        return this.$t(`History.StatusValues.${this.item.status}`)
-    }
+        case 'temp':
+            return value.toFixed() + ' °C'
 
-    get cssClasses() {
-        const output = ['file-list-cursor', 'user-select-none']
+        case 'length':
+            if (value > 1000) return (value / 1000).toFixed(2) + ' m'
 
-        if (!this.item.exists) output.push('text--disabled')
+            return value.toFixed(2) + ' mm'
 
-        return output
-    }
-
-    get isJobQueueAvailable() {
-        return this.moonrakerComponents.includes('job_queue')
-    }
-
-    select(newVal: boolean) {
-        this.$emit('select', newVal)
-    }
-
-    showContextMenu(e: MouseEvent | LongpressEvent) {
-        e?.preventDefault()
-        EventBus.$emit(CLOSE_CONTEXT_MENU)
-
-        this.contextMenuX = e?.clientX || e?.pageX || window.screenX / 2
-        this.contextMenuY = e?.clientY || e?.pageY || window.screenY / 2
-
-        this.contextMenuBool = true
-    }
-
-    closeContextMenu() {
-        this.contextMenuBool = false
-    }
-
-    createNote() {
-        this.noteDialogType = 'create'
-        this.noteDialogBool = true
-    }
-
-    editNote() {
-        this.noteDialogType = 'edit'
-        this.noteDialogBool = true
-    }
-
-    addToQueue() {
-        this.$store.dispatch('server/jobQueue/addToQueue', [this.item.filename])
-        this.$toast.info(this.$t('History.AddToQueueSuccessful', { filename: this.item.filename }).toString())
-    }
-
-    deleteJob() {
-        this.$socket.emit(
-            'server.history.delete_job',
-            { uid: this.item.job_id },
-            { action: 'server/history/getDeletedJobs' }
-        )
-    }
-
-    outputValue(col: HistoryListPanelCol, item: ServerHistoryStateJob) {
-        const key = col.value
-        let value: string | number | null = null
-        if (key in item) {
-            const raw = item[key as keyof ServerHistoryStateJob]
-            if (typeof raw === 'string' || typeof raw === 'number') value = raw
-        } else if (key in item.metadata) {
-            const raw = item.metadata[key]
-            if (typeof raw === 'string' || typeof raw === 'number') value = raw
-        }
-
-        if (key.startsWith('history_field_')) {
-            const fieldName = key.replace('history_field_', '')
-            const field = item.auxiliary_data?.find((field) => field.name === fieldName)
-            if (field && !Array.isArray(field.value)) return `${Math.round(field.value * 1000) / 1000} ${field.units}`
-        }
-
-        if (value === null) return '--'
-
-        if (key === 'slicer') return `${value}<br />${item.metadata.slicer_version}`
-
-        if (typeof value !== 'number') return value
-
-        switch (col.outputType) {
-            case 'filesize':
-                return formatFilesize(value)
-
-            case 'date':
-                return this.formatDateTime(value * 1000)
-
-            case 'time':
-                return formatPrintTime(value, false)
-
-            case 'temp':
-                return value.toFixed() + ' °C'
-
-            case 'length':
-                if (value > 1000) return (value / 1000).toFixed(2) + ' m'
-
-                return value.toFixed(2) + ' mm'
-
-            default:
-                return value
-        }
-    }
-
-    createThumbnailUrl(thumbnail: FileStateFileThumbnail) {
-        let relative_url = ''
-        if (this.item.filename.lastIndexOf('/') !== -1) {
-            relative_url = this.item.filename.substring(0, this.item.filename.lastIndexOf('/') + 1)
-        }
-
-        return `${this.apiUrl}/server/files/gcodes/${escapePath(relative_url + thumbnail.relative_path)}?timestamp=${
-            this.item.metadata.modified
-        }`
-    }
-
-    mounted() {
-        EventBus.$on(CLOSE_CONTEXT_MENU, this.closeContextMenu)
-    }
-
-    beforeDestroy() {
-        EventBus.$off(CLOSE_CONTEXT_MENU, this.closeContextMenu)
+        default:
+            return value
     }
 }
+
+onMounted(() => {
+    EventBus.$on(CLOSE_CONTEXT_MENU, closeContextMenu)
+})
+
+onBeforeUnmount(() => {
+    EventBus.$off(CLOSE_CONTEXT_MENU, closeContextMenu)
+})
 </script>
