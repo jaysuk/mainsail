@@ -12,32 +12,22 @@
             </template>
             <template v-else>
                 <v-col>
-                    <v-alert
-                        dense
-                        text
-                        type="warning"
-                        elevation="2"
-                        class="mx-auto mt-6"
-                        max-width="500"
-                        :icon="mdiLockOutline">
-                        {{ $t('Heightmap.ErrorKlipperNotReady') }}
+                    <v-alert density="compact" variant="text" type="warning" elevation="2" class="mx-auto mt-6" max-width="500" :icon="mdiLockOutline">
+                        {{ t('Heightmap.ErrorKlipperNotReady') }}
                     </v-alert>
                 </v-col>
             </template>
         </v-row>
     </div>
 </template>
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-
-import Panel from '@/components/ui/Panel.vue'
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { mdiLockOutline } from '@mdi/js'
+import HeightmapChartPanel from '@/components/panels/Heightmap/HeightmapChartPanel.vue'
+import HeightmapCurrentProfilePanel from '@/components/panels/Heightmap/HeightmapCurrentProfilePanel.vue'
+import HeightmapProfilesPanel from '@/components/panels/Heightmap/HeightmapProfilesPanel.vue'
+import { useBase } from '@/composables/useBase'
 
-@Component({
-    components: { Panel },
-})
-export default class PageHeightmap extends Mixins(BaseMixin) {
-    mdiLockOutline = mdiLockOutline
-}
+const { t } = useI18n()
+const { klipperReadyForGui } = useBase()
 </script>
