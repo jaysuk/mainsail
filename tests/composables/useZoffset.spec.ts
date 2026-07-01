@@ -1,23 +1,22 @@
-import { describe, expect, it } from 'vitest'
-import ZoffsetMixin from '@/components/mixins/zoffset'
+import { describe, expect, it, beforeEach } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { useZoffset } from '@/composables/useZoffset'
+import { usePrinterStore } from '@/store/printer'
 
-const createMixin = (printerState: Record<string, unknown>) => {
-    const mixin = new ZoffsetMixin()
+const seedPrinterState = (printerState: Record<string, unknown>) => {
+    setActivePinia(createPinia())
+    usePrinterStore().setData(printerState)
 
-    Object.defineProperty(mixin, '$store', {
-        value: {
-            state: {
-                printer: printerState,
-            },
-        },
-    })
-
-    return mixin
+    return useZoffset()
 }
 
-describe('ZoffsetMixin', () => {
+describe('useZoffset', () => {
+    beforeEach(() => {
+        setActivePinia(createPinia())
+    })
+
     it('uses stepper_a for delta printers', () => {
-        const mixin = createMixin({
+        const zoffset = seedPrinterState({
             configfile: {
                 settings: {
                     printer: {
@@ -27,11 +26,11 @@ describe('ZoffsetMixin', () => {
             },
         })
 
-        expect(mixin.stepper_name).toBe('stepper_a')
+        expect(zoffset.stepper_name.value).toBe('stepper_a')
     })
 
     it('uses carriage carriage_z for generic_cartesian printers', () => {
-        const mixin = createMixin({
+        const zoffset = seedPrinterState({
             configfile: {
                 settings: {
                     printer: {
@@ -41,11 +40,11 @@ describe('ZoffsetMixin', () => {
             },
         })
 
-        expect(mixin.stepper_name).toBe('carriage carriage_z')
+        expect(zoffset.stepper_name.value).toBe('carriage carriage_z')
     })
 
     it('uses stepper_z for conventional cartesian-style printers', () => {
-        const mixin = createMixin({
+        const zoffset = seedPrinterState({
             configfile: {
                 settings: {
                     printer: {
@@ -55,11 +54,11 @@ describe('ZoffsetMixin', () => {
             },
         })
 
-        expect(mixin.stepper_name).toBe('stepper_z')
+        expect(zoffset.stepper_name.value).toBe('stepper_z')
     })
 
     it('detects probe virtual endstops on generic_cartesian Z carriages', () => {
-        const mixin = createMixin({
+        const zoffset = seedPrinterState({
             configfile: {
                 settings: {
                     printer: {
@@ -72,12 +71,12 @@ describe('ZoffsetMixin', () => {
             },
         })
 
-        expect(mixin.endstop_pin).toBe('probe:z_virtual_endstop')
-        expect(mixin.isEndstopProbe).toBe(true)
+        expect(zoffset.endstop_pin.value).toBe('probe:z_virtual_endstop')
+        expect(zoffset.isEndstopProbe.value).toBe(true)
     })
 
     it('does not throw when the Z endstop config is missing', () => {
-        const mixin = createMixin({
+        const zoffset = seedPrinterState({
             configfile: {
                 settings: {
                     printer: {
@@ -87,12 +86,12 @@ describe('ZoffsetMixin', () => {
             },
         })
 
-        expect(mixin.endstop_pin).toBeNull()
-        expect(mixin.isEndstopProbe).toBe(false)
+        expect(zoffset.endstop_pin.value).toBeNull()
+        expect(zoffset.isEndstopProbe.value).toBe(false)
     })
 
     it('shows the endstop save button for non-zero generic_cartesian gcode offsets', () => {
-        const mixin = createMixin({
+        const zoffset = seedPrinterState({
             gcode_move: {
                 homing_origin: [0, 0, -0.15],
             },
@@ -113,7 +112,7 @@ describe('ZoffsetMixin', () => {
             },
         })
 
-        expect(mixin.showSaveButton).toBe(true)
-        expect(mixin.autoSaveZOffsetOption).toBe('Z_OFFSET_APPLY_ENDSTOP')
+        expect(zoffset.showSaveButton.value).toBe(true)
+        expect(zoffset.autoSaveZOffsetOption.value).toBe('Z_OFFSET_APPLY_ENDSTOP')
     })
 })

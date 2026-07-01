@@ -72,7 +72,7 @@ export interface GuiState {
             axis_minimum: number[] | null
             axis_maximum: number[] | null
         }
-        showGCodePanel: boolean
+        showGCode: boolean
         cncMode: boolean
     }
     uiSettings: {

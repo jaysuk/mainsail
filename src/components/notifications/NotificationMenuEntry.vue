@@ -48,7 +48,7 @@
                 </div>
             </v-expand-transition>
         </v-row>
-        <history-list-panel-detail-maintenance v-if="entryType === 'maintenance'" v-model="showMaintenanceDetails" :item="maintenanceEntry" />
+        <history-list-panel-detail-maintenance v-if="entryType === 'maintenance' && maintenanceEntry" v-model="showMaintenanceDetails" :item="maintenanceEntry" />
     </v-alert>
 </template>
 

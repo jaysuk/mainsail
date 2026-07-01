@@ -2,15 +2,8 @@
     <div>
         <panel :title="panelTitle" :icon="mdiVideo3d" card-class="gcode-viewer-panel" :margin-bottom="false">
             <template #buttons>
-                <v-btn
-                    v-show="reloadRequired"
-                    :icon="$vuetify.breakpoint.xs"
-                    :text="$vuetify.breakpoint.smAndUp"
-                    tile
-                    color="info"
-                    class="ml-3"
-                    @click="reloadViewer">
-                    <span class="d-none d-sm-block">{{ $t('GCodeViewer.ReloadRequired') }}</span>
+                <v-btn v-show="reloadRequired" :icon="xs" :variant="smAndUp ? 'text' : undefined" tile color="info" class="ml-3" @click="reloadViewer">
+                    <span class="d-none d-sm-block">{{ t('GCodeViewer.ReloadRequired') }}</span>
                     <v-icon class="d-sm-none">{{ mdiReloadAlert }}</v-icon>
                 </v-btn>
                 <v-btn icon tile @click="resetCamera">
@@ -24,24 +17,13 @@
                     </v-col>
                     <v-col v-show="showGCode" cols="4">
                         <div class="viewer">
-                            <CodeStream
-                                ref="gcodestream"
-                                :shown="showGCode"
-                                :currentline.sync="scrubPosition"
-                                :document="fileData"
-                                :is-simulating="!printerIsPrinting" />
+                            <CodeStream ref="gcodestream" :shown="showGCode" v-model:currentline="scrubPosition" :document="fileData" :is-simulating="!printerIsPrinting" />
                         </div>
                     </v-col>
                 </v-row>
                 <v-row v-show="showScrubber" class="scrubber">
                     <v-col class="pt-0">
-                        <v-slider
-                            v-model="scrubPosition"
-                            :hint="scrubPosition + '/' + scrubFileSize"
-                            :max="scrubFileSize"
-                            dense
-                            min="0"
-                            persistent-hint />
+                        <v-slider v-model="scrubPosition" :hint="scrubPosition + '/' + scrubFileSize" :max="scrubFileSize" density="compact" min="0" persistent-hint />
                     </v-col>
                     <v-col class="col-auto pt-0 text-center">
                         <v-btn class="px-2 minwidth-0" color="primary" @click="scrubPlaying = !scrubPlaying">
@@ -51,7 +33,7 @@
                         <v-btn class="px-2 minwidth-0 mx-3" color="primary" @click="fastForward">
                             <v-icon>{{ mdiFastForward }}</v-icon>
                         </v-btn>
-                        <v-btn-toggle v-model="scrubSpeed" class="mt-3 mt-sm-0" dense mandatory rounded>
+                        <v-btn-toggle v-model="scrubSpeed" class="mt-3 mt-sm-0" density="compact" mandatory rounded>
                             <v-btn :value="1">1x</v-btn>
                             <v-btn :value="2">2x</v-btn>
                             <v-btn :value="5">5x</v-btn>
@@ -63,135 +45,67 @@
                 <v-row class="mt-0 d-flex align-top">
                     <v-col>
                         <v-row>
-                            <v-col
-                                order-md="2"
-                                class="d-flex align-content-space-around justify-center flex-wrap flex-md-nowrap col-12 col-md-4">
+                            <v-col order-md="2" class="d-flex align-content-space-around justify-center flex-wrap flex-md-nowrap col-12 col-md-4">
                                 <template v-if="loadedFile === null">
-                                    <v-btn
-                                        v-if="sdCardFilePath !== '' && sdCardFilePath !== loadedFile"
-                                        class="mr-3"
-                                        @click="loadCurrentFile">
-                                        {{ $t('GCodeViewer.LoadCurrentFile') }}
+                                    <v-btn v-if="sdCardFilePath !== '' && sdCardFilePath !== loadedFile" class="mr-3" @click="loadCurrentFile">
+                                        {{ t('GCodeViewer.LoadCurrentFile') }}
                                     </v-btn>
-                                    <v-btn @click="chooseFile">{{ $t('GCodeViewer.LoadLocal') }}</v-btn>
+                                    <v-btn @click="chooseFile">{{ t('GCodeViewer.LoadLocal') }}</v-btn>
                                 </template>
                                 <template v-else>
                                     <v-btn v-if="showTrackingButton" class="mr-3" @click="tracking = !tracking">
-                                        <v-icon
-                                            class="mr-2"
-                                            v-html="tracking ? mdiToggleSwitch : mdiToggleSwitchOffOutline" />
-                                        {{ $t('GCodeViewer.Tracking') }}
+                                        <v-icon class="mr-2">{{ tracking ? mdiToggleSwitch : mdiToggleSwitchOffOutline }}</v-icon>
+                                        {{ t('GCodeViewer.Tracking') }}
                                     </v-btn>
                                     <v-btn @click="clearLoadedFile">
-                                        <v-icon left>{{ mdiBroom }}</v-icon>
-                                        {{ $t('GCodeViewer.ClearLoadedFile') }}
+                                        <v-icon start>{{ mdiBroom }}</v-icon>
+                                        {{ t('GCodeViewer.ClearLoadedFile') }}
                                     </v-btn>
                                 </template>
                             </v-col>
                             <v-col class="col-12 col-sm-6 col-md-4">
-                                <v-select
-                                    v-model="colorMode"
-                                    :items="colorModes"
-                                    :label="$t('GCodeViewer.ColorMode')"
-                                    item-text="text"
-                                    dense
-                                    hide-details
-                                    outlined></v-select>
+                                <v-select v-model="colorMode" :items="colorModes" :label="t('GCodeViewer.ColorMode')" item-title="text" density="compact" hide-details variant="outlined" />
                             </v-col>
                             <v-col order-md="3" class="col-12 col-sm-6 col-md-4 d-flex">
-                                <v-select
-                                    v-model="renderQuality"
-                                    :items="renderQualities"
-                                    :label="$t('GCodeViewer.RenderQuality')"
-                                    item-text="label"
-                                    dense
-                                    hide-details
-                                    outlined></v-select>
-                                <v-menu
-                                    :offset-y="true"
-                                    :offset-x="true"
-                                    top
-                                    :close-on-content-click="false"
-                                    :title="$t('Files.SetupCurrentList')">
-                                    <template #activator="{ on, attrs }">
-                                        <v-btn class="minwidth-0 px-2 ml-3" v-bind="attrs" v-on="on">
+                                <v-select v-model="renderQuality" :items="renderQualities" :label="t('GCodeViewer.RenderQuality')" item-title="label" density="compact" hide-details variant="outlined" return-object />
+                                <v-menu location="top end" :close-on-content-click="false" :title="t('Files.SetupCurrentList')">
+                                    <template #activator="{ props: activatorProps }">
+                                        <v-btn class="minwidth-0 px-2 ml-3" v-bind="activatorProps">
                                             <v-icon>{{ mdiCog }}</v-icon>
                                         </v-btn>
                                     </template>
                                     <v-list>
                                         <v-list-item class="minHeight36">
-                                            <v-checkbox
-                                                v-model="showCursor"
-                                                class="mt-0"
-                                                hide-details
-                                                :label="$t('GCodeViewer.ShowToolhead')" />
+                                            <v-checkbox v-model="showCursor" class="mt-0" hide-details :label="t('GCodeViewer.ShowToolhead')" />
                                         </v-list-item>
                                         <v-list-item class="minHeight36">
-                                            <v-checkbox
-                                                v-model="showTravelMoves"
-                                                class="mt-0"
-                                                hide-details
-                                                :label="$t('GCodeViewer.ShowTravelMoves')" />
+                                            <v-checkbox v-model="showTravelMoves" class="mt-0" hide-details :label="t('GCodeViewer.ShowTravelMoves')" />
                                         </v-list-item>
                                         <v-list-item class="minHeight36">
-                                            <v-checkbox
-                                                v-model="showGCode"
-                                                class="mt-0"
-                                                hide-details
-                                                :label="$t('GCodeViewer.ShowGCode')" />
+                                            <v-checkbox v-model="showGCode" class="mt-0" hide-details :label="t('GCodeViewer.ShowGCode')" />
                                         </v-list-item>
 
-                                        <v-list-item
-                                            v-if="loadedFile === sdCardFilePath && printing_objects.length"
-                                            class="minHeight36">
-                                            <v-checkbox
-                                                v-model="showObjectSelection"
-                                                class="mt-0"
-                                                hide-details
-                                                :label="$t('GCodeViewer.ShowObjectSelection')" />
+                                        <v-list-item v-if="loadedFile === sdCardFilePath && printing_objects.length" class="minHeight36">
+                                            <v-checkbox v-model="showObjectSelection" class="mt-0" hide-details :label="t('GCodeViewer.ShowObjectSelection')" />
                                         </v-list-item>
-                                        <v-divider></v-divider>
+                                        <v-divider />
                                         <v-list-item class="minHeight36">
-                                            <v-checkbox
-                                                v-model="hdRendering"
-                                                class="mt-0"
-                                                hide-details
-                                                :label="$t('GCodeViewer.HDRendering')" />
+                                            <v-checkbox v-model="hdRendering" class="mt-0" hide-details :label="t('GCodeViewer.HDRendering')" />
                                         </v-list-item>
                                         <v-list-item class="minHeight36">
-                                            <v-checkbox
-                                                v-model="forceLineRendering"
-                                                class="mt-0"
-                                                hide-details
-                                                :label="$t('GCodeViewer.ForceLineRendering')" />
+                                            <v-checkbox v-model="forceLineRendering" class="mt-0" hide-details :label="t('GCodeViewer.ForceLineRendering')" />
                                         </v-list-item>
                                         <v-list-item class="minHeight36">
-                                            <v-checkbox
-                                                v-model="transparency"
-                                                class="mt-0"
-                                                hide-details
-                                                :label="$t('GCodeViewer.Transparency')" />
+                                            <v-checkbox v-model="transparency" class="mt-0" hide-details :label="t('GCodeViewer.Transparency')" />
                                         </v-list-item>
                                         <v-list-item class="minHeight36">
-                                            <v-checkbox
-                                                v-model="voxelMode"
-                                                class="mt-0"
-                                                hide-details
-                                                :label="$t('GCodeViewer.VoxelMode')" />
+                                            <v-checkbox v-model="voxelMode" class="mt-0" hide-details :label="t('GCodeViewer.VoxelMode')" />
                                         </v-list-item>
                                         <v-list-item class="minHeight36">
-                                            <v-checkbox
-                                                v-model="specularLighting"
-                                                class="mt-0"
-                                                hide-details
-                                                :label="$t('GCodeViewer.SpecularLighting')" />
+                                            <v-checkbox v-model="specularLighting" class="mt-0" hide-details :label="t('GCodeViewer.SpecularLighting')" />
                                         </v-list-item>
                                         <v-list-item class="minHeight36">
-                                            <v-checkbox
-                                                v-model="cncMode"
-                                                class="mt-0"
-                                                hide-details
-                                                :label="$t('GCodeViewer.CNCMode')" />
+                                            <v-checkbox v-model="cncMode" class="mt-0" hide-details :label="t('GCodeViewer.CNCMode')" />
                                         </v-list-item>
                                     </v-list>
                                 </v-menu>
@@ -199,89 +113,85 @@
                         </v-row>
                     </v-col>
                 </v-row>
-                <input
-                    ref="fileInput"
-                    :accept="'.g,.gcode,.gc,.gco,.nc,.ngc,.tap'"
-                    hidden
-                    multiple
-                    type="file"
-                    @change="fileSelected" />
+                <input ref="fileInput" accept=".g,.gcode,.gc,.gco,.nc,.ngc,.tap" hidden multiple type="file" @change="fileSelected" />
             </v-card-text>
         </panel>
-        <v-snackbar v-model="loading" :timeout="-1" fixed right bottom>
+        <v-snackbar v-model="loading" :timeout="-1" location="bottom right">
             <div>
-                {{ $t('GCodeViewer.Rendering') }} - {{ loadingPercent }}%
+                {{ t('GCodeViewer.Rendering') }} - {{ loadingPercent }}%
                 <br />
                 <strong>{{ loadedFile }}</strong>
             </div>
-            <v-progress-linear class="mt-2" :value="loadingPercent"></v-progress-linear>
-            <template #action="{ attrs }">
-                <v-btn color="red" text v-bind="attrs" style="min-width: auto" @click="cancelRendering()">
-                    <v-icon class="0">{{ mdiClose }}</v-icon>
+            <v-progress-linear class="mt-2" :model-value="loadingPercent" />
+            <template #actions>
+                <v-btn color="red" variant="text" style="min-width: auto" @click="cancelRendering()">
+                    <v-icon>{{ mdiClose }}</v-icon>
                 </v-btn>
             </template>
         </v-snackbar>
-        <v-snackbar v-model="downloadSnackbar.status" :timeout="-1" fixed right bottom>
+        <v-snackbar v-model="downloadSnackbar.status" :timeout="-1" location="bottom right">
             <template v-if="downloadSnackbar.total > 0">
                 <div>
-                    {{ $t('GCodeViewer.Downloading') }} - {{ Math.round(downloadSnackbar.percent) }} % @
-                    {{ formatFilesize(Math.round(downloadSnackbar.speed)) }}/s
+                    {{ t('GCodeViewer.Downloading') }} - {{ Math.round(downloadSnackbar.percent) }} % @ {{ formatFilesize(Math.round(downloadSnackbar.speed)) }}/s
                     <br />
                     <strong>{{ downloadSnackbar.filename }}</strong>
                 </div>
-                <v-progress-linear class="mt-2" :value="downloadSnackbar.percent" />
+                <v-progress-linear class="mt-2" :model-value="downloadSnackbar.percent" />
             </template>
             <template v-else>
                 <div>
-                    {{ $t('GCodeViewer.Downloading') }}
+                    {{ t('GCodeViewer.Downloading') }}
                     <br />
                     <strong>{{ downloadSnackbar.filename }}</strong>
                 </div>
                 <v-progress-linear class="mt-2" indeterminate />
             </template>
-            <template #action="{ attrs }">
-                <v-btn color="red" text v-bind="attrs" style="min-width: auto" @click="cancelDownload">
-                    <v-icon class="0">{{ mdiClose }}</v-icon>
+            <template #actions>
+                <v-btn color="red" variant="text" style="min-width: auto" @click="cancelDownload">
+                    <v-icon>{{ mdiClose }}</v-icon>
                 </v-btn>
             </template>
         </v-snackbar>
         <confirmation-dialog
             v-model="excludeObject.bool"
-            :title="$t('Panels.StatusPanel.ExcludeObject.ExcludeObjectHeadline')"
-            :text="$t('Panels.StatusPanel.ExcludeObject.ExcludeObjectText', { name: excludeObject.name })"
-            :action-button-text="$t('Panels.StatusPanel.ExcludeObject.ExcludeObject')"
+            :title="t('Panels.StatusPanel.ExcludeObject.ExcludeObjectHeadline')"
+            :text="t('Panels.StatusPanel.ExcludeObject.ExcludeObjectText', { name: excludeObject.name })"
+            :action-button-text="t('Panels.StatusPanel.ExcludeObject.ExcludeObject')"
             action-button-color="primary"
             @action="cancelObject" />
     </div>
 </template>
 
 <script lang="ts">
-import { Component, Mixins, Prop, Ref, Watch } from 'vue-property-decorator'
-import BaseMixin from '../mixins/base'
+import type { GCodeViewerInstance } from '@/store/gcodeviewer/types'
+
+// Module-scoped (not per-instance): survives component remounts across SPA
+// navigation so the expensive GCodeViewer/WebGL context isn't torn down and
+// rebuilt every time this page is left and re-entered. Backed up into
+// useGcodeviewerStore on unmount as a defensive fallback for cases where the
+// module itself gets re-evaluated (e.g. HMR).
+let viewer: GCodeViewerInstance | null = null
+</script>
+
+<script setup lang="ts">
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import GCodeViewer from '@sindarius/gcodeviewer'
-import axios, { AxiosProgressEvent, CancelTokenSource } from 'axios'
+import axios, { type AxiosProgressEvent, type CancelTokenSource } from 'axios'
 import { escapePath, formatFilesize } from '@/plugins/helpers'
 import Panel from '@/components/ui/Panel.vue'
 import CodeStream from '@/components/gcodeviewer/CodeStream.vue'
-import type { GCodeViewerInstance } from '@/store/gcodeviewer/types'
-import {
-    mdiCameraRetake,
-    mdiCog,
-    mdiClose,
-    mdiReloadAlert,
-    mdiToggleSwitch,
-    mdiToggleSwitchOffOutline,
-    mdiVideo3d,
-    mdiPlay,
-    mdiPause,
-    mdiFastForward,
-    mdiBroom,
-    mdiSelectionRemove,
-} from '@mdi/js'
+import { mdiCameraRetake, mdiCog, mdiClose, mdiReloadAlert, mdiToggleSwitch, mdiToggleSwitchOffOutline, mdiVideo3d, mdiPlay, mdiPause, mdiFastForward, mdiBroom } from '@mdi/js'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
-import { Debounce } from 'vue-debounce-decorator'
+import { useBase } from '@/composables/useBase'
+import { useDisplay } from 'vuetify'
+import { usePrinterStore } from '@/store/printer'
+import { useGuiStore } from '@/store/gui'
+import { useGcodeviewerStore } from '@/store/gcodeviewer'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
-interface downloadSnackbar {
+interface DownloadSnackbar {
     status: boolean
     filename: string
     percent: number
@@ -300,873 +210,738 @@ interface ViewerObjectMetadata {
     name?: string
 }
 
-let viewer: GCodeViewerInstance | null = null
-@Component({
-    components: { ConfirmationDialog, Panel, CodeStream },
+defineProps<{
+    filename?: string
+}>()
+
+const { t } = useI18n()
+const route = useRoute()
+const display = useDisplay()
+const { apiUrl, printerIsPrinting } = useBase()
+const printerStore = usePrinterStore()
+const guiStore = useGuiStore()
+const gcodeviewerStore = useGcodeviewerStore()
+
+const xs = computed(() => display.xs.value)
+const smAndUp = computed(() => display.smAndUp.value)
+
+const renderQualities = computed(() => [
+    { label: t('GCodeViewer.Low'), value: 2 },
+    { label: t('GCodeViewer.Medium'), value: 3 },
+    { label: t('GCodeViewer.High'), value: 4 },
+    { label: t('GCodeViewer.Ultra'), value: 5 },
+    { label: t('GCodeViewer.Max'), value: 6 },
+])
+
+const isBusy = ref(false)
+const loading = ref(false)
+const loadingPercent = ref(0)
+
+const tracking = ref(false)
+const loadedFile = ref<string | null>(null)
+
+const reloadRequired = ref(false)
+const fileSize = ref(0)
+const renderQuality = ref(renderQualities.value[2])
+
+const scrubPosition = ref(0)
+const scrubPlaying = ref(false)
+const scrubSpeed = ref(1)
+let scrubInterval: ReturnType<typeof setInterval> | undefined = undefined
+const scrubFileSize = ref(0)
+
+const downloadSnackbar = ref<DownloadSnackbar>({
+    status: false,
+    filename: '',
+    percent: 0,
+    speed: 0,
+    total: 0,
+    cancelTokenSource: null,
 })
-export default class Viewer extends Mixins(BaseMixin) {
-    /**
-     * Icons
-     */
-    mdiReloadAlert = mdiReloadAlert
-    mdiCameraRetake = mdiCameraRetake
-    mdiToggleSwitch = mdiToggleSwitch
-    mdiToggleSwitchOffOutline = mdiToggleSwitchOffOutline
-    mdiClose = mdiClose
-    mdiCog = mdiCog
-    mdiVideo3d = mdiVideo3d
-    mdiPlay = mdiPlay
-    mdiPause = mdiPause
-    mdiFastForward = mdiFastForward
-    mdiBroom = mdiBroom
-    mdiSelectionRemove = mdiSelectionRemove
 
-    formatFilesize = formatFilesize
+const excludeObject = ref({
+    bool: false,
+    name: '',
+})
 
-    isBusy = false
-    loading = false
-    loadingPercent = 0
+const fileData = ref('')
 
-    tracking = false
-    loadedFile: string | null = null
+let resizeObserver: ResizeObserver | null = null
 
-    reloadRequired = false
-    fileSize = 0
-    renderQuality = this.renderQualities[2]
+const fileInput = ref<HTMLInputElement | null>(null)
+const viewerCanvasContainer = ref<HTMLElement | null>(null)
 
-    scrubPosition = 0
-    scrubPlaying = false
-    scrubSpeed = 1
-    scrubInterval: ReturnType<typeof setInterval> | undefined = undefined
-    scrubFileSize = 0
+const panelTitle = computed(() => {
+    let title = t('GCodeViewer.Title')
 
-    downloadSnackbar: downloadSnackbar = {
-        status: false,
-        filename: '',
-        percent: 0,
-        speed: 0,
-        total: 0,
-        cancelTokenSource: null,
-    }
+    if (loadedFile.value) title += `: ${loadedFile.value}`
 
-    excludeObject = {
-        bool: false,
-        name: '',
-    }
+    return title
+})
 
-    fileData: string = ''
+const filePosition = computed(() => (printerIsPrinting.value ? printerStore.virtual_sdcard?.file_position : 0))
+const sdCardFilePath = computed(() => printerStore.print_stats?.filename ?? '')
+const livePosition = computed(() => printerStore.motion_report?.live_position ?? [0, 0, 0, 0])
+const gcodeOffset = computed(() => printerStore.gcode_move?.homing_origin ?? [0, 0, 0])
 
-    resizeObserver: ResizeObserver | null = null
+const currentPosition = computed(() => [
+    livePosition.value[0] - gcodeOffset.value[0],
+    livePosition.value[1] - gcodeOffset.value[1],
+    livePosition.value[2] - gcodeOffset.value[2],
+    livePosition.value[3],
+])
 
-    @Prop({ type: String, default: '', required: false }) declare filename: string
-    @Ref('fileInput') declare fileInput: HTMLInputElement
-    @Ref('viewerCanvasContainer') declare viewerCanvasContainer: HTMLElement
+const showTrackingButton = computed(() => printerIsPrinting.value && sdCardFilePath.value === loadedFile.value)
 
-    get renderQualities() {
-        return [
-            { label: this.$t('GCodeViewer.Low'), value: 2 },
-            { label: this.$t('GCodeViewer.Medium'), value: 3 },
-            { label: this.$t('GCodeViewer.High'), value: 4 },
-            { label: this.$t('GCodeViewer.Ultra'), value: 5 },
-            { label: this.$t('GCodeViewer.Max'), value: 6 },
-        ]
-    }
+const printing_objects = computed<PrintableObject[]>(() => printerStore.exclude_object?.objects ?? [])
 
-    async mounted() {
-        this.loadedFile = this.$store.state.gcodeviewer?.loadedFileBackup ?? null
-        viewer = this.$store.state.gcodeviewer?.viewerBackup ?? null
-        await this.init()
+const excluded_objects = computed(() => printerStore.exclude_object?.excluded_objects ?? [])
 
-        if (this.loadedFile !== null && viewer) this.scrubFileSize = viewer.fileSize
-        if (viewer) this.fileData = viewer.fileData
+const nozzle_diameter = computed(() => printerStore.configfile?.settings?.extruder?.nozzle_diameter ?? 0.4)
 
-        this.resizeObserver = new ResizeObserver(() => this.handleResize())
-        this.resizeObserver.observe(this.viewerCanvasContainer)
-    }
+async function sleep(ms: number) {
+    await new Promise((resolve) => setTimeout(resolve, ms))
+}
 
-    beforeDestroy() {
-        if (viewer) {
-            viewer.gcodeProcessor.loadingProgressCallback = null
-            this.$store.dispatch('gcodeviewer/setLoadedFileBackup', this.loadedFile)
-            this.$store.dispatch('gcodeviewer/setViewerBackup', viewer)
-        }
+function refreshPrintingObjects() {
+    if (loadedFile.value !== sdCardFilePath.value || printing_objects.value.length === 0) return
 
-        this.scrubPlaying = false
-        if (this.scrubInterval) {
-            clearInterval(this.scrubInterval)
-            this.scrubInterval = undefined
-        }
+    const objects: {
+        cancelled: boolean
+        name: string
+        x: number[]
+        y: number[]
+    }[] = []
+    printing_objects.value.forEach((object) => {
+        const xValues = object.polygon.map((point) => point[0])
+        const yValues = object.polygon.map((point) => point[1])
 
-        this.resizeObserver?.disconnect()
-    }
-
-    @Debounce(200)
-    handleResize() {
-        this.$nextTick(() => {
-            viewer?.resize()
+        objects.push({
+            cancelled: excluded_objects.value.includes(object.name),
+            name: object.name,
+            x: [Math.min(...xValues), Math.max(...xValues)],
+            y: [Math.min(...yValues), Math.max(...yValues)],
         })
+    })
+
+    viewer?.buildObjects.loadObjectBoundaries(objects)
+    viewer?.buildObjects.showObjectSelection(showObjectSelection.value)
+}
+
+function setReloadRequiredFlag() {
+    if (loadedFile.value && loadedFile.value != '') {
+        reloadRequired.value = true
+    }
+}
+
+function objectCallback(metadata: ViewerObjectMetadata | null) {
+    if (metadata?.cancelled === false) {
+        excludeObject.value.name = metadata.name ?? 'UNKNOWN'
+        excludeObject.value.bool = true
+    }
+}
+
+function loadToolColors(colors: string[]) {
+    if (!viewer || colors.length === 0) return
+
+    viewer.gcodeProcessor.resetTools()
+    colors.forEach((color: string) => {
+        viewer?.gcodeProcessor.addTool(color, nozzle_diameter.value)
+    })
+    setReloadRequiredFlag()
+}
+
+function registerProgressCallback() {
+    if (viewer === null) return
+
+    viewer.gcodeProcessor.loadingProgressCallback = (progress: number) => {
+        loadingPercent.value = Math.ceil(progress * 100)
+        loading.value = loadingPercent.value <= 99
+    }
+}
+
+async function viewerInit(element: HTMLCanvasElement) {
+    viewer = new GCodeViewer(element)
+    await viewer.init()
+    viewer.setBackgroundColor(backgroundColor.value)
+    viewer.bed.setBedColor(gridColor.value)
+    viewer.setCursorVisiblity(showCursor.value)
+    viewer.setZClipPlane(1000000, -1000000)
+    viewer.axes.show(showAxes.value)
+    viewer.bed.setDelta(kinematics.value.includes('delta'))
+
+    if (bedMaxSize.value !== null) {
+        viewer.bed.buildVolume.x.max = bedMaxSize.value[0]
+        viewer.bed.buildVolume.y.max = bedMaxSize.value[1]
+        viewer.bed.buildVolume.z.max = bedMaxSize.value[2]
     }
 
-    get panelTitle() {
-        let title = this.$t('GCodeViewer.Title').toString()
-
-        if (this.loadedFile) title += `: ${this.loadedFile}`
-
-        return title
+    if (bedMinSize.value !== null) {
+        viewer.bed.buildVolume.x.min = bedMinSize.value[0]
+        viewer.bed.buildVolume.y.min = bedMinSize.value[1]
+        viewer.bed.buildVolume.z.min = bedMinSize.value[2]
     }
 
-    get filePosition() {
-        return this.printerIsPrinting ? this.$store.state.printer.virtual_sdcard.file_position : 0
+    viewer.gcodeProcessor.useHighQualityExtrusion(hdRendering.value)
+    viewer.gcodeProcessor.updateForceWireMode(forceLineRendering.value || cncMode.value)
+    viewer.gcodeProcessor.setAlpha(transparency.value)
+    viewer.gcodeProcessor.setVoxelMode(voxelMode.value)
+    viewer.gcodeProcessor.voxelWidth = voxelWidth.value
+    viewer.gcodeProcessor.voxelHeight = voxelHeight.value
+    viewer.gcodeProcessor.useSpecularColor(specularLighting.value)
+    viewer.gcodeProcessor.setLiveTracking(false)
+    viewer.gcodeProcessor.g1AsExtrusion = cncMode.value
+    viewer.buildObjects.objectCallback = objectCallback
+
+    loadToolColors(extruderColors.value)
+
+    if (viewer.lastLoadFailed()) {
+        renderQuality.value = renderQualities.value[0]
+        viewer.updateRenderQuality(1)
+        viewer.clearLoadFlag()
     }
+}
 
-    get sdCardFilePath() {
-        return this.$store.state.printer.print_stats?.filename ?? ''
-    }
+async function init() {
+    let canvasElement = gcodeviewerStore.canvasBackup ?? null
 
-    get livePosition() {
-        return this.$store.state.printer.motion_report?.live_position ?? [0, 0, 0, 0]
-    }
-
-    get gcodeOffset() {
-        return this.$store.state.printer?.gcode_move?.homing_origin ?? [0, 0, 0]
-    }
-
-    get currentPosition() {
-        return [
-            this.livePosition[0] - this.gcodeOffset[0],
-            this.livePosition[1] - this.gcodeOffset[1],
-            this.livePosition[2] - this.gcodeOffset[2],
-            this.livePosition[3],
-        ]
-    }
-
-    get showTrackingButton() {
-        return this.printerIsPrinting && this.sdCardFilePath === this.loadedFile
-    }
-
-    get printing_objects(): PrintableObject[] {
-        return this.$store.state.printer?.exclude_object?.objects ?? []
-    }
-
-    @Watch('printing_objects')
-    printing_objectsChanged() {
-        this.refreshPrintingObjects()
-    }
-
-    get excluded_objects() {
-        return this.$store.state.printer.exclude_object?.excluded_objects ?? []
-    }
-
-    @Watch('excluded_objects')
-    excluded_objectsChanged() {
-        this.refreshPrintingObjects()
-    }
-
-    get nozzle_diameter() {
-        return this.$store.state.printer.configfile?.settings?.extruder?.nozzle_diameter ?? 0.4
-    }
-
-    async init() {
-        let canvasElement = this.$store.state.gcodeviewer?.canvasBackup ?? null
-
-        if (canvasElement === null) {
-            canvasElement = document.createElement('canvas')
-            canvasElement.className = 'viewer'
-            this.viewerCanvasContainer.appendChild(canvasElement)
-            await this.$store.dispatch('gcodeviewer/setCanvasBackup', canvasElement)
-        } else {
-            this.viewerCanvasContainer.appendChild(canvasElement)
-            if (viewer?.gcodeProcessor) {
-                viewer.gcodeProcessor.updateFilePosition(viewer?.fileSize)
-            }
-        }
-
-        if (viewer === null) await this.viewerInit(canvasElement)
-
-        this.registerProgressCallback()
-
-        if (this.$route.query?.filename && this.loadedFile !== this.$route.query?.filename?.toString()) {
-            //TODO: test without sleep
-            await this.sleep(1000) //Give the store a chance to initialize before loading the file.
-            await this.loadFile(this.$route.query.filename.toString())
-        }
-    }
-
-    async viewerInit(element: HTMLCanvasElement) {
-        viewer = new GCodeViewer(element)
-        await viewer.init()
-        viewer.setBackgroundColor(this.backgroundColor)
-        viewer.bed.setBedColor(this.gridColor)
-        viewer.setCursorVisiblity(this.showCursor)
-        viewer.setZClipPlane(1000000, -1000000)
-        viewer.axes.show(this.showAxes)
-        viewer.bed.setDelta(this.kinematics.includes('delta'))
-
-        if (this.bedMaxSize !== null) {
-            viewer.bed.buildVolume.x.max = this.bedMaxSize[0]
-            viewer.bed.buildVolume.y.max = this.bedMaxSize[1]
-            viewer.bed.buildVolume.z.max = this.bedMaxSize[2]
-        }
-
-        if (this.bedMinSize !== null) {
-            viewer.bed.buildVolume.x.min = this.bedMinSize[0]
-            viewer.bed.buildVolume.y.min = this.bedMinSize[1]
-            viewer.bed.buildVolume.z.min = this.bedMinSize[2]
-        }
-
-        viewer.gcodeProcessor.useHighQualityExtrusion(this.hdRendering)
-        viewer.gcodeProcessor.updateForceWireMode(this.forceLineRendering || this.cncMode)
-        viewer.gcodeProcessor.setAlpha(this.transparency)
-        viewer.gcodeProcessor.setVoxelMode(this.voxelMode)
-        viewer.gcodeProcessor.voxelWidth = this.voxelWidth
-        viewer.gcodeProcessor.voxelHeight = this.voxelHeight
-        viewer.gcodeProcessor.useSpecularColor(this.specularLighting)
-        viewer.gcodeProcessor.setLiveTracking(false)
-        viewer.gcodeProcessor.g1AsExtrusion = this.cncMode
-        viewer.buildObjects.objectCallback = this.objectCallback
-
-        this.loadToolColors(this.extruderColors)
-
-        if (viewer.lastLoadFailed()) {
-            this.renderQuality = this.renderQualities[0]
-            viewer.updateRenderQuality(1)
-            viewer.clearLoadFlag()
+    if (canvasElement === null) {
+        canvasElement = document.createElement('canvas')
+        canvasElement.className = 'viewer'
+        viewerCanvasContainer.value?.appendChild(canvasElement)
+        gcodeviewerStore.setCanvasBackup(canvasElement)
+    } else {
+        viewerCanvasContainer.value?.appendChild(canvasElement)
+        if (viewer?.gcodeProcessor) {
+            viewer.gcodeProcessor.updateFilePosition(viewer?.fileSize)
         }
     }
 
-    registerProgressCallback() {
-        if (viewer === null) return
+    if (viewer === null) await viewerInit(canvasElement)
 
-        viewer.gcodeProcessor.loadingProgressCallback = (progress: number) => {
-            this.loadingPercent = Math.ceil(progress * 100)
-            this.loading = this.loadingPercent <= 99
-        }
+    registerProgressCallback()
+
+    const queryFilename = route.query?.filename
+    if (queryFilename && loadedFile.value !== queryFilename?.toString()) {
+        //TODO: test without sleep
+        await sleep(1000) //Give the store a chance to initialize before loading the file.
+        await loadFile(queryFilename.toString())
     }
+}
 
-    async cancelRendering() {
-        if (viewer === null) return
+function handleResize() {
+    nextTick(() => {
+        viewer?.resize()
+    })
+}
+let resizeDebounceTimer: ReturnType<typeof setTimeout> | undefined
+function debouncedHandleResize() {
+    if (resizeDebounceTimer) clearTimeout(resizeDebounceTimer)
+    resizeDebounceTimer = setTimeout(() => handleResize(), 200)
+}
 
+async function cancelRendering() {
+    if (viewer === null) return
+
+    viewer.gcodeProcessor.cancelLoad = true
+    await sleep(1000)
+}
+
+function clearLoadedFile() {
+    if (viewer === null) return
+
+    scrubPlaying.value = false
+    scrubFileSize.value = 0
+    viewer.clearScene(true)
+    loadedFile.value = null
+    tracking.value = false
+}
+
+function chooseFile() {
+    if (isBusy.value) return
+
+    fileInput.value?.click()
+}
+
+function finishLoad() {
+    loading.value = false
+    if (viewer === null) return
+
+    viewer.setCursorVisiblity(showCursor.value)
+
+    refreshPrintingObjects()
+    scrubFileSize.value = viewer.fileSize
+
+    viewer.gcodeProcessor.updateFilePosition(viewer.fileSize)
+}
+
+async function fileSelected(e: Event) {
+    const input = e.target as HTMLInputElement | null
+    if (input === null || viewer === null) return
+
+    const reader = new FileReader()
+    reader.addEventListener('load', async (event: ProgressEvent<FileReader>) => {
+        const blob = event.target?.result
+        if (typeof blob === 'string') {
+            fileSize.value = blob.length
+            // Do something with result
+            await viewer?.processFile(blob)
+            fileData.value = viewer?.fileData ?? ''
+        }
+        finishLoad()
+    })
+    tracking.value = false
+
+    const selectedFile = input.files?.[0]
+    if (selectedFile) {
+        loadedFile.value = selectedFile.name
+        reader.readAsText(selectedFile)
+    }
+    input.value = ''
+}
+
+async function loadFile(filename: string) {
+    downloadSnackbar.value.status = true
+    downloadSnackbar.value.speed = 0
+    downloadSnackbar.value.filename = filename.startsWith('gcodes/') ? filename.slice(7) : filename
+    const CancelToken = axios.CancelToken
+    const cancelTokenSource = CancelToken.source()
+    downloadSnackbar.value.cancelTokenSource = cancelTokenSource
+
+    const text = await axios
+        .get(apiUrl.value + '/server/files/' + escapePath(filename), {
+            cancelToken: cancelTokenSource.token,
+            responseType: 'blob',
+            onDownloadProgress: (progressEvent: AxiosProgressEvent) => {
+                downloadSnackbar.value.percent = (progressEvent.progress ?? 0) * 100
+                downloadSnackbar.value.speed = progressEvent.rate ?? 0
+                downloadSnackbar.value.total = progressEvent.total ?? 0
+            },
+        })
+        .then((res) => res.data.text())
+        .catch((e) => {
+            window.console.error(e.message)
+        })
+    downloadSnackbar.value.status = false
+    loadedFile.value = downloadSnackbar.value.filename
+
+    if (viewer === null) return
+
+    viewer.updateRenderQuality(renderQuality.value.value)
+    await viewer.processFile(text)
+    fileData.value = viewer.fileData
+    loadingPercent.value = 100
+    finishLoad()
+    scrubFileSize.value = viewer.fileSize
+}
+
+function cancelDownload() {
+    downloadSnackbar.value.cancelTokenSource?.cancel('User canceled download gcode file')
+}
+
+async function loadCurrentFile() {
+    await loadFile('gcodes/' + sdCardFilePath.value)
+    loadedFile.value = sdCardFilePath.value
+}
+
+async function reloadViewer() {
+    if (loadedFile.value === null || viewer === null) return
+
+    if (loading.value) {
+        //if we are actively loading signal a cancel and wait a second
+        //This prevents a timing issue that can happen if a user changes settings and then
+        //hits the reload viewer button. Will eventually move this to api
         viewer.gcodeProcessor.cancelLoad = true
-        await this.sleep(1000)
+        await sleep(1000)
     }
 
-    clearLoadedFile() {
-        if (viewer === null) return
+    reloadRequired.value = false
+    loading.value = true
+    loadingPercent.value = 0
+    await viewer.reload()
+    fileData.value = viewer.fileData
+    loadingPercent.value = 100
+    finishLoad()
+}
 
-        this.scrubPlaying = false
-        this.scrubFileSize = 0
-        viewer.clearScene(true)
-        this.loadedFile = null
-        this.tracking = false
-    }
+function resetCamera() {
+    viewer?.resetCamera()
+}
 
-    chooseFile() {
-        if (this.isBusy) return
+function fastForward(): void {
+    if (viewer === null) return
 
-        this.fileInput.click()
-    }
+    scrubPosition.value = scrubFileSize.value
+    viewer.gcodeProcessor.updateFilePosition(scrubPosition.value)
+}
 
-    finishLoad() {
-        this.loading = false
-        if (viewer === null) return
+function cancelObject() {
+    webSocketClient.emit('printer.gcode.script', { script: 'EXCLUDE_OBJECT NAME=' + excludeObject.value.name })
+}
 
-        viewer.setCursorVisiblity(this.showCursor)
+const showCursor = computed({
+    get: () => guiStore.gcodeViewer.showCursor ?? false,
+    set: (newVal: boolean) => guiStore.saveSetting({ name: 'gcodeViewer.showCursor', value: newVal }),
+})
 
-        this.refreshPrintingObjects()
-        this.scrubFileSize = viewer.fileSize
+const showTravelMoves = computed({
+    get: () => guiStore.gcodeViewer.showTravelMoves ?? false,
+    set: (newVal: boolean) => guiStore.saveSetting({ name: 'gcodeViewer.showTravelMoves', value: newVal }),
+})
 
-        viewer.gcodeProcessor.updateFilePosition(viewer.fileSize)
-    }
-
-    refreshPrintingObjects() {
-        if (this.loadedFile !== this.sdCardFilePath || this.printing_objects.length === 0) return
-
-        const objects: {
-            cancelled: boolean
-            name: string
-            x: number[]
-            y: number[]
-        }[] = []
-        this.printing_objects.forEach((object) => {
-            const xValues = object.polygon.map((point) => point[0])
-            const yValues = object.polygon.map((point) => point[1])
-
-            objects.push({
-                cancelled: this.excluded_objects.includes(object.name),
-                name: object.name,
-                x: [Math.min(...xValues), Math.max(...xValues)],
-                y: [Math.min(...yValues), Math.max(...yValues)],
-            })
-        })
-
-        viewer?.buildObjects.loadObjectBoundaries(objects)
-        viewer?.buildObjects.showObjectSelection(this.showObjectSelection)
-    }
-
-    async fileSelected(e: Event) {
-        const input = e.target as HTMLInputElement | null
-        if (input === null || viewer === null) return
-
-        const reader = new FileReader()
-        reader.addEventListener('load', async (event: ProgressEvent<FileReader>) => {
-            const blob = event.target?.result
-            if (typeof blob === 'string') {
-                this.fileSize = blob.length
-                // Do something with result
-                await viewer?.processFile(blob)
-                this.fileData = viewer?.fileData ?? ''
-            }
-            this.finishLoad()
-        })
-        this.tracking = false
-
-        const selectedFile = input.files?.[0]
-        if (selectedFile) {
-            this.loadedFile = selectedFile.name
-            reader.readAsText(selectedFile)
-        }
-        input.value = ''
-    }
-
-    async loadFile(filename: string) {
-        this.downloadSnackbar.status = true
-        this.downloadSnackbar.speed = 0
-        this.downloadSnackbar.filename = filename.startsWith('gcodes/') ? filename.slice(7) : filename
-        const CancelToken = axios.CancelToken
-        const cancelTokenSource = CancelToken.source()
-        this.downloadSnackbar.cancelTokenSource = cancelTokenSource
-
-        const text = await axios
-            .get(this.apiUrl + '/server/files/' + escapePath(filename), {
-                cancelToken: cancelTokenSource.token,
-                responseType: 'blob',
-                onDownloadProgress: (progressEvent: AxiosProgressEvent) => {
-                    this.downloadSnackbar.percent = (progressEvent.progress ?? 0) * 100
-                    this.downloadSnackbar.speed = progressEvent.rate ?? 0
-                    this.downloadSnackbar.total = progressEvent.total ?? 0
-                },
-            })
-            .then((res) => res.data.text())
-            .catch((e) => {
-                window.console.error(e.message)
-            })
-        this.downloadSnackbar.status = false
-        this.loadedFile = this.downloadSnackbar.filename
-
-        if (viewer === null) return
-
-        viewer.updateRenderQuality(this.renderQuality.value)
-        await viewer.processFile(text)
-        this.fileData = viewer.fileData
-        this.loadingPercent = 100
-        this.finishLoad()
-        this.scrubFileSize = viewer.fileSize
-    }
-
-    cancelDownload() {
-        this.downloadSnackbar.cancelTokenSource?.cancel('User canceled download gcode file')
-    }
-
-    async sleep(ms: number) {
-        await new Promise((resolve) => setTimeout(resolve, ms))
-    }
-
-    async loadCurrentFile() {
-        await this.loadFile('gcodes/' + this.sdCardFilePath)
-        this.loadedFile = this.sdCardFilePath
-    }
-
-    async reloadViewer() {
-        if (this.loadedFile === null || viewer === null) return
-
-        if (this.loading) {
-            //if we are actively loading signal a cancel and wait a second
-            //This prevents a timing issue that can happen if a user changes settings and then
-            //hits the reload viewer button. Will eventually move this to api
-            viewer.gcodeProcessor.cancelLoad = true
-            await this.sleep(1000)
-        }
-
-        this.reloadRequired = false
-        this.loading = true
-        this.loadingPercent = 0
-        await viewer.reload()
-        this.fileData = viewer.fileData
-        this.loadingPercent = 100
-        this.finishLoad()
-    }
-
-    resetCamera() {
-        viewer?.resetCamera()
-    }
-
-    setReloadRequiredFlag() {
-        if (this.loadedFile && this.loadedFile != '') {
-            this.reloadRequired = true
-        }
-    }
-
-    @Watch('renderQuality')
-    async renderQualityChanged(newVal: number) {
-        if (viewer && viewer.renderQuality !== newVal) {
-            viewer.updateRenderQuality(newVal)
-            await this.reloadViewer()
-        }
-    }
-
-    @Watch('currentPosition')
-    currentPositionChanged(newVal: number[]) {
-        if (!viewer || !this.tracking || this.scrubPlaying) return
-
-        const position = [
-            { axes: 'X', position: newVal[0] },
-            { axes: 'Y', position: newVal[1] },
-            { axes: 'Z', position: newVal[2] },
-        ]
-
-        viewer.updateToolPosition(position)
-    }
-
-    @Watch('filePosition')
-    filePositionChanged(newVal: number) {
-        if (!viewer || !this.tracking || this.scrubPlaying) return
-
-        const offset = 350
-        if (newVal > 0 && this.printerIsPrinting && this.tracking && newVal > offset) {
-            viewer.gcodeProcessor.updateFilePosition(newVal - offset)
-            this.scrubPosition = newVal - offset
-            return
-        }
-
-        viewer.gcodeProcessor.updateFilePosition(viewer.fileSize)
-    }
-
-    @Watch('tracking')
-    async trackingChanged(newVal: boolean) {
-        if (viewer === null) return
-
-        if (newVal) {
-            this.scrubPlaying = false
-            //Force renderers reload.
-            viewer.gcodeProcessor.updateFilePosition(0)
-            viewer?.forceRender()
-            return
-        }
-
-        viewer.gcodeProcessor.setLiveTracking(false)
-        await this.reloadViewer()
-    }
-
-    @Watch('printerIsPrinting')
-    printerIsPrintingChanged() {
-        this.tracking = false
-    }
-
-    get showCursor(): boolean {
-        return this.$store.state.gui.gcodeViewer.showCursor ?? false
-    }
-
-    set showCursor(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'gcodeViewer.showCursor', value: newVal })
-    }
-
-    @Watch('showCursor')
-    showCursorChanged(newVal: boolean) {
-        viewer?.setCursorVisiblity(newVal)
-    }
-
-    get showTravelMoves(): boolean {
-        return this.$store.state.gui.gcodeViewer.showTravelMoves ?? false
-    }
-
-    set showTravelMoves(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'gcodeViewer.showTravelMoves', value: newVal })
-    }
-
-    get showGCode(): boolean {
-        return this.$store.state.gui.gcodeViewer.showGCode ?? false
-    }
-
-    set showGCode(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'gcodeViewer.showGCode', value: newVal })
+const showGCode = computed({
+    get: () => guiStore.gcodeViewer.showGCode ?? false,
+    set: (newVal: boolean) => {
+        guiStore.saveSetting({ name: 'gcodeViewer.showGCode', value: newVal })
         if (newVal && viewer) {
-            this.fileData = viewer.fileData
+            fileData.value = viewer.fileData
         }
-        this.handleResize()
-    }
+        debouncedHandleResize()
+    },
+})
 
-    @Watch('showTravelMoves')
-    showTravelMovesChanged(newVal: boolean) {
-        viewer?.toggleTravels(newVal)
-    }
+const showObjectSelection = computed({
+    get: () => guiStore.gcodeViewer.showObjectSelection ?? false,
+    set: (newVal: boolean) => guiStore.saveSetting({ name: 'gcodeViewer.showObjectSelection', value: newVal }),
+})
 
-    get showObjectSelection(): boolean {
-        return this.$store.state.gui.gcodeViewer.showObjectSelection ?? false
-    }
+const hdRendering = computed({
+    get: () => guiStore.gcodeViewer.hdRendering,
+    set: (newVal) => guiStore.saveSetting({ name: 'gcodeViewer.hdRendering', value: newVal }),
+})
 
-    set showObjectSelection(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'gcodeViewer.showObjectSelection', value: newVal })
-    }
+const forceLineRendering = computed({
+    get: () => guiStore.gcodeViewer.forceLineRendering,
+    set: (newVal) => guiStore.saveSetting({ name: 'gcodeViewer.forceLineRendering', value: newVal }),
+})
 
-    @Watch('showObjectSelection')
-    showObjectSelectionChanged(newVal: boolean) {
-        viewer?.buildObjects.showObjectSelection(newVal)
-    }
+const transparency = computed({
+    get: () => guiStore.gcodeViewer.transparency,
+    set: (newVal) => guiStore.saveSetting({ name: 'gcodeViewer.transparency', value: newVal }),
+})
 
-    get hdRendering() {
-        return this.$store.state.gui.gcodeViewer.hdRendering
-    }
+const voxelMode = computed({
+    get: () => guiStore.gcodeViewer.voxelMode,
+    set: (newVal) => guiStore.saveSetting({ name: 'gcodeViewer.voxelMode', value: newVal }),
+})
 
-    set hdRendering(newVal) {
-        this.$store.dispatch('gui/saveSetting', { name: 'gcodeViewer.hdRendering', value: newVal })
-    }
+const voxelWidth = computed({
+    get: () => guiStore.gcodeViewer.voxelWidth ?? 1,
+    set: (newVal) => guiStore.saveSetting({ name: 'gcodeViewer.voxelWidth', value: newVal }),
+})
 
-    @Watch('hdRendering')
-    async hdRenderingChanged(newVal: boolean) {
-        if (viewer === null) return
+const voxelHeight = computed({
+    get: () => guiStore.gcodeViewer.voxelHeight ?? 1,
+    set: (newVal) => guiStore.saveSetting({ name: 'gcodeViewer.voxelHeight', value: newVal }),
+})
 
-        viewer.gcodeProcessor.useHighQualityExtrusion(newVal)
-        await this.reloadViewer()
-    }
+const specularLighting = computed({
+    get: () => guiStore.gcodeViewer.specularLighting,
+    set: (newVal) => guiStore.saveSetting({ name: 'gcodeViewer.specularLighting', value: newVal }),
+})
 
-    get forceLineRendering() {
-        return this.$store.state.gui.gcodeViewer.forceLineRendering
-    }
-
-    set forceLineRendering(newVal) {
-        this.$store.dispatch('gui/saveSetting', { name: 'gcodeViewer.forceLineRendering', value: newVal })
-    }
-
-    @Watch('forceLineRendering')
-    async forceLineRenderingChanged(newVal: boolean) {
-        if (viewer === null) return
-
-        viewer.gcodeProcessor.updateForceWireMode(newVal || this.cncMode)
-        await this.reloadViewer()
-    }
-
-    get transparency() {
-        return this.$store.state.gui.gcodeViewer.transparency
-    }
-
-    set transparency(newVal) {
-        this.$store.dispatch('gui/saveSetting', { name: 'gcodeViewer.transparency', value: newVal })
-    }
-
-    @Watch('transparency')
-    async transparencyChanged(newVal: boolean) {
-        if (viewer === null) return
-
-        viewer.gcodeProcessor.setAlpha(newVal)
-        await this.reloadViewer()
-    }
-
-    get voxelMode() {
-        return this.$store.state.gui.gcodeViewer.voxelMode
-    }
-
-    set voxelMode(newVal) {
-        this.$store.dispatch('gui/saveSetting', { name: 'gcodeViewer.voxelMode', value: newVal })
-    }
-
-    @Watch('voxelMode')
-    async voxelModeChanged(newVal: boolean) {
-        if (viewer === null) return
-
-        viewer.gcodeProcessor.setVoxelMode(newVal)
-        viewer.gcodeProcessor.voxelWidth = this.voxelWidth
-        viewer.gcodeProcessor.voxelHeight = this.voxelHeight
-        await this.reloadViewer()
-    }
-
-    get voxelWidth() {
-        return this.$store.state.gui.gcodeViewer.voxelWidth ?? 1
-    }
-
-    set voxelWidth(newVal) {
-        this.$store.dispatch('gui/saveSetting', { name: 'gcodeViewer.voxelWidth', value: newVal })
-    }
-
-    get voxelHeight() {
-        return this.$store.state.gui.gcodeViewer.voxelHeight ?? 1
-    }
-
-    set voxelHeight(newVal) {
-        this.$store.dispatch('gui/saveSetting', { name: 'gcodeViewer.voxelHeight', value: newVal })
-    }
-
-    get specularLighting() {
-        return this.$store.state.gui.gcodeViewer.specularLighting
-    }
-
-    set specularLighting(newVal) {
-        this.$store.dispatch('gui/saveSetting', { name: 'gcodeViewer.specularLighting', value: newVal })
-    }
-
-    @Watch('specularLighting')
-    async specularLightingChanged(newVal: boolean) {
-        if (viewer === null) return
-
-        viewer.gcodeProcessor.useSpecularColor(newVal)
-        //await this.reloadViewer()
-    }
-
-    get cncMode() {
-        return this.$store.state.gui.gcodeViewer.cncMode
-    }
-
-    set cncMode(newVal) {
-        this.$store.dispatch('gui/saveSetting', { name: 'gcodeViewer.cncMode', value: newVal })
+const cncMode = computed({
+    get: () => guiStore.gcodeViewer.cncMode,
+    set: (newVal) => {
+        guiStore.saveSetting({ name: 'gcodeViewer.cncMode', value: newVal })
         if (viewer === null) return
 
         viewer.gcodeProcessor.g1AsExtrusion = newVal
-        viewer.gcodeProcessor.updateForceWireMode(this.forceLineRendering || newVal)
-        this.reloadViewer()
-    }
+        viewer.gcodeProcessor.updateForceWireMode(forceLineRendering.value || newVal)
+        reloadViewer()
+    },
+})
 
-    get extruderColors() {
-        return this.$store.state.gui.gcodeViewer?.extruderColors ?? false
-    }
+const extruderColors = computed(() => guiStore.gcodeViewer?.extruderColors ?? false)
 
-    loadToolColors(colors: string[]) {
-        if (!viewer || colors.length === 0) return
+const colorModes = [
+    { text: 'Extruder', value: 0 },
+    { text: 'Feed Rate', value: 1 },
+    { text: 'Feature', value: 2 },
+]
 
-        viewer?.gcodeProcessor.resetTools()
-        colors.forEach((color: string) => {
-            viewer?.gcodeProcessor.addTool(color, this.nozzle_diameter)
-        })
-        this.setReloadRequiredFlag()
-    }
-
-    @Watch('extruderColors')
-    extruderColorsChanged(newVal: string[]) {
-        if (viewer && newVal && newVal.length) {
-            this.loadToolColors(newVal)
-            this.setReloadRequiredFlag()
-        }
-    }
-
-    colorModes = [
-        { text: 'Extruder', value: 0 },
-        { text: 'Feed Rate', value: 1 },
-        { text: 'Feature', value: 2 },
-    ]
-
-    get colorMode(): number {
-        return this.$store.state.gui.gcodeViewer?.colorMode ?? 2
-    }
-
-    set colorMode(newVal: number) {
-        this.$store.dispatch('gui/saveSetting', { name: 'gcodeViewer.colorMode', value: newVal })
+const colorMode = computed({
+    get: (): number => guiStore.gcodeViewer?.colorMode ?? 2,
+    set: (newVal: number) => {
+        guiStore.saveSetting({ name: 'gcodeViewer.colorMode', value: newVal })
 
         if (viewer && viewer.gcodeProcessor.colorMode !== newVal) {
             viewer.gcodeProcessor.setColorMode(newVal)
-            this.reloadViewer()
+            reloadViewer()
         }
+    },
+})
+
+const backgroundColor = computed(() => guiStore.gcodeViewer?.backgroundColor ?? '#121212')
+const gridColor = computed(() => guiStore.gcodeViewer?.gridColor ?? '#B3B3B3')
+const showAxes = computed(() => guiStore.gcodeViewer?.showAxes ?? true)
+const minFeed = computed(() => guiStore.gcodeViewer?.minFeed ?? 20)
+const maxFeed = computed(() => guiStore.gcodeViewer?.maxFeed ?? 100)
+const minFeedColor = computed(() => guiStore.gcodeViewer?.minFeedColor ?? '#0000FF')
+const maxFeedColor = computed(() => guiStore.gcodeViewer?.maxFeedColor ?? '#FF0000')
+const progressColor = computed(() => guiStore.gcodeViewer?.progressColor ?? '#FFFFFF')
+
+const kinematics = computed(
+    () => printerStore.configfile?.settings?.printer?.kinematics ?? guiStore.gcodeViewer?.klipperCache?.kinematics ?? ''
+)
+const bedMaxSize = computed(() => printerStore.toolhead?.axis_maximum ?? guiStore.gcodeViewer?.klipperCache?.axis_maximum ?? null)
+const bedMinSize = computed(() => printerStore.toolhead?.axis_minimum ?? guiStore.gcodeViewer?.klipperCache?.axis_minimum ?? null)
+
+const showScrubber = computed(() => !tracking.value && scrubFileSize.value > 0)
+
+watch(printing_objects, () => refreshPrintingObjects())
+watch(excluded_objects, () => refreshPrintingObjects())
+
+watch(renderQuality, async (newVal) => {
+    if (viewer && viewer.renderQuality !== newVal.value) {
+        viewer.updateRenderQuality(newVal.value)
+        await reloadViewer()
+    }
+})
+
+watch(currentPosition, (newVal) => {
+    if (!viewer || !tracking.value || scrubPlaying.value) return
+
+    const position = [
+        { axes: 'X', position: newVal[0] },
+        { axes: 'Y', position: newVal[1] },
+        { axes: 'Z', position: newVal[2] },
+    ]
+
+    viewer.updateToolPosition(position)
+})
+
+watch(filePosition, (newVal) => {
+    if (!viewer || !tracking.value || scrubPlaying.value) return
+
+    const offset = 350
+    if (newVal > 0 && printerIsPrinting.value && tracking.value && newVal > offset) {
+        viewer.gcodeProcessor.updateFilePosition(newVal - offset)
+        scrubPosition.value = newVal - offset
+        return
     }
 
-    get backgroundColor() {
-        return this.$store.state.gui.gcodeViewer?.backgroundColor ?? '#121212'
+    viewer.gcodeProcessor.updateFilePosition(viewer.fileSize)
+})
+
+watch(tracking, async (newVal) => {
+    if (viewer === null) return
+
+    if (newVal) {
+        scrubPlaying.value = false
+        //Force renderers reload.
+        viewer.gcodeProcessor.updateFilePosition(0)
+        viewer?.forceRender()
+        return
     }
 
-    @Watch('backgroundColor')
-    backgroundColorChanged(newVal: string) {
-        if (viewer === null) return
+    viewer.gcodeProcessor.setLiveTracking(false)
+    await reloadViewer()
+})
 
-        viewer.setBackgroundColor(newVal)
+watch(printerIsPrinting, () => {
+    tracking.value = false
+})
+
+watch(showCursor, (newVal) => viewer?.setCursorVisiblity(newVal))
+watch(showTravelMoves, (newVal) => viewer?.toggleTravels(newVal))
+watch(showObjectSelection, (newVal) => viewer?.buildObjects.showObjectSelection(newVal))
+
+watch(hdRendering, async (newVal) => {
+    if (viewer === null) return
+
+    viewer.gcodeProcessor.useHighQualityExtrusion(newVal)
+    await reloadViewer()
+})
+
+watch(forceLineRendering, async (newVal) => {
+    if (viewer === null) return
+
+    viewer.gcodeProcessor.updateForceWireMode(newVal || cncMode.value)
+    await reloadViewer()
+})
+
+watch(transparency, async (newVal) => {
+    if (viewer === null) return
+
+    viewer.gcodeProcessor.setAlpha(newVal)
+    await reloadViewer()
+})
+
+watch(voxelMode, async (newVal) => {
+    if (viewer === null) return
+
+    viewer.gcodeProcessor.setVoxelMode(newVal)
+    viewer.gcodeProcessor.voxelWidth = voxelWidth.value
+    viewer.gcodeProcessor.voxelHeight = voxelHeight.value
+    await reloadViewer()
+})
+
+watch(specularLighting, (newVal) => {
+    if (viewer === null) return
+
+    viewer.gcodeProcessor.useSpecularColor(newVal)
+    //await reloadViewer()
+})
+
+watch(extruderColors, (newVal: string[]) => {
+    if (viewer && newVal && newVal.length) {
+        loadToolColors(newVal)
+        setReloadRequiredFlag()
     }
+})
 
-    get gridColor() {
-        return this.$store.state.gui.gcodeViewer?.gridColor ?? '#B3B3B3'
-    }
+watch(backgroundColor, (newVal) => {
+    if (viewer === null) return
 
-    @Watch('gridColor')
-    gridColorChanged(newVal: string) {
-        if (viewer === null) return
-        viewer.bed.setBedColor(newVal)
-    }
+    viewer.setBackgroundColor(newVal)
+})
 
-    get showAxes() {
-        return this.$store.state.gui.gcodeViewer?.showAxes ?? true
-    }
+watch(gridColor, (newVal) => {
+    if (viewer === null) return
+    viewer.bed.setBedColor(newVal)
+})
 
-    @Watch('showAxes')
-    showAxesChanged(newVal: boolean) {
-        if (viewer === null) return
+watch(showAxes, (newVal) => {
+    if (viewer === null) return
 
-        viewer.axes.show(newVal)
-    }
+    viewer.axes.show(newVal)
+})
 
-    get minFeed() {
-        return this.$store.state.gui.gcodeViewer?.minFeed ?? 20
-    }
+watch(minFeed, (newVal) => {
+    if (viewer === null) return
 
-    @Watch('minFeed')
-    minFeedChanged(newVal: number) {
-        if (viewer === null) return
+    viewer.gcodeProcessor.updateColorRate(newVal * 60, maxFeed.value * 60)
+})
 
-        viewer.gcodeProcessor.updateColorRate(newVal * 60, this.maxFeed * 60)
-    }
+watch(maxFeed, (newVal) => {
+    if (viewer === null) return
 
-    get maxFeed() {
-        return this.$store.state.gui.gcodeViewer?.maxFeed ?? 100
-    }
+    viewer.gcodeProcessor.updateColorRate(minFeed.value * 60, newVal * 60)
+})
 
-    @Watch('maxFeed')
-    maxFeedChanged(newVal: number) {
-        if (viewer === null) return
+watch(minFeedColor, (newVal) => {
+    if (viewer === null) return
 
-        viewer.gcodeProcessor.updateColorRate(this.minFeed * 60, newVal * 60)
-    }
+    viewer.gcodeProcessor.updateMinFeedColor(newVal)
+    setReloadRequiredFlag()
+})
 
-    get minFeedColor() {
-        return this.$store.state.gui.gcodeViewer?.minFeedColor ?? '#0000FF'
-    }
+watch(maxFeedColor, (newVal) => {
+    if (viewer === null) return
 
-    @Watch('minFeedColor')
-    minFeedColorUpdated(newVal: string) {
-        if (viewer === null) return
+    viewer.gcodeProcessor.updateMaxFeedColor(newVal)
+    setReloadRequiredFlag()
+})
 
-        viewer.gcodeProcessor.updateMinFeedColor(newVal)
-        this.setReloadRequiredFlag()
-    }
-
-    get maxFeedColor() {
-        return this.$store.state.gui.gcodeViewer?.maxFeedColor ?? '#FF0000'
-    }
-
-    @Watch('maxFeedColor')
-    maxFeedColorUpdated(newVal: string) {
-        if (viewer === null) return
-
-        viewer.gcodeProcessor.updateMaxFeedColor(newVal)
-        this.setReloadRequiredFlag()
-    }
-
-    get kinematics() {
-        return (
-            this.$store.state.printer.configfile?.settings?.printer?.kinematics ??
-            this.$store.state.gui?.gcodeViewer?.klipperCache?.kinematics ??
-            ''
-        )
-    }
-
-    get bedMaxSize() {
-        return (
-            this.$store.state.printer.toolhead?.axis_maximum ??
-            this.$store.state.gui?.gcodeViewer?.klipperCache?.axis_maximum ??
-            null
-        )
-    }
-
-    get bedMinSize() {
-        return (
-            this.$store.state.printer.toolhead?.axis_minimum ??
-            this.$store.state.gui?.gcodeViewer?.klipperCache?.axis_minimum ??
-            null
-        )
-    }
-
-    @Watch('kinematics', { immediate: true })
-    kinematicsChanged(newVal: string) {
+watch(
+    kinematics,
+    (newVal) => {
         if (viewer === null || !newVal) return
 
         viewer.bed.setDelta(newVal.includes('delta'))
-    }
+    },
+    { immediate: true }
+)
 
-    @Watch('bedMinSize', { deep: true, immediate: true })
-    bedMinSizeChanged(newVal: number[] | null) {
+watch(
+    bedMinSize,
+    (newVal) => {
         if (newVal === null || viewer === null || viewer.bed === null) return
 
         viewer.bed.buildVolume.x.min = newVal[0]
         viewer.bed.buildVolume.y.min = newVal[1]
         viewer.bed.buildVolume.z.min = newVal[2]
-    }
+    },
+    { deep: true, immediate: true }
+)
 
-    @Watch('bedMaxSize', { deep: true, immediate: true })
-    bedMaxSizeChanged(newVal: number[] | null) {
+watch(
+    bedMaxSize,
+    (newVal) => {
         if (newVal === null || viewer === null || viewer.bed === null) return
 
         viewer.bed.buildVolume.x.max = newVal[0]
         viewer.bed.buildVolume.y.max = newVal[1]
         viewer.bed.buildVolume.z.max = newVal[2]
+    },
+    { deep: true, immediate: true }
+)
+
+watch(progressColor, (newVal) => viewer?.setProgressColor(newVal))
+
+watch(scrubPlaying, (to) => {
+    if (!to) {
+        if (scrubInterval) clearInterval(scrubInterval)
+        scrubPlaying.value = false
+        scrubInterval = undefined
+        return
     }
 
-    get progressColor() {
-        return this.$store.state.gui.gcodeViewer?.progressColor ?? '#FFFFFF'
+    if (viewer === null) {
+        scrubPlaying.value = false
+        return
     }
 
-    @Watch('progressColor')
-    progressColorChanged(newVal: string) {
-        viewer?.setProgressColor(newVal)
+    if (scrubInterval) {
+        clearInterval(scrubInterval)
+        scrubInterval = undefined
     }
 
-    @Watch('scrubPlaying')
-    scrubPlayingChanged(to: boolean): void {
-        if (!to) {
-            if (this.scrubInterval) clearInterval(this.scrubInterval)
-            this.scrubPlaying = false
-            this.scrubInterval = undefined
-            return
+    scrubPlaying.value = true
+    if (scrubPosition.value >= scrubFileSize.value) {
+        scrubPosition.value = 0
+    }
+
+    viewer?.gcodeProcessor.updateFilePosition(scrubPosition.value - 30000)
+    scrubInterval = setInterval(() => {
+        scrubPosition.value += 100 * scrubSpeed.value
+        viewer?.gcodeProcessor.updateFilePosition(scrubPosition.value)
+        viewer?.simulateToolPosition()
+        if (tracking.value || scrubPosition.value >= scrubFileSize.value) {
+            scrubPlaying.value = false
         }
+    }, 200)
+})
 
-        if (viewer === null) {
-            this.scrubPlaying = false
-            return
-        }
-
-        if (this.scrubInterval) {
-            clearInterval(this.scrubInterval)
-            this.scrubInterval = undefined
-        }
-
-        this.scrubPlaying = true
-        if (this.scrubPosition >= this.scrubFileSize) {
-            this.scrubPosition = 0
-        }
-
-        viewer?.gcodeProcessor.updateFilePosition(this.scrubPosition - 30000)
-        this.scrubInterval = setInterval(() => {
-            this.scrubPosition += 100 * this.scrubSpeed
-            viewer?.gcodeProcessor.updateFilePosition(this.scrubPosition)
-            viewer?.simulateToolPosition()
-            if (this.tracking || this.scrubPosition >= this.scrubFileSize) {
-                this.scrubPlaying = false
-            }
-        }, 200)
-    }
-
-    get showScrubber() {
-        return !this.tracking && this.scrubFileSize > 0
-    }
-
-    @Debounce(200)
-    @Watch('scrubPosition')
-    updateScrubPosition(to: number): void {
-        if (viewer === null || this.tracking) return
+let scrubPositionDebounceTimer: ReturnType<typeof setTimeout> | undefined
+watch(scrubPosition, (to) => {
+    if (scrubPositionDebounceTimer) clearTimeout(scrubPositionDebounceTimer)
+    scrubPositionDebounceTimer = setTimeout(() => {
+        if (viewer === null || tracking.value) return
 
         viewer.gcodeProcessor.updateFilePosition(to)
         viewer.simulateToolPosition()
+    }, 200)
+})
+
+onMounted(async () => {
+    loadedFile.value = gcodeviewerStore.loadedFileBackup ?? null
+    viewer = gcodeviewerStore.viewerBackup ?? null
+    await init()
+
+    if (loadedFile.value !== null && viewer) scrubFileSize.value = viewer.fileSize
+    if (viewer) fileData.value = viewer.fileData
+
+    resizeObserver = new ResizeObserver(() => debouncedHandleResize())
+    if (viewerCanvasContainer.value) resizeObserver.observe(viewerCanvasContainer.value)
+})
+
+onBeforeUnmount(() => {
+    if (viewer) {
+        viewer.gcodeProcessor.loadingProgressCallback = null
+        gcodeviewerStore.setLoadedFileBackup(loadedFile.value)
+        gcodeviewerStore.setViewerBackup(viewer)
     }
 
-    fastForward(): void {
-        if (viewer === null) return
-
-        this.scrubPosition = this.scrubFileSize
-        viewer.gcodeProcessor.updateFilePosition(this.scrubPosition)
+    scrubPlaying.value = false
+    if (scrubInterval) {
+        clearInterval(scrubInterval)
+        scrubInterval = undefined
     }
 
-    objectCallback(metadata: ViewerObjectMetadata | null) {
-        if (metadata?.cancelled === false) {
-            this.excludeObject.name = metadata.name ?? 'UNKNOWN'
-            this.excludeObject.bool = true
-        }
-    }
-
-    cancelObject() {
-        this.$socket.emit('printer.gcode.script', { script: 'EXCLUDE_OBJECT NAME=' + this.excludeObject.name })
-    }
-}
+    resizeObserver?.disconnect()
+})
 </script>
 
 <!-- Because the viewer lives outside of the components DOM it can't be scoped -->

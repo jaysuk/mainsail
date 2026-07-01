@@ -13,6 +13,7 @@
 </template>
 
 <script setup lang="ts">
+/// <reference types="vite-plugin-pwa/client" />
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Panel from '@/components/ui/Panel.vue'

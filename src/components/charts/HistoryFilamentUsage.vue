@@ -5,7 +5,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { ECBasicOption, TopLevelFormatterParams } from 'echarts/types/dist/shared.d'
+import type { ECBasicOption, TopLevelFormatterParams } from 'echarts/types/dist/shared'
 import type { EChartRef } from '@/types/echarts'
 import type { ServerHistoryStateJob } from '@/store/server/history/types'
 import { useBase } from '@/composables/useBase'

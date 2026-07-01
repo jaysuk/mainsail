@@ -12,7 +12,7 @@ import { VisualMapComponent } from 'echarts/components'
 
 import { Grid3DComponent } from 'echarts-gl/components'
 import { SurfaceChart } from 'echarts-gl/charts'
-import type { CallbackDataParams } from 'echarts/types/dist/shared.d'
+import type { CallbackDataParams } from 'echarts/types/dist/shared'
 import type { EChartRef } from '@/types/echarts'
 import { useBase } from '@/composables/useBase'
 import { useBedmesh } from '@/composables/useBedmesh'

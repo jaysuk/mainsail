@@ -2,76 +2,89 @@
     <div ref="view" class="codeview" @mouseup="mouseUp" @keydown="keyPress"></div>
 </template>
 
-<script lang="ts">
-import { Component, PropSync, Prop, Vue, Watch } from 'vue-property-decorator'
+<script setup lang="ts">
+import { ref, watch, onMounted } from 'vue'
 import { EditorView, basicSetup } from 'codemirror'
 import { EditorState } from '@codemirror/state'
 
-@Component({})
-export default class CodeStream extends Vue {
-    @PropSync('currentline') currentLineNumber!: number
-    @Prop({ type: String, default: '' }) declare document: string
-    @Prop({ type: Boolean, default: false }) declare isSimulating: boolean
-    @Prop({ type: Boolean, default: false }) declare shown: boolean
-
-    view: EditorView | undefined = undefined
-
-    private mounted() {
-        this.view = new EditorView({
-            doc: this.document,
-            extensions: [basicSetup, EditorState.readOnly.of(true)],
-            parent: this.$refs['view'] as HTMLElement,
-        })
+const props = withDefaults(
+    defineProps<{
+        document?: string
+        isSimulating?: boolean
+        shown?: boolean
+    }>(),
+    {
+        document: '',
+        isSimulating: false,
+        shown: false,
     }
+)
 
-    mouseUp() {
-        if (this.view) {
-            const line = this.view.state.doc.lineAt(this.view.state.selection.ranges[0].from)
-            this.$emit('update:currentline', line.to)
-            this.view.contentDOM.blur()
-            this.$emit('got-focus')
-        }
-    }
+const emit = defineEmits<{
+    'got-focus': []
+}>()
 
-    keyPress() {
-        if (this.view) {
-            const line = this.view.state.doc.lineAt(this.view.state.selection.ranges[0].from)
-            this.$emit('update:currentline', line.to)
-            this.$emit('got-focus')
-        }
-    }
+const currentLineNumber = defineModel<number>('currentline', { required: true })
 
-    @Watch('document')
-    documentUpdated() {
-        if (this.view && this.shown) {
-            this.view.dispatch({
-                changes: {
-                    from: 0,
-                    to: this.view.state.doc.length,
-                    insert: this.document,
-                },
-            })
-        }
-    }
+const view = ref<HTMLElement | null>(null)
+let editorView: EditorView | undefined = undefined
 
-    @Watch('currentLineNumber')
-    currentlineUpdated(to: number) {
-        if (this.view && this.shown) {
-            const line = this.view.state.doc.lineAt(to)
-            this.view.dispatch({
-                selection: {
-                    anchor: line.from,
-                    head: line.from,
-                },
-                scrollIntoView: true,
-            })
-        }
+onMounted(() => {
+    editorView = new EditorView({
+        doc: props.document,
+        extensions: [basicSetup, EditorState.readOnly.of(true)],
+        parent: view.value as HTMLElement,
+    })
+})
+
+function mouseUp() {
+    if (editorView) {
+        const line = editorView.state.doc.lineAt(editorView.state.selection.ranges[0].from)
+        currentLineNumber.value = line.to
+        editorView.contentDOM.blur()
+        emit('got-focus')
     }
 }
+
+function keyPress() {
+    if (editorView) {
+        const line = editorView.state.doc.lineAt(editorView.state.selection.ranges[0].from)
+        currentLineNumber.value = line.to
+        emit('got-focus')
+    }
+}
+
+watch(
+    () => props.document,
+    () => {
+        if (editorView && props.shown) {
+            editorView.dispatch({
+                changes: {
+                    from: 0,
+                    to: editorView.state.doc.length,
+                    insert: props.document,
+                },
+            })
+        }
+    }
+)
+
+watch(currentLineNumber, (to) => {
+    if (editorView && props.shown) {
+        const line = editorView.state.doc.lineAt(to)
+        editorView.dispatch({
+            selection: {
+                anchor: line.from,
+                head: line.from,
+            },
+            scrollIntoView: true,
+        })
+    }
+})
 </script>
 
 <style scoped>
-/deep/ .cm-activeLine {
+:deep(.cm-activeLine) {
     background-color: #333 !important;
 }
 

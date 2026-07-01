@@ -4,7 +4,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import type { ECBasicOption } from 'echarts/types/dist/shared.d'
+import type { ECBasicOption } from 'echarts/types/dist/shared'
 import type { EChartRef } from '@/types/echarts'
 import { formatPrintTime } from '@/plugins/helpers'
 import type { HistoryStatsValueNames, ServerHistoryStateAllPrintStatusEntry } from '@/store/server/history/types'

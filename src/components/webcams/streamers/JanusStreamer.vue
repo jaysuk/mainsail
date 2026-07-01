@@ -13,7 +13,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { JanusJs, JanusSession, JanusStreamingPlugin } from 'typed_janus_js'
-import type { ConstructorOptions } from 'typed_janus_js/dist/interfaces/janus'
+import type { ConstructorOptions, MessageCallback, JSEP } from 'typed_janus_js/dist/interfaces/janus'
 import type { GuiWebcamStateWebcam } from '@/store/gui/webcams/types'
 import { useBase } from '@/composables/useBase'
 import { useWebcam } from '@/composables/useWebcam'
@@ -85,7 +85,7 @@ async function startStream() {
     await janusClient.init({ debug: false })
     session = await janusClient.createSession()
     handle = await session.attach<JanusStreamingPlugin>(JanusStreamingPlugin, {})
-    handle?.onMessage.subscribe(async ({ message, jsep }) => {
+    handle?.onMessage.subscribe(async ({ message, jsep }: { message: MessageCallback | any; jsep: JSEP }) => {
         if (message?.result?.status) {
             status.value = message.result.status
         }
@@ -96,14 +96,14 @@ async function startStream() {
     })
     const remoteStream = new MediaStream()
     JanusJs.attachMediaStream(stream.value as HTMLMediaElement, remoteStream)
-    handle?.onRemoteTrack.subscribe(({ on, track }) => {
+    handle?.onRemoteTrack.subscribe(({ on, track }: { track: MediaStreamTrack; on: boolean; mid: string }) => {
         if (on) remoteStream.addTrack(track)
         else remoteStream.removeTrack(track)
     })
-    handle.onIceState.subscribe((value) => {
+    handle.onIceState.subscribe((value: 'connected' | 'failed' | 'disconnected' | 'closed') => {
         console.log(`ICE state changed to ${value}`)
     })
-    handle.onError.subscribe((value) => {
+    handle.onError.subscribe((value: unknown) => {
         status.value = `errored: ${JSON.stringify(value)}`
     })
     await handle.send({ message: { request: 'watch', id: parseInt(streamId.value!) } })

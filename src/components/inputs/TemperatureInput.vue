@@ -53,6 +53,7 @@ import { useI18n } from 'vue-i18n'
 import { useToast } from 'vue-toast-notification'
 import { mdiSnowflake, mdiFire, mdiMenuDown } from '@mdi/js'
 import { useControl } from '@/composables/useControl'
+import { useBase } from '@/composables/useBase'
 
 const props = withDefaults(
     defineProps<{
@@ -72,7 +73,8 @@ const props = withDefaults(
 )
 
 const { t } = useI18n()
-const { printer_state, doSend } = useControl()
+const { doSend } = useControl()
+const { printer_state } = useBase()
 
 const value = ref<number | string>(0)
 
