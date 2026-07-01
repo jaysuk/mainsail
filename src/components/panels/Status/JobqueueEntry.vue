@@ -1,8 +1,5 @@
 <template>
-    <v-row
-        v-longpress:600="openContextMenu"
-        class="jobqueue-list-entry d-flex flex-row flex-nowrap cursor-pointer"
-        @contextmenu="openContextMenu($event)">
+    <v-row v-longpress:600="openContextMenu" class="jobqueue-list-entry d-flex flex-row flex-nowrap cursor-pointer" @contextmenu="openContextMenu($event)">
         <v-col v-if="showHandle" class="col-auto d-flex flex-column justify-center pr-0 py-0">
             <v-icon class="handle">{{ mdiDragVertical }}</v-icon>
         </v-col>
@@ -16,26 +13,24 @@
             </div>
             <small v-if="description" class="text-truncate">{{ description }}</small>
         </v-col>
-        <v-col
-            v-if="showPrintButton && !printerIsPrinting"
-            class="col-auto d-flex flex-column justify-center pa-0 pr-1">
-            <v-btn icon color="success" class="minwidth-0" @click="startJobqueue">
+        <v-col v-if="showPrintButton && !printerIsPrinting" class="col-auto d-flex flex-column justify-center pa-0 pr-1">
+            <v-btn icon="" color="success" class="minwidth-0" variant="text" @click="startJobqueue">
                 <v-icon>{{ mdiPlay }}</v-icon>
             </v-btn>
         </v-col>
-        <v-menu v-model="showContextMenu" :position-x="contextMenuX" :position-y="contextMenuY" absolute offset-y>
+        <v-menu v-model="showContextMenu" :target="[contextMenuX, contextMenuY]">
             <v-list>
                 <v-list-item @click="printJob">
                     <v-icon class="mr-1">{{ mdiPlay }}</v-icon>
-                    {{ $t('JobQueue.StartPrint') }}
+                    {{ t('JobQueue.StartPrint') }}
                 </v-list-item>
                 <v-list-item @click="showChangeCountDialog = true">
                     <v-icon class="mr-1">{{ mdiCounter }}</v-icon>
-                    {{ $t('JobQueue.ChangeCount') }}
+                    {{ t('JobQueue.ChangeCount') }}
                 </v-list-item>
                 <v-list-item @click="removeFromJobqueue">
                     <v-icon class="mr-1">{{ mdiPlaylistRemove }}</v-icon>
-                    {{ $t('JobQueue.RemoveFromQueue') }}
+                    {{ t('JobQueue.RemoveFromQueue') }}
                 </v-list-item>
             </v-list>
         </v-menu>
@@ -43,133 +38,133 @@
     </v-row>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
+<script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { LongpressEvent } from '@/directives/longpress'
-import BaseMixin from '@/components/mixins/base'
-import { ServerJobQueueStateJob } from '@/store/server/jobQueue/types'
+import type { ServerJobQueueStateJob } from '@/store/server/jobQueue/types'
 import { mdiCloseThick, mdiCounter, mdiDragVertical, mdiPlay, mdiPlaylistRemove } from '@mdi/js'
 import GcodefilesThumbnail from '@/components/panels/Gcodefiles/GcodefilesThumbnail.vue'
+import JobqueueEntryChangeCountDialog from '@/components/dialogs/JobqueueEntryChangeCountDialog.vue'
 import { CLOSE_CONTEXT_MENU, EventBus } from '@/plugins/eventBus'
+import { useBase } from '@/composables/useBase'
+import { useServerJobQueueStore } from '@/store/server/jobQueue'
 
-@Component({
-    components: { GcodefilesThumbnail },
+const props = withDefaults(
+    defineProps<{
+        job: ServerJobQueueStateJob
+        showPrintButton?: boolean
+        showHandle?: boolean
+    }>(),
+    {
+        showPrintButton: false,
+        showHandle: false,
+    }
+)
+
+const { t } = useI18n()
+const { printerIsPrinting } = useBase()
+const jobQueueStore = useServerJobQueueStore()
+
+const showContextMenu = ref(false)
+const contextMenuX = ref(0)
+const contextMenuY = ref(0)
+
+const showChangeCountDialog = ref(false)
+
+const filamentLength = computed(() => {
+    const length = props.job.metadata?.filament_total ?? 0
+    if (length === 0) return null
+
+    if (length >= 1000) return (length / 1000).toFixed(1) + ' m'
+
+    return length.toFixed(0) + ' mm'
 })
-export default class StatusPanelJobqueueEntry extends Mixins(BaseMixin) {
-    mdiCloseThick = mdiCloseThick
-    mdiCounter = mdiCounter
-    mdiDragVertical = mdiDragVertical
-    mdiPlay = mdiPlay
-    mdiPlaylistRemove = mdiPlaylistRemove
 
-    @Prop({ type: Object, required: true }) job!: ServerJobQueueStateJob
-    @Prop({ type: Boolean, default: false }) showPrintButton!: boolean
-    @Prop({ type: Boolean, default: false }) showHandle!: boolean
+const filamentWeight = computed(() => {
+    const weight = props.job.metadata?.filament_weight_total ?? 0
+    if (weight === 0) return null
 
-    showContextMenu = false
-    contextMenuX = 0
-    contextMenuY = 0
+    if (weight >= 1000) return (weight / 1000).toFixed(1) + ' kg'
 
-    showChangeCountDialog = false
+    return weight.toFixed(0) + ' g'
+})
 
-    get description() {
-        if (!this.job?.metadata?.metadataPulled) return false
+const estimatedTime = computed(() => {
+    let totalSeconds = props.job.metadata?.estimated_time ?? 0
+    if (totalSeconds == 0) return '--'
 
-        const filamentArray = []
-        let filament = '--'
-        if (this.filamentLength) filamentArray.push(this.filamentLength)
-        if (this.filamentWeight) filamentArray.push(this.filamentWeight)
-        if (filamentArray.length) filament = filamentArray.join(' / ')
+    const output = []
 
-        let time = '--'
-        if (this.estimatedTime) time = this.estimatedTime
-
-        return `${this.$t('Panels.StatusPanel.Filament')}: ${filament}, ${this.$t(
-            'Panels.StatusPanel.PrintTime'
-        )}: ${time}`
+    const days = Math.floor(totalSeconds / (3600 * 24))
+    if (days) {
+        totalSeconds %= 3600 * 24
+        output.push(days + 'd')
     }
 
-    get filamentLength() {
-        const length = this.job.metadata?.filament_total ?? 0
-        if (length === 0) return null
+    const hours = Math.floor(totalSeconds / 3600)
+    totalSeconds %= 3600
+    if (hours) output.push(hours + 'h')
 
-        if (length >= 1000) return (length / 1000).toFixed(1) + ' m'
+    const minutes = Math.floor(totalSeconds / 60)
+    if (minutes) output.push(minutes + 'm')
 
-        return length.toFixed(0) + ' mm'
-    }
+    if (hours > 0) return output.join(' ')
 
-    get filamentWeight() {
-        const weight = this.job.metadata?.filament_weight_total ?? 0
-        if (weight === 0) return null
+    const seconds = totalSeconds % 60
+    if (seconds) output.push(seconds.toFixed(0) + 's')
 
-        if (weight >= 1000) return (length / 1000).toFixed(1) + ' kg'
+    return output.join(' ')
+})
 
-        return weight.toFixed(0) + ' g'
-    }
+const description = computed(() => {
+    if (!props.job?.metadata?.metadataPulled) return false
 
-    get estimatedTime() {
-        let totalSeconds = this.job.metadata?.estimated_time ?? 0
-        if (totalSeconds == 0) return '--'
+    const filamentArray = []
+    let filament = '--'
+    if (filamentLength.value) filamentArray.push(filamentLength.value)
+    if (filamentWeight.value) filamentArray.push(filamentWeight.value)
+    if (filamentArray.length) filament = filamentArray.join(' / ')
 
-        const output = []
+    let time = '--'
+    if (estimatedTime.value) time = estimatedTime.value
 
-        const days = Math.floor(totalSeconds / (3600 * 24))
-        if (days) {
-            totalSeconds %= 3600 * 24
-            output.push(days + 'd')
-        }
+    return `${t('Panels.StatusPanel.Filament')}: ${filament}, ${t('Panels.StatusPanel.PrintTime')}: ${time}`
+})
 
-        const hours = Math.floor(totalSeconds / 3600)
-        totalSeconds %= 3600
-        if (hours) output.push(hours + 'h')
+function openContextMenu(e: MouseEvent | LongpressEvent) {
+    e?.preventDefault()
+    EventBus.$emit(CLOSE_CONTEXT_MENU)
 
-        const minutes = Math.floor(totalSeconds / 60)
-        if (minutes) output.push(minutes + 'm')
+    contextMenuX.value = e?.clientX || e?.pageX || window.screenX / 2
+    contextMenuY.value = e?.clientY || e?.pageY || window.screenY / 2
 
-        // skip seconds if there are hours
-        if (hours > 0) return output.join(' ')
-
-        const seconds = totalSeconds % 60
-        if (seconds) output.push(seconds.toFixed(0) + 's')
-
-        return output.join(' ')
-    }
-
-    openContextMenu(e: MouseEvent | LongpressEvent) {
-        e?.preventDefault()
-        EventBus.$emit(CLOSE_CONTEXT_MENU)
-
-        this.contextMenuX = e?.clientX || e?.pageX || window.screenX / 2
-        this.contextMenuY = e?.clientY || e?.pageY || window.screenY / 2
-
-        this.showContextMenu = true
-    }
-
-    closeContextMenu() {
-        this.showContextMenu = false
-    }
-
-    printJob() {
-        this.$store.dispatch('server/jobQueue/startByJobId', this.job.job_id)
-    }
-
-    startJobqueue() {
-        this.$store.dispatch('server/jobQueue/start')
-    }
-
-    removeFromJobqueue() {
-        const ids = [...(this.job.combinedIds ?? []), this.job.job_id]
-
-        this.$store.dispatch('server/jobQueue/deleteFromQueue', ids)
-    }
-
-    mounted() {
-        EventBus.$on(CLOSE_CONTEXT_MENU, this.closeContextMenu)
-    }
-
-    beforeDestroy() {
-        EventBus.$off(CLOSE_CONTEXT_MENU, this.closeContextMenu)
-    }
+    showContextMenu.value = true
 }
+
+function closeContextMenu() {
+    showContextMenu.value = false
+}
+
+function printJob() {
+    jobQueueStore.startByJobId(props.job.job_id)
+}
+
+function startJobqueue() {
+    jobQueueStore.start()
+}
+
+function removeFromJobqueue() {
+    const ids = [...(props.job.combinedIds ?? []), props.job.job_id]
+
+    jobQueueStore.deleteFromQueue(ids)
+}
+
+onMounted(() => {
+    EventBus.$on(CLOSE_CONTEXT_MENU, closeContextMenu)
+})
+
+onBeforeUnmount(() => {
+    EventBus.$off(CLOSE_CONTEXT_MENU, closeContextMenu)
+})
 </script>

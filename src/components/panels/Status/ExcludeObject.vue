@@ -1,21 +1,15 @@
-<style scoped></style>
-
 <template>
     <div v-if="['printing', 'paused'].includes(printer_state) && printing_objects.length">
         <v-container class="py-0">
             <div class="d-flex flex-row flex-nowrap justify-space-between">
                 <div class="py-2" style="width: calc(100% - 25px)">
-                    <span class="subtitle-2 d-block px-0 text--disabled text-truncate">
-                        <v-icon class="mr-2" small>{{ mdiPrinter3dNozzle }}</v-icon>
+                    <span class="subtitle-2 d-block px-0 text-disabled text-truncate">
+                        <v-icon class="mr-2" size="small">{{ mdiPrinter3dNozzle }}</v-icon>
                         {{ current_object !== null ? current_object : '--' }}
                     </span>
                 </div>
                 <div class="py-2 pl-0">
-                    <v-icon
-                        v-if="current_object !== null"
-                        class="text--disabled cursor-pointer"
-                        small
-                        @click="openCancelObjectDialog(current_object)">
+                    <v-icon v-if="current_object !== null" class="text-disabled cursor-pointer" size="small" @click="openCancelObjectDialog(current_object)">
                         {{ mdiSelectionRemove }}
                     </v-icon>
                 </div>
@@ -24,74 +18,68 @@
         <v-divider class="mt-0 mb-0" />
         <confirmation-dialog
             v-model="boolShowExcludeObjectDialog"
-            :title="$t('Panels.StatusPanel.ExcludeObject.ExcludeObjectHeadline')"
-            :text="$t('Panels.StatusPanel.ExcludeObject.ExcludeObjectText', { name: excludeObjectDialogName })"
-            :action-button-text="$t('Panels.StatusPanel.ExcludeObject.ExcludeObject')"
+            :title="t('Panels.StatusPanel.ExcludeObject.ExcludeObjectHeadline')"
+            :text="t('Panels.StatusPanel.ExcludeObject.ExcludeObjectText', { name: excludeObjectDialogName })"
+            :action-button-text="t('Panels.StatusPanel.ExcludeObject.ExcludeObject')"
             action-button-color="primary"
             @action="cancelObject" />
         <status-panel-exclude-object-dialog
-            :show-dialog.sync="showDialogPass"
-            :exclude-object-dialog-name.sync="excludeObjectDialogName"
-            :exclude-object-dialog-bool.sync="boolShowExcludeObjectDialog"
+            v-model:show-dialog="showDialogPass"
+            :exclude-object-dialog-name="excludeObjectDialogName"
+            :exclude-object-dialog-bool="boolShowExcludeObjectDialog"
             @update:name="updateExcludeObjectDialogName"
             @update:bool="updateExcludeObjectDialogBool" />
     </div>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import StatusPanelExcludeObjectDialog from '@/components/panels/Status/ExcludeObjectDialog.vue'
 import { mdiPrinter3dNozzle, mdiSelectionRemove } from '@mdi/js'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
-@Component({
-    components: { ConfirmationDialog, StatusPanelExcludeObjectDialog },
+import { useBase } from '@/composables/useBase'
+import { usePrinterStore } from '@/store/printer'
+import { webSocketClient } from '@/plugins/webSocketClient'
+
+const props = defineProps<{
+    showDialog: boolean
+}>()
+
+const emit = defineEmits<{
+    'update:showDialog': [value: boolean]
+}>()
+
+const { t } = useI18n()
+const { printer_state } = useBase()
+const printerStore = usePrinterStore()
+
+const boolShowExcludeObjectDialog = ref(false)
+const excludeObjectDialogName = ref('')
+
+const showDialogPass = computed<boolean>({
+    get: () => props.showDialog,
+    set: (newVal) => emit('update:showDialog', newVal),
 })
-export default class StatusPanelExcludeObject extends Mixins(BaseMixin) {
-    mdiPrinter3dNozzle = mdiPrinter3dNozzle
-    mdiSelectionRemove = mdiSelectionRemove
 
-    boolShowExcludeObjectDialog = false
-    excludeObjectDialogName = ''
+const printing_objects = computed<{ name: string }[]>(() => printerStore.exclude_object?.objects ?? [])
 
-    @Prop({ required: true }) declare readonly showDialog: boolean
+const current_object = computed<string | null>(() => printerStore.exclude_object?.current_object ?? null)
 
-    get showDialogPass() {
-        return this.showDialog
-    }
+function updateExcludeObjectDialogName(newVal: string) {
+    excludeObjectDialogName.value = newVal
+}
 
-    set showDialogPass(newVal) {
-        this.$emit('update:showDialog', newVal)
-    }
+function updateExcludeObjectDialogBool(newVal: boolean) {
+    boolShowExcludeObjectDialog.value = newVal
+}
 
-    get printing_objects() {
-        return this.$store.state.printer.exclude_object?.objects ?? []
-    }
+function openCancelObjectDialog(objectName: string) {
+    excludeObjectDialogName.value = objectName
+    boolShowExcludeObjectDialog.value = true
+}
 
-    get current_object() {
-        return this.$store.state.printer.exclude_object?.current_object ?? null
-    }
-
-    get excluded_objects() {
-        return this.$store.state.printer.exclude_object?.excluded_objects ?? []
-    }
-
-    updateExcludeObjectDialogName(newVal: string) {
-        this.excludeObjectDialogName = newVal
-    }
-
-    updateExcludeObjectDialogBool(newVal: boolean) {
-        this.boolShowExcludeObjectDialog = newVal
-    }
-
-    openCancelObjectDialog(objectName: string) {
-        this.excludeObjectDialogName = objectName
-        this.boolShowExcludeObjectDialog = true
-    }
-
-    cancelObject() {
-        this.$socket.emit('printer.gcode.script', { script: 'EXCLUDE_OBJECT NAME=' + this.excludeObjectDialogName })
-    }
+function cancelObject() {
+    webSocketClient.emit('printer.gcode.script', { script: 'EXCLUDE_OBJECT NAME=' + excludeObjectDialogName.value })
 }
 </script>

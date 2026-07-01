@@ -10,111 +10,103 @@
     </v-row>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import { ServerJobQueueStateJob } from '@/store/server/jobQueue/types'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import type { ServerJobQueueStateJob } from '@/store/server/jobQueue/types'
 import { mdiFileMultiple } from '@mdi/js'
-@Component
-export default class StatusPanelJobqueueEntryRest extends Mixins(BaseMixin) {
-    mdiFileMultiple = mdiFileMultiple
 
-    @Prop({ type: Array, required: true }) jobs!: ServerJobQueueStateJob[]
+const props = defineProps<{
+    jobs: ServerJobQueueStateJob[]
+}>()
 
-    get sums() {
-        const sums = {
-            filamentLength: 0,
-            filamentWeight: 0,
-            estimatedTime: 0,
-        }
+const { t } = useI18n()
 
-        this.jobs.forEach((job: ServerJobQueueStateJob) => {
-            const count = (job.combinedIds?.length ?? 0) + 1
-
-            sums.filamentLength += (job.metadata?.filament_total ?? 0) * count
-            sums.filamentWeight += (job.metadata?.filament_weight_total ?? 0) * count
-            sums.estimatedTime += (job.metadata?.estimated_time ?? 0) * count
-        })
-
-        return sums
+const sums = computed(() => {
+    const sums = {
+        filamentLength: 0,
+        filamentWeight: 0,
+        estimatedTime: 0,
     }
 
-    get count() {
-        let count = 0
+    props.jobs.forEach((job: ServerJobQueueStateJob) => {
+        const count = (job.combinedIds?.length ?? 0) + 1
 
-        this.jobs.forEach((item: ServerJobQueueStateJob) => {
-            count += (item.combinedIds?.length ?? 0) + 1
-        })
+        sums.filamentLength += (job.metadata?.filament_total ?? 0) * count
+        sums.filamentWeight += (job.metadata?.filament_weight_total ?? 0) * count
+        sums.estimatedTime += (job.metadata?.estimated_time ?? 0) * count
+    })
 
-        return count
+    return sums
+})
+
+const count = computed(() => {
+    let count = 0
+
+    props.jobs.forEach((item: ServerJobQueueStateJob) => {
+        count += (item.combinedIds?.length ?? 0) + 1
+    })
+
+    return count
+})
+
+const headline = computed(() => t('Panels.StatusPanel.JobqueueMoreFiles', { count: count.value }, count.value))
+
+const filamentLength = computed(() => {
+    const length = sums.value.filamentLength
+    if (length === 0) return null
+
+    if (length >= 1000) return (length / 1000).toFixed(1) + ' m'
+
+    return length.toFixed(0) + ' mm'
+})
+
+const filamentWeight = computed(() => {
+    const weight = sums.value.filamentWeight
+    if (weight === 0) return null
+
+    if (weight >= 1000) return (weight / 1000).toFixed(1) + ' kg'
+
+    return weight.toFixed(0) + ' g'
+})
+
+const estimatedTime = computed(() => {
+    let totalSeconds = sums.value.estimatedTime
+    if (totalSeconds == 0) return '--'
+
+    const output = []
+
+    const days = Math.floor(totalSeconds / (3600 * 24))
+    if (days) {
+        totalSeconds %= 3600 * 24
+        output.push(days + 'd')
     }
 
-    get headline() {
-        return this.$tc('Panels.StatusPanel.JobqueueMoreFiles', this.count, {
-            count: this.count,
-        })
-    }
+    const hours = Math.floor(totalSeconds / 3600)
+    totalSeconds %= 3600
+    if (hours) output.push(hours + 'h')
 
-    get description() {
-        const filamentArray = []
-        let filament = '--'
-        if (this.filamentLength) filamentArray.push(this.filamentLength)
-        if (this.filamentWeight) filamentArray.push(this.filamentWeight)
-        if (filamentArray.length) filament = filamentArray.join(' / ')
+    const minutes = Math.floor(totalSeconds / 60)
+    if (minutes) output.push(minutes + 'm')
 
-        let time = '--'
-        if (this.estimatedTime) time = this.estimatedTime
+    if (hours > 0) return output.join(' ')
 
-        return `${this.$t('Panels.StatusPanel.Filament')}: ${filament}, ${this.$t(
-            'Panels.StatusPanel.PrintTime'
-        )}: ${time}`
-    }
+    const seconds = totalSeconds % 60
+    if (seconds) output.push(seconds.toFixed(0) + 's')
 
-    get filamentLength() {
-        const length = this.sums.filamentLength
-        if (length === 0) return null
+    return output.join(' ')
+})
 
-        if (length >= 1000) return (length / 1000).toFixed(1) + ' m'
+const description = computed(() => {
+    const filamentArray = []
+    let filament = '--'
+    if (filamentLength.value) filamentArray.push(filamentLength.value)
+    if (filamentWeight.value) filamentArray.push(filamentWeight.value)
+    if (filamentArray.length) filament = filamentArray.join(' / ')
 
-        return length.toFixed(0) + ' mm'
-    }
+    let time = '--'
+    if (estimatedTime.value) time = estimatedTime.value
 
-    get filamentWeight() {
-        const weight = this.sums.filamentWeight
-        if (weight === 0) return null
-
-        if (weight >= 1000) return (weight / 1000).toFixed(1) + ' kg'
-
-        return weight.toFixed(0) + ' g'
-    }
-
-    get estimatedTime() {
-        let totalSeconds = this.sums.estimatedTime
-        if (totalSeconds == 0) return '--'
-
-        const output = []
-
-        const days = Math.floor(totalSeconds / (3600 * 24))
-        if (days) {
-            totalSeconds %= 3600 * 24
-            output.push(days + 'd')
-        }
-
-        const hours = Math.floor(totalSeconds / 3600)
-        totalSeconds %= 3600
-        if (hours) output.push(hours + 'h')
-
-        const minutes = Math.floor(totalSeconds / 60)
-        if (minutes) output.push(minutes + 'm')
-
-        // skip seconds if there are hours
-        if (hours > 0) return output.join(' ')
-
-        const seconds = totalSeconds % 60
-        if (seconds) output.push(seconds.toFixed(0) + 's')
-
-        return output.join(' ')
-    }
-}
+    return `${t('Panels.StatusPanel.Filament')}: ${filament}, ${t('Panels.StatusPanel.PrintTime')}: ${time}`
+})
 </script>

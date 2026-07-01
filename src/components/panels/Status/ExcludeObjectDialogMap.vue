@@ -1,33 +1,14 @@
 <template>
     <div style="position: relative">
         <div id="tooltipObjectMap" ref="tooltipObjectMap" />
-        <svg
-            version="1.1"
-            xmlns="http://www.w3.org/2000/svg"
-            xmlns:xlink="http://www.w3.org/1999/xlink"
-            :viewBox="viewBox"
-            xml:space="preserve">
+        <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" :viewBox="viewBox" xml:space="preserve">
             <defs>
                 <marker id="arrowhead" markerWidth="5" markerHeight="4" refX="2" refY="2" orient="auto">
                     <polygon points="0 0, 5 2, 0 4" :fill="coordinationCrossColor" />
                 </marker>
             </defs>
-            <line
-                :x1="convertX(0)"
-                :y1="convertY(1)"
-                :x2="convertX(stepperXmax / 4)"
-                :y2="convertY(1)"
-                :stroke="coordinationCrossColor"
-                stroke-width="2"
-                marker-end="url(#arrowhead)" />
-            <line
-                :x1="convertX(1)"
-                :y1="convertY(0)"
-                :x2="convertX(1)"
-                :y2="convertY(stepperYmax / 4)"
-                :stroke="coordinationCrossColor"
-                stroke-width="2"
-                marker-end="url(#arrowhead)" />
+            <line :x1="convertX(0)" :y1="convertY(1)" :x2="convertX(stepperXmax / 4)" :y2="convertY(1)" :stroke="coordinationCrossColor" stroke-width="2" marker-end="url(#arrowhead)" />
+            <line :x1="convertX(1)" :y1="convertY(0)" :x2="convertX(1)" :y2="convertY(stepperYmax / 4)" :stroke="coordinationCrossColor" stroke-width="2" marker-end="url(#arrowhead)" />
             <g>
                 <line
                     v-for="x in xStripes"
@@ -53,18 +34,12 @@
 
             <g v-for="(object, index) in printing_objects_with_polygons" :key="index">
                 <polygon
-                    :points="object.polygon.map((point) => convertX(point[0]) + ',' + convertY(point[1])).join(' ')"
+                    :points="(object.polygon ?? []).map((point) => convertX(point[0]) + ',' + convertY(point[1])).join(' ')"
                     style="cursor: pointer"
                     :stroke="current_object === object.name ? primaryColor : '#666'"
                     stroke-width="2"
                     fill-rule="evenodd"
-                    :fill="
-                        hoverName === object.name
-                            ? primaryColor
-                            : excluded_objects.includes(object.name)
-                              ? '#6668'
-                              : '#bbb'
-                    "
+                    :fill="hoverName === object.name ? primaryColor : excluded_objects.includes(object.name) ? '#6668' : '#bbb'"
                     @mouseover="showObjectTooltip(object.name)"
                     @mouseout="hideObjectTooltip"
                     @click="openExcludeObjectDialog(object.name)" />
@@ -73,11 +48,11 @@
     </div>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop, Ref } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
 import { defaultPrimaryColor } from '@/store/variables'
+import { usePrinterStore } from '@/store/printer'
+import { useGuiStore } from '@/store/gui'
 
 type PolygonPoint = [number, number]
 
@@ -94,167 +69,136 @@ interface PrintingObject {
     size: number
 }
 
-@Component
-export default class StatusPanelObjectsDialogMap extends Mixins(BaseMixin) {
-    @Prop({ required: false, default: '' }) readonly hoverName!: string
-    @Ref() readonly tooltipObjectMap!: HTMLDivElement | undefined
+const props = withDefaults(
+    defineProps<{
+        hoverName?: string
+    }>(),
+    {
+        hoverName: '',
+    }
+)
 
-    coordinationCrossColor = '#888'
-    stripesOffset = 50
+const emit = defineEmits<{
+    'update:name': [name: string]
+    'update:bool': [value: boolean]
+}>()
 
-    get printing_objects(): PrintingObject[] {
-        const objects = this.$store.state.printer.exclude_object?.objects ?? []
+const printerStore = usePrinterStore()
+const guiStore = useGuiStore()
 
-        return (
-            objects
-                .map((object: ExcludeObjectStateEntry) => {
-                    let total = 0
-                    const polygon = object.polygon ?? []
+const tooltipObjectMap = ref<HTMLDivElement | null>(null)
 
-                    for (let i = 0; i < polygon.length; i++) {
-                        const pointA = polygon[i]
-                        const pointB = i === polygon.length - 1 ? polygon[0] : polygon[i + 1]
+const coordinationCrossColor = '#888'
+const stripesOffset = 50
 
-                        total += pointA[0] * pointB[1] - pointA[1] * pointB[0]
-                    }
+const printing_objects = computed<PrintingObject[]>(() => {
+    const objects = printerStore.exclude_object?.objects ?? []
 
-                    return {
-                        center: object.center,
-                        name: object.name,
-                        polygon: object.polygon,
-                        size: Math.abs(total),
-                    }
-                })
-                // sort all objects by size
-                .sort((a: PrintingObject, b: PrintingObject) => b.size - a.size)
-        )
+    return objects
+        .map((object: ExcludeObjectStateEntry) => {
+            let total = 0
+            const polygon = object.polygon ?? []
+
+            for (let i = 0; i < polygon.length; i++) {
+                const pointA = polygon[i]
+                const pointB = i === polygon.length - 1 ? polygon[0] : polygon[i + 1]
+
+                total += pointA[0] * pointB[1] - pointA[1] * pointB[0]
+            }
+
+            return {
+                center: object.center,
+                name: object.name,
+                polygon: object.polygon,
+                size: Math.abs(total),
+            }
+        })
+        .sort((a: PrintingObject, b: PrintingObject) => b.size - a.size)
+})
+
+const printing_objects_with_polygons = computed(() => printing_objects.value.filter((object) => Array.isArray(object.polygon)))
+
+const current_object = computed(() => printerStore.exclude_object?.current_object ?? null)
+
+const excluded_objects = computed<string[]>(() => printerStore.exclude_object?.excluded_objects ?? [])
+
+const viewBox = computed(() => convertX(stepperXmin.value) + ' ' + convertY(stepperYmax.value) + ' ' + absoluteX.value + ' ' + absoluteY.value)
+
+const toolhead = computed(() => printerStore.toolhead ?? {})
+
+const axis_minimum = computed(() => toolhead.value.axis_minimum ?? [])
+const axis_maximum = computed(() => toolhead.value.axis_maximum ?? [])
+
+const stepperXmin = computed(() => axis_minimum.value[0] ?? 0)
+const stepperXmax = computed(() => axis_maximum.value[0] ?? 200)
+const stepperYmin = computed(() => axis_minimum.value[1] ?? 0)
+const stepperYmax = computed(() => axis_maximum.value[1] ?? 200)
+
+const absoluteX = computed(() => Math.abs(stepperXmin.value) + Math.abs(stepperXmax.value))
+const absoluteY = computed(() => Math.abs(stepperYmin.value) + Math.abs(stepperYmax.value))
+
+const xStripes = computed(() => {
+    const output = []
+    const minXstripe = Math.floor(stepperXmin.value / stripesOffset) * stripesOffset
+    const maxXstripe = Math.floor(stepperXmax.value / stripesOffset) * stripesOffset
+
+    for (let i = minXstripe; i <= maxXstripe; i = i + stripesOffset) {
+        output.push(i)
     }
 
-    get printing_objects_with_polygons(): PrintingObject[] {
-        return this.printing_objects.filter((object) => Array.isArray(object.polygon))
+    return output
+})
+
+const yStripes = computed(() => {
+    const output = []
+    const minYstripe = Math.floor(stepperYmin.value / stripesOffset) * stripesOffset
+    const maxYstripe = Math.floor(stepperYmax.value / stripesOffset) * stripesOffset
+
+    for (let i = minYstripe; i <= maxYstripe; i = i + stripesOffset) {
+        output.push(i)
     }
 
-    get current_object() {
-        return this.$store.state.printer.exclude_object?.current_object ?? null
-    }
+    return output
+})
 
-    get excluded_objects() {
-        return this.$store.state.printer.exclude_object?.excluded_objects ?? []
-    }
+const primaryColor = computed(() => guiStore.getTheme.colorPrimary ?? defaultPrimaryColor)
 
-    get viewBox() {
-        return (
-            this.convertX(this.stepperXmin) +
-            ' ' +
-            this.convertY(this.stepperYmax) +
-            ' ' +
-            this.absoluteX +
-            ' ' +
-            this.absoluteY
-        )
-    }
+function convertX(x: number) {
+    return x
+}
 
-    get toolhead() {
-        return this.$store.state.printer.toolhead ?? {}
-    }
+function convertY(y: number) {
+    return y * -1
+}
 
-    get axis_minimum() {
-        return this.toolhead.axis_minimum ?? []
-    }
+function moveTooltip(event: MouseEvent) {
+    if (!tooltipObjectMap.value) return
 
-    get axis_maximum() {
-        return this.toolhead.axis_maximum ?? []
-    }
+    const top = event.offsetY - tooltipObjectMap.value.clientHeight - 15
+    tooltipObjectMap.value.style.left = `${event.offsetX - 20}px`
+    tooltipObjectMap.value.style.top = `${top}px`
+}
 
-    get stepperXmin() {
-        return this.axis_minimum[0] ?? 0
-    }
+function showObjectTooltip(text: string) {
+    if (!tooltipObjectMap.value) return
 
-    get stepperXmax() {
-        return this.axis_maximum[0] ?? 200
-    }
+    tooltipObjectMap.value.innerHTML = text
+    tooltipObjectMap.value.style.display = 'block'
 
-    get stepperYmin() {
-        return this.axis_minimum[1] ?? 0
-    }
+    window.addEventListener('mousemove', moveTooltip)
+}
 
-    get stepperYmax() {
-        return this.axis_maximum[1] ?? 200
-    }
+function hideObjectTooltip() {
+    if (!tooltipObjectMap.value) return
 
-    get absoluteX() {
-        return Math.abs(this.stepperXmin) + Math.abs(this.stepperXmax)
-    }
+    tooltipObjectMap.value.style.display = 'none'
 
-    get absoluteY() {
-        return Math.abs(this.stepperYmin) + Math.abs(this.stepperYmax)
-    }
+    window.removeEventListener('mousemove', moveTooltip)
+}
 
-    get xStripes() {
-        const output = []
-        const minXstripe = Math.floor(this.stepperXmin / this.stripesOffset) * this.stripesOffset
-        const maxXstripe = Math.floor(this.stepperXmax / this.stripesOffset) * this.stripesOffset
-
-        for (let i = minXstripe; i <= maxXstripe; i = i + this.stripesOffset) {
-            output.push(i)
-        }
-
-        return output
-    }
-
-    get yStripes() {
-        const output = []
-        const minYstripe = Math.floor(this.stepperYmin / this.stripesOffset) * this.stripesOffset
-        const maxYstripe = Math.floor(this.stepperYmax / this.stripesOffset) * this.stripesOffset
-
-        for (let i = minYstripe; i <= maxYstripe; i = i + this.stripesOffset) {
-            output.push(i)
-        }
-
-        return output
-    }
-
-    get primaryColor() {
-        return this.$store.state.gui.theme?.primary ?? defaultPrimaryColor
-    }
-
-    convertX(x: number) {
-        return x
-    }
-
-    convertY(y: number) {
-        return y * -1
-    }
-
-    showObjectTooltip(text: string) {
-        if (!this.tooltipObjectMap) return
-
-        this.tooltipObjectMap.innerHTML = text
-        this.tooltipObjectMap.style.display = 'block'
-
-        window.addEventListener('mousemove', this.moveTooltip)
-    }
-
-    hideObjectTooltip() {
-        if (!this.tooltipObjectMap) return
-
-        this.tooltipObjectMap.style.display = 'none'
-
-        window.removeEventListener('mousemove', this.moveTooltip)
-    }
-
-    moveTooltip(event: MouseEvent) {
-        if (!this.tooltipObjectMap) return
-
-        const top = event.offsetY - this.tooltipObjectMap.clientHeight - 15
-        this.tooltipObjectMap.style.left = `${event.offsetX - 20}px`
-        this.tooltipObjectMap.style.top = `${top}px`
-    }
-
-    openExcludeObjectDialog(name: string) {
-        this.$emit('update:name', name)
-        this.$emit('update:bool', true)
-    }
+function openExcludeObjectDialog(name: string) {
+    emit('update:name', name)
+    emit('update:bool', true)
 }
 </script>
 

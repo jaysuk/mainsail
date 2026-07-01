@@ -1,34 +1,23 @@
-<style scoped></style>
-
 <template>
     <div>
-        <v-dialog v-model="showDialog" width="900" persistent :fullscreen="isMobile">
-            <panel
-                :title="$t('Panels.StatusPanel.ExcludeObject.ExcludeObject')"
-                :icon="mdiSelectionRemove"
-                card-class="exclude-object-dialog"
-                :margin-bottom="false">
+        <v-dialog v-model="showDialogPass" width="900" persistent :fullscreen="isMobile">
+            <panel :title="t('Panels.StatusPanel.ExcludeObject.ExcludeObject')" :icon="mdiSelectionRemove" card-class="exclude-object-dialog" :margin-bottom="false">
                 <template #buttons>
-                    <v-btn icon tile @click="hideDialog">
+                    <v-btn icon="" variant="text" @click="hideDialog">
                         <v-icon>{{ mdiCloseThick }}</v-icon>
                     </v-btn>
                 </template>
                 <v-container>
                     <v-row>
                         <v-col class="col-12 col-sm-6 pb-0 pb-sm-3">
-                            <status-panel-exclude-object-dialog-map
-                                :hover-name="hoverName"
-                                @update:name="updateExcludeObjectDialogName"
-                                @update:bool="updateExcludeObjectDialogBool"></status-panel-exclude-object-dialog-map>
+                            <status-panel-exclude-object-dialog-map :hover-name="hoverName" @update:name="updateExcludeObjectDialogName" @update:bool="updateExcludeObjectDialogBool" />
                         </v-col>
                         <v-col class="col-12 col-sm-6 pt-0 pt-sm-3">
                             <status-panel-exclude-object-dialog-list
-                                :exclude-object-dialog-name.sync="excludeObjectDialogName"
-                                :exclude-object-dialog-bool.sync="excludeObjectDialogBool"
                                 :hover-name="hoverName"
                                 @update:name="updateExcludeObjectDialogName"
-                                @update:hoverName="updateHoverObjectDialogName"
-                                @update:bool="updateExcludeObjectDialogBool"></status-panel-exclude-object-dialog-list>
+                                @update:hover-name="updateHoverObjectDialogName"
+                                @update:bool="updateExcludeObjectDialogBool" />
                         </v-col>
                     </v-row>
                 </v-container>
@@ -37,49 +26,50 @@
     </div>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { mdiCloseThick, mdiSelectionRemove } from '@mdi/js'
 import StatusPanelExcludeObjectDialogMap from '@/components/panels/Status/ExcludeObjectDialogMap.vue'
 import StatusPanelExcludeObjectDialogList from '@/components/panels/Status/ExcludeObjectDialogList.vue'
 import Panel from '@/components/ui/Panel.vue'
-import { mdiCloseThick, mdiSelectionRemove } from '@mdi/js'
-@Component({
-    components: { Panel, StatusPanelExcludeObjectDialogList, StatusPanelExcludeObjectDialogMap },
+import { useBase } from '@/composables/useBase'
+
+const props = defineProps<{
+    showDialog: boolean
+    excludeObjectDialogBool: boolean
+    excludeObjectDialogName: string
+}>()
+
+const emit = defineEmits<{
+    'update:showDialog': [value: boolean]
+    'update:name': [name: string]
+    'update:bool': [value: boolean]
+}>()
+
+const { t } = useI18n()
+const { isMobile } = useBase()
+
+const hoverName = ref('')
+
+const showDialogPass = computed<boolean>({
+    get: () => props.showDialog,
+    set: (newVal) => emit('update:showDialog', newVal),
 })
-export default class StatusPanelExcludeObjectDialog extends Mixins(BaseMixin) {
-    private hoverName = ''
 
-    mdiSelectionRemove = mdiSelectionRemove
-    mdiCloseThick = mdiCloseThick
+function hideDialog() {
+    emit('update:showDialog', false)
+}
 
-    @Prop({ required: true }) declare readonly showDialog: boolean
-    @Prop({ required: true }) declare readonly excludeObjectDialogBool: boolean
-    @Prop({ required: true }) declare readonly excludeObjectDialogName: string
+function updateExcludeObjectDialogBool(newVal: boolean) {
+    emit('update:bool', newVal)
+}
 
-    hideDialog() {
-        this.$emit('update:showDialog', false)
-    }
+function updateExcludeObjectDialogName(newVal: string) {
+    emit('update:name', newVal)
+}
 
-    get passName() {
-        return this.excludeObjectDialogName
-    }
-
-    set passName(newVal: string) {
-        this.$emit('update:name', newVal)
-    }
-
-    updateExcludeObjectDialogBool(newVal: boolean) {
-        this.$emit('update:bool', newVal)
-    }
-
-    updateExcludeObjectDialogName(newVal: string) {
-        this.$emit('update:name', newVal)
-    }
-
-    updateHoverObjectDialogName(newVal: string) {
-        this.hoverName = newVal
-    }
+function updateHoverObjectDialogName(newVal: string) {
+    hoverName.value = newVal
 }
 </script>

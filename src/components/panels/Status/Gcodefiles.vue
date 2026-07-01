@@ -1,13 +1,8 @@
 <template>
     <v-card ref="filesGcodeCard" class="filesGcodeCard" flat>
-        <v-data-table
-            :items="gcodeFiles"
-            hide-default-footer
-            class="dashboard-gcodes-table"
-            sort-by="time_added"
-            mobile-breakpoint="0">
+        <v-data-table :items="gcodeFiles" hide-default-footer class="dashboard-gcodes-table" :sort-by="[{ key: 'time_added', order: 'asc' }]" :mobile-breakpoint="0">
             <template #no-data>
-                <div class="text-center">{{ $t('Panels.StatusPanel.EmptyGcodes') }}</div>
+                <div class="text-center">{{ t('Panels.StatusPanel.EmptyGcodes') }}</div>
             </template>
 
             <template #item="{ item }">
@@ -17,92 +12,76 @@
     </v-card>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Ref } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import ControlMixin from '@/components/mixins/control'
-import { FileStateGcodefile } from '@/store/files/types'
-import Panel from '@/components/ui/Panel.vue'
+<script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
+import type { FileStateGcodefile } from '@/store/files/types'
 import StatusPanelGcodefilesEntry from '@/components/panels/Status/GcodefilesEntry.vue'
-import Vue from 'vue'
-import { Debounce } from 'vue-debounce-decorator'
+import { useGuiStore } from '@/store/gui'
+import { useFilesStore } from '@/store/files'
 
-@Component({
-    components: { Panel, StatusPanelGcodefilesEntry },
-})
-export default class StatusPanelGcodefiles extends Mixins(BaseMixin, ControlMixin) {
-    contentTdWidth = 100
-    resizeObserver: ResizeObserver | null = null
+const { t } = useI18n()
+const guiStore = useGuiStore()
+const filesStore = useFilesStore()
 
-    @Ref() readonly filesGcodeCard!: Vue
+const contentTdWidth = ref(100)
+const filesGcodeCard = ref<{ $el: HTMLElement } | null>(null)
+let resizeObserver: ResizeObserver | null = null
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
-    get filesLimit() {
-        return this.$store.state.gui.uiSettings.dashboardFilesLimit ?? 5
-    }
+const filesLimit = computed(() => guiStore.uiSettings.dashboardFilesLimit ?? 5)
 
-    get filesFilter() {
-        return this.$store.state.gui.uiSettings.dashboardFilesFilter ?? []
-    }
+const filesFilter = computed(() => guiStore.uiSettings.dashboardFilesFilter ?? [])
 
-    get gcodeFiles() {
-        let gcodes = this.$store.getters['files/getAllGcodes'] ?? []
+const gcodeFiles = computed(() => {
+    let gcodes = filesStore.getAllGcodes() ?? []
 
-        if (this.filesFilter.length > 0 && this.filesFilter.length < 3) {
-            gcodes = gcodes.filter((file: FileStateGcodefile) => {
-                if (this.filesFilter.includes('new') && file.last_status === null) return true
-                if (this.filesFilter.includes('completed') && file.last_status === 'completed') return true
-                if (
-                    this.filesFilter.includes('failed') &&
-                    file.last_status !== null &&
-                    file.last_status !== 'completed'
-                )
-                    return true
+    if (filesFilter.value.length > 0 && filesFilter.value.length < 3) {
+        gcodes = gcodes.filter((file: FileStateGcodefile) => {
+            if (filesFilter.value.includes('new') && file.last_status === null) return true
+            if (filesFilter.value.includes('completed') && file.last_status === 'completed') return true
+            if (filesFilter.value.includes('failed') && file.last_status !== null && file.last_status !== 'completed') return true
 
-                return false
-            })
-        }
-
-        gcodes = gcodes
-            .sort((a: FileStateGcodefile, b: FileStateGcodefile) => {
-                return b.modified.getTime() - a.modified.getTime()
-            })
-            .slice(0, this.filesLimit)
-
-        const requestItems = gcodes.filter(
-            (file: FileStateGcodefile) => !file.metadataRequested && !file.metadataPulled
-        )
-        this.$store.dispatch(
-            'files/requestMetadata',
-            requestItems.map((file: FileStateGcodefile) => ({
-                filename: 'gcodes/' + file.filename,
-            }))
-        )
-        return gcodes
-    }
-
-    mounted() {
-        this.resizeObserver = new ResizeObserver(() => this.handleResize())
-        this.resizeObserver.observe(this.filesGcodeCard.$el)
-
-        this.calcContentTdWidth()
-    }
-
-    beforeDestroy() {
-        this.resizeObserver?.disconnect()
-    }
-
-    calcContentTdWidth() {
-        this.contentTdWidth = this.filesGcodeCard?.$el.clientWidth - 48 - 48 - 32
-    }
-
-    @Debounce(200)
-    handleResize() {
-        this.$nextTick(() => {
-            this.calcContentTdWidth()
+            return false
         })
     }
+
+    gcodes = gcodes.sort((a: FileStateGcodefile, b: FileStateGcodefile) => b.modified.getTime() - a.modified.getTime()).slice(0, filesLimit.value)
+
+    const requestItems = gcodes.filter((file: FileStateGcodefile) => !file.metadataRequested && !file.metadataPulled)
+    filesStore.requestMetadata(
+        requestItems.map((file: FileStateGcodefile) => ({
+            filename: 'gcodes/' + file.filename,
+        }))
+    )
+
+    return gcodes
+})
+
+function calcContentTdWidth() {
+    contentTdWidth.value = (filesGcodeCard.value?.$el.clientWidth ?? 0) - 48 - 48 - 32
 }
+
+function handleResize() {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+        nextTick(() => {
+            calcContentTdWidth()
+        })
+    }, 200)
+}
+
+onMounted(() => {
+    resizeObserver = new ResizeObserver(() => handleResize())
+    if (filesGcodeCard.value?.$el) resizeObserver.observe(filesGcodeCard.value.$el)
+
+    calcContentTdWidth()
+})
+
+onBeforeUnmount(() => {
+    resizeObserver?.disconnect()
+    if (debounceTimer) clearTimeout(debounceTimer)
+})
 </script>
 
 <style scoped>

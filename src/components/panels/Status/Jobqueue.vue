@@ -3,53 +3,38 @@
         <template v-if="jobs.length">
             <v-row class="mx-0 mt-0 pb-3">
                 <v-col class="jobqueue-list">
-                    <jobqueue-entry
-                        v-for="(job, index) in jobsTable"
-                        :key="job.job_id"
-                        :job="job"
-                        :show-handle="false"
-                        :show-print-button="index === 0" />
+                    <jobqueue-entry v-for="(job, index) in jobsTable" :key="job.job_id" :job="job" :show-handle="false" :show-print-button="index === 0" />
                     <jobqueue-entry-rest v-if="jobsRest.length" :jobs="jobsRest" />
                 </v-col>
             </v-row>
         </template>
         <div v-else>
-            <p class="body-2 my-3 text-center text--disabled">{{ $t('Panels.StatusPanel.EmptyJobqueue') }}</p>
+            <p class="body-2 my-3 text-center text-disabled">{{ t('Panels.StatusPanel.EmptyJobqueue') }}</p>
         </div>
     </v-card>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import JobqueueEntry from '@/components/panels/Status/JobqueueEntry.vue'
-@Component({
-    components: { JobqueueEntry },
+import JobqueueEntryRest from '@/components/panels/Status/JobqueueEntryRest.vue'
+import { useServerJobQueueStore } from '@/store/server/jobQueue'
+
+const { t } = useI18n()
+const jobQueueStore = useServerJobQueueStore()
+
+const jobs = computed(() => jobQueueStore.getJobs ?? [])
+
+const maxLength = computed(() => {
+    if (jobs.value.length > 5) return 4
+
+    return 5
 })
-export default class StatusPanelJobqueue extends Mixins(BaseMixin) {
-    get jobs() {
-        return this.$store.getters['server/jobQueue/getJobs'] ?? []
-    }
 
-    get maxLength() {
-        if (this.jobs.length > 5) return 4
+const jobsTable = computed(() => jobs.value.slice(0, maxLength.value))
 
-        return 5
-    }
-
-    get jobsTable() {
-        return this.jobs.slice(0, this.maxLength)
-    }
-
-    get jobsRest() {
-        return this.jobs.slice(this.maxLength)
-    }
-
-    startJobqueue() {
-        this.$store.dispatch('server/jobQueue/start')
-    }
-}
+const jobsRest = computed(() => jobs.value.slice(maxLength.value))
 </script>
 
 <style scoped>

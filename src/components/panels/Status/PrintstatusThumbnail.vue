@@ -10,11 +10,11 @@
             :style="thumbnailStyle"
             @focus="focus = true"
             @blur="focus = false">
-            <v-card-title class="white--text py-2 px-2" :style="styleThumbnailOverlay">
+            <v-card-title class="text-white py-2 px-2" :style="styleThumbnailOverlay">
                 <v-row>
                     <v-col>
-                        <span class="subtitle-2 text-truncate px-0 text--disabled d-block">
-                            <v-icon small class="mr-2">{{ mdiFileOutline }}</v-icon>
+                        <span class="subtitle-2 text-truncate px-0 text-disabled d-block">
+                            <v-icon size="small" class="mr-2">{{ mdiFileOutline }}</v-icon>
                             {{ current_filename }}
                         </span>
                     </v-col>
@@ -24,53 +24,43 @@
         <template v-else>
             <v-container>
                 <v-row>
-                    <v-col
-                        :class="thumbnailSmall ? 'py-3' : 'py-2'"
-                        :style="thumbnailSmall ? 'width: calc(100% - 40px);' : ''">
-                        <span class="subtitle-2 text-truncate d-block px-0 text--disabled">
-                            <v-icon small class="mr-2">{{ mdiFileOutline }}</v-icon>
+                    <v-col :class="thumbnailSmall ? 'py-3' : 'py-2'" :style="thumbnailSmall ? 'width: calc(100% - 40px);' : ''">
+                        <span class="subtitle-2 text-truncate d-block px-0 text-disabled">
+                            <v-icon size="small" class="mr-2">{{ mdiFileOutline }}</v-icon>
                             {{ current_filename }}
                         </span>
                     </v-col>
                     <v-col v-if="thumbnailSmall" class="pa-2 pl-0 col-auto">
                         <template v-if="thumbnailSmall && thumbnailBig">
-                            <v-tooltip top content-class="tooltip__content-opacity1">
-                                <template #activator="{ on, attrs }">
-                                    <vue-load-image class="d-flex">
-                                        <img
-                                            slot="image"
-                                            :src="thumbnailSmall"
-                                            width="32"
-                                            height="32"
-                                            :alt="current_filename"
-                                            v-bind="attrs"
-                                            v-on="on" />
-                                        <div slot="preloader">
+                            <v-tooltip location="top" content-class="tooltip__content-opacity1">
+                                <template #activator="{ props: activatorProps }">
+                                    <load-image :src="thumbnailSmall" class="d-flex">
+                                        <template #image>
+                                            <img :src="thumbnailSmall" width="32" height="32" :alt="current_filename" v-bind="activatorProps" />
+                                        </template>
+                                        <template #preloader>
                                             <v-progress-circular indeterminate color="primary" />
-                                        </div>
-                                        <div slot="error">
+                                        </template>
+                                        <template #error>
                                             <v-icon>{{ mdiFile }}</v-icon>
-                                        </div>
-                                    </vue-load-image>
+                                        </template>
+                                    </load-image>
                                 </template>
                                 <span><img :src="thumbnailBig" width="250" :alt="current_filename" /></span>
                             </v-tooltip>
                         </template>
                         <template v-else-if="thumbnailSmall">
-                            <vue-load-image>
-                                <img
-                                    slot="image"
-                                    :src="thumbnailSmall"
-                                    width="32"
-                                    height="32"
-                                    :alt="current_filename" />
-                                <div slot="preloader">
+                            <load-image :src="thumbnailSmall">
+                                <template #image>
+                                    <img :src="thumbnailSmall" width="32" height="32" :alt="current_filename" />
+                                </template>
+                                <template #preloader>
                                     <v-progress-circular indeterminate color="primary" />
-                                </div>
-                                <div slot="error">
+                                </template>
+                                <template #error>
                                     <v-icon>{{ mdiFile }}</v-icon>
-                                </div>
-                            </vue-load-image>
+                                </template>
+                            </load-image>
                         </template>
                     </v-col>
                 </v-row>
@@ -79,204 +69,185 @@
     </div>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Ref, Watch } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { defaultBigThumbnailBackground, thumbnailBigMin, thumbnailSmallMax, thumbnailSmallMin } from '@/store/variables'
 import { mdiFileOutline, mdiFile } from '@mdi/js'
-import { Debounce } from 'vue-debounce-decorator'
 import { escapePath } from '@/plugins/helpers'
-import { FileStateFileThumbnail } from '@/store/files/types'
-import Vue from 'vue'
+import type { FileStateFileThumbnail } from '@/store/files/types'
+import LoadImage from '@/components/ui/LoadImage.vue'
+import { useBase } from '@/composables/useBase'
+import { useMainsailTheme } from '@/composables/useMainsailTheme'
+import { usePrinterStore } from '@/store/printer'
+import { useGuiStore } from '@/store/gui'
 
-@Component({})
-export default class StatusPanelPrintstatusThumbnail extends Mixins(BaseMixin) {
-    mdiFileOutline = mdiFileOutline
-    mdiFile = mdiFile
+const { apiUrl } = useBase()
+const { isDark } = useMainsailTheme()
+const printerStore = usePrinterStore()
+const guiStore = useGuiStore()
 
-    focus = false
-    thumbnailFactor = 0
-    resizeObserver: ResizeObserver | null = null
+const focus = ref(false)
+const thumbnailFactor = ref(0)
+let resizeObserver: ResizeObserver | null = null
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
-    @Ref() readonly wrapper!: HTMLDivElement
-    @Ref() readonly bigThumbnail!: Vue
+const wrapper = ref<HTMLDivElement | null>(null)
+const bigThumbnail = ref<{ $el: HTMLElement } | null>(null)
 
-    get current_filename() {
-        return this.$store.state.printer.print_stats?.filename ?? ''
-    }
+const current_filename = computed(() => printerStore.print_stats?.filename ?? '')
 
-    get current_file() {
-        return this.$store.state.printer.current_file ?? {}
-    }
+const current_file = computed(() => printerStore.current_file ?? {})
 
-    get thumbnailBig() {
-        if ('thumbnails' in this.current_file && this.current_file.thumbnails.length) {
-            const thumbnail = this.current_file.thumbnails.find(
-                (thumb: FileStateFileThumbnail) => thumb.width >= thumbnailBigMin
-            )
+const thumbnailBig = computed(() => {
+    if ('thumbnails' in current_file.value && current_file.value.thumbnails.length) {
+        const thumbnail = current_file.value.thumbnails.find((thumb: FileStateFileThumbnail) => thumb.width >= thumbnailBigMin)
+
+        if (thumbnail && 'relative_path' in thumbnail) {
+            let relative_url = ''
+            if (current_file.value.filename.lastIndexOf('/') !== -1) {
+                relative_url = current_file.value.filename.substr(0, current_file.value.filename.lastIndexOf('/') + 1)
+            }
 
             if (thumbnail && 'relative_path' in thumbnail) {
-                let relative_url = ''
-                if (this.current_file.filename.lastIndexOf('/') !== -1) {
-                    relative_url = this.current_file.filename.substr(0, this.current_file.filename.lastIndexOf('/') + 1)
-                }
-
-                if (thumbnail && 'relative_path' in thumbnail) {
-                    return `${this.apiUrl}/server/files/gcodes/${escapePath(
-                        relative_url + thumbnail.relative_path
-                    )}?timestamp=${this.current_file.modified}`
-                }
+                return `${apiUrl.value}/server/files/gcodes/${escapePath(relative_url + thumbnail.relative_path)}?timestamp=${current_file.value.modified}`
             }
         }
-
-        return ''
     }
 
-    get thumbnailBigHeight() {
-        if ('thumbnails' in this.current_file && this.current_file.thumbnails.length) {
-            const thumbnail = this.current_file.thumbnails.find(
-                (thumb: FileStateFileThumbnail) => thumb.width >= thumbnailBigMin
-            )
+    return ''
+})
 
-            if (thumbnail && 'height' in thumbnail) {
-                return thumbnail.height
-            }
+const thumbnailBigHeight = computed(() => {
+    if ('thumbnails' in current_file.value && current_file.value.thumbnails.length) {
+        const thumbnail = current_file.value.thumbnails.find((thumb: FileStateFileThumbnail) => thumb.width >= thumbnailBigMin)
+
+        if (thumbnail && 'height' in thumbnail) {
+            return thumbnail.height
         }
-
-        return 200
     }
 
-    get thumbnailBigWidth() {
-        if ('thumbnails' in this.current_file && this.current_file.thumbnails.length) {
-            const thumbnail = this.current_file.thumbnails.find(
-                (thumb: FileStateFileThumbnail) => thumb.width >= thumbnailBigMin
-            )
+    return 200
+})
 
-            if (thumbnail && 'width' in thumbnail) {
-                return thumbnail.width
-            }
+const thumbnailBigWidth = computed(() => {
+    if ('thumbnails' in current_file.value && current_file.value.thumbnails.length) {
+        const thumbnail = current_file.value.thumbnails.find((thumb: FileStateFileThumbnail) => thumb.width >= thumbnailBigMin)
+
+        if (thumbnail && 'width' in thumbnail) {
+            return thumbnail.width
         }
-
-        return 300
     }
 
-    get thumbnailSmall() {
-        if ('thumbnails' in this.current_file && this.current_file.thumbnails.length) {
-            const thumbnail = this.current_file.thumbnails.find(
-                (thumb: FileStateFileThumbnail) =>
-                    thumb.width >= thumbnailSmallMin &&
-                    thumb.width <= thumbnailSmallMax &&
-                    thumb.height >= thumbnailSmallMin &&
-                    thumb.height <= thumbnailSmallMax
-            )
+    return 300
+})
+
+const thumbnailSmall = computed(() => {
+    if ('thumbnails' in current_file.value && current_file.value.thumbnails.length) {
+        const thumbnail = current_file.value.thumbnails.find(
+            (thumb: FileStateFileThumbnail) => thumb.width >= thumbnailSmallMin && thumb.width <= thumbnailSmallMax && thumb.height >= thumbnailSmallMin && thumb.height <= thumbnailSmallMax
+        )
+
+        if (thumbnail && 'relative_path' in thumbnail) {
+            let relative_url = ''
+            if (current_file.value.filename.lastIndexOf('/') !== -1) {
+                relative_url = current_file.value.filename.substr(0, current_file.value.filename.lastIndexOf('/') + 1)
+            }
 
             if (thumbnail && 'relative_path' in thumbnail) {
-                let relative_url = ''
-                if (this.current_file.filename.lastIndexOf('/') !== -1) {
-                    relative_url = this.current_file.filename.substr(0, this.current_file.filename.lastIndexOf('/') + 1)
-                }
-
-                if (thumbnail && 'relative_path' in thumbnail) {
-                    return `${this.apiUrl}/server/files/gcodes/${escapePath(
-                        relative_url + thumbnail.relative_path
-                    )}?timestamp=${this.current_file.modified}`
-                }
+                return `${apiUrl.value}/server/files/gcodes/${escapePath(relative_url + thumbnail.relative_path)}?timestamp=${current_file.value.modified}`
             }
         }
-
-        return ''
     }
 
-    get boolBigThumbnail() {
-        const setting = this.$store.state.gui.uiSettings.boolBigThumbnail ?? true
+    return ''
+})
 
-        return this.current_filename && setting && this.thumbnailBig
+const boolBigThumbnail = computed(() => {
+    const setting = guiStore.uiSettings.boolBigThumbnail ?? true
+
+    return current_filename.value && setting && thumbnailBig.value
+})
+
+const bigThumbnailBackground = computed(() => guiStore.uiSettings.bigThumbnailBackground ?? defaultBigThumbnailBackground)
+
+const printstatusThumbnailZoom = computed(() => guiStore.uiSettings.printstatusThumbnailZoom ?? true)
+
+const thumbnailBlurHeight = computed(() => {
+    if (thumbnailFactor.value === 0) return 0
+
+    return (thumbnailBigHeight.value * thumbnailFactor.value).toFixed()
+})
+
+const thumbnailStyle = computed(() => {
+    const output: { height: string; backgroundColor?: string } = {
+        height: '200px',
     }
 
-    get bigThumbnailBackground() {
-        return this.$store.state.gui.uiSettings.bigThumbnailBackground ?? defaultBigThumbnailBackground
+    if (!printstatusThumbnailZoom.value) {
+        output.height = '100%'
+    } else if (focus.value && Number(thumbnailBlurHeight.value) > 0) {
+        output.height = `${thumbnailBlurHeight.value}px`
     }
 
-    get thumbnailStyle() {
-        const output: { height: string; backgroundColor?: string } = {
-            height: '200px',
-        }
-
-        if (!this.printstatusThumbnailZoom) {
-            output.height = '100%'
-        } else if (this.focus && this.thumbnailBlurHeight > 0) {
-            output.height = `${this.thumbnailBlurHeight}px`
-        }
-
-        if (defaultBigThumbnailBackground.toLowerCase() !== this.bigThumbnailBackground.toLowerCase()) {
-            output.backgroundColor = this.bigThumbnailBackground
-
-            return output
-        }
+    if (defaultBigThumbnailBackground.toLowerCase() !== bigThumbnailBackground.value.toLowerCase()) {
+        output.backgroundColor = bigThumbnailBackground.value
 
         return output
     }
 
-    get styleThumbnailOverlay() {
-        const style = {
-            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-            backdropFilter: 'blur(3px)',
-        }
+    return output
+})
 
-        if (!this.$vuetify.theme.dark) {
-            style.backgroundColor = 'rgba(255, 255, 255, 0.3)'
-        }
-
-        return style
+const styleThumbnailOverlay = computed(() => {
+    const style = {
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        backdropFilter: 'blur(3px)',
     }
 
-    get thumbnailBlurHeight() {
-        if (this.thumbnailFactor === 0) return 0
-
-        return (this.thumbnailBigHeight * this.thumbnailFactor).toFixed()
+    if (!isDark.value) {
+        style.backgroundColor = 'rgba(255, 255, 255, 0.3)'
     }
 
-    get printstatusThumbnailZoom() {
-        return this.$store.state.gui.uiSettings.printstatusThumbnailZoom ?? true
-    }
+    return style
+})
 
-    mounted() {
-        this.setupResizeObserver()
-    }
+function calcThumbnailFactor() {
+    const thumbnailClientWidth = bigThumbnail.value?.$el.clientWidth ?? 0
+    if (!thumbnailClientWidth || !thumbnailBigWidth.value) thumbnailFactor.value = 0
 
-    beforeDestroy() {
-        this.resizeObserver?.disconnect()
-    }
-
-    calcThumbnailFactor() {
-        const thumbnailClientWidth = this.bigThumbnail?.$el.clientWidth ?? 0
-        if (!thumbnailClientWidth || !this.thumbnailBigWidth) this.thumbnailFactor = 0
-
-        return (this.thumbnailFactor = thumbnailClientWidth / this.thumbnailBigWidth)
-    }
-
-    setupResizeObserver() {
-        this.resizeObserver?.disconnect()
-
-        if (!this.wrapper) return
-
-        this.resizeObserver = new ResizeObserver(() => this.handleResize())
-        this.resizeObserver.observe(this.wrapper)
-    }
-
-    @Debounce(200)
-    handleResize() {
-        this.$nextTick(() => {
-            this.calcThumbnailFactor()
-        })
-    }
-
-    @Watch('current_filename')
-    onCurrentFilenameChanged() {
-        this.$nextTick(() => this.calcThumbnailFactor())
-    }
+    thumbnailFactor.value = thumbnailClientWidth / thumbnailBigWidth.value
 }
+
+function handleResize() {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+        nextTick(() => {
+            calcThumbnailFactor()
+        })
+    }, 200)
+}
+
+function setupResizeObserver() {
+    resizeObserver?.disconnect()
+
+    if (!wrapper.value) return
+
+    resizeObserver = new ResizeObserver(() => handleResize())
+    resizeObserver.observe(wrapper.value)
+}
+
+onMounted(() => {
+    setupResizeObserver()
+})
+
+onBeforeUnmount(() => {
+    resizeObserver?.disconnect()
+    if (debounceTimer) clearTimeout(debounceTimer)
+})
+
+watch(current_filename, () => {
+    nextTick(() => calcThumbnailFactor())
+})
 </script>
 
 <style scoped>
