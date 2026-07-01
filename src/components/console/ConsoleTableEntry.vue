@@ -1,6 +1,6 @@
 <template>
     <v-row :class="entryStyle">
-        <v-col class="col-auto pr-0 text--disabled console-time">{{ entryFormatTime }}</v-col>
+        <v-col class="col-auto pr-0 text-disabled console-time">{{ entryFormatTime }}</v-col>
         <v-col
             v-if="!rawOutput"
             :class="messageClass"
@@ -11,49 +11,47 @@
     </v-row>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import { ServerStateEvent } from '@/store/server/types'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useBase } from '@/composables/useBase'
+import { useGuiConsoleStore } from '@/store/gui/console'
+import type { ServerStateEvent } from '@/store/server/types'
 
-@Component
-export default class ConsoleTableEntry extends Mixins(BaseMixin) {
-    @Prop({ required: true }) readonly event!: ServerStateEvent
+const props = defineProps<{ event: ServerStateEvent }>()
 
-    get entryStyle() {
-        const classes = ['ma-0', 'flex-nowrap']
-        classes.push(this.$store.state.gui.console.entryStyle ?? 'default')
-        if (['action', 'debug'].includes(this.event.type)) classes.push('text--disabled')
+const emit = defineEmits<{ 'command-click': [command: string] }>()
 
-        return classes
-    }
+const { formatTime } = useBase()
+const guiConsoleStore = useGuiConsoleStore()
 
-    get entryFormatTime() {
-        return this.formatTime(this.event.date.getTime(), true)
-    }
+const entryStyle = computed(() => {
+    const classes = ['ma-0', 'flex-nowrap']
+    classes.push(guiConsoleStore.entryStyle ?? 'default')
+    if (['action', 'debug'].includes(props.event.type)) classes.push('text-disabled')
 
-    get messageClass() {
-        const classes = ['console-message']
+    return classes
+})
 
-        if (['action', 'debug'].includes(this.event.type)) classes.push('text--disabled')
-        else if (this.event.message.startsWith('!! ')) classes.push('error--text')
-        else classes.push('text--primary')
+const entryFormatTime = computed(() => formatTime(props.event.date.getTime(), true))
 
-        return classes
-    }
+const messageClass = computed(() => {
+    const classes = ['console-message']
 
-    get rawOutput() {
-        return this.$store.state.gui.console.rawOutput ?? false
-    }
+    if (['action', 'debug'].includes(props.event.type)) classes.push('text-disabled')
+    else if (props.event.message.startsWith('!! ')) classes.push('text-error')
+    else classes.push('text-high-emphasis')
 
-    commandClick(event: Event) {
-        const eventTarget = event.target as Element
-        if (eventTarget.localName === 'a' && eventTarget.className.indexOf('command') !== -1) {
-            const command = eventTarget.innerHTML.replace(/<br>/g, '\n')
+    return classes
+})
 
-            this.$emit('command-click', command)
-        }
+const rawOutput = computed(() => guiConsoleStore.rawOutput ?? false)
+
+function commandClick(event: Event) {
+    const eventTarget = event.target as Element
+    if (eventTarget.localName === 'a' && eventTarget.className.indexOf('command') !== -1) {
+        const command = eventTarget.innerHTML.replace(/<br>/g, '\n')
+
+        emit('command-click', command)
     }
 }
 </script>

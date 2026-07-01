@@ -1,7 +1,7 @@
 <template>
     <div :class="'consoleTable ' + (isMini ? 'mini' : '')">
         <v-row v-if="events.length === 0" class="pa-0 ma-0">
-            <v-col class="text-center py-3">{{ $t('Console.Empty') }}</v-col>
+            <v-col class="text-center py-3">{{ t('Console.Empty') }}</v-col>
         </v-row>
         <template v-else>
             <console-table-entry
@@ -14,22 +14,24 @@
     </div>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import Vue from 'vue'
-import { Prop } from 'vue-property-decorator'
-import { ServerStateEvent } from '@/store/server/types'
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import ConsoleTableEntry from '@/components/console/ConsoleTableEntry.vue'
+import type { ServerStateEvent } from '@/store/server/types'
 
-@Component({
-    components: { ConsoleTableEntry },
-})
-export default class ConsoleTable extends Vue {
-    @Prop({ required: true }) readonly events!: ServerStateEvent[]
-    @Prop({ required: false, default: false }) readonly isMini!: boolean
+const { t } = useI18n()
 
-    commandClick(msg: string) {
-        this.$emit('command-click', msg)
-    }
+withDefaults(
+    defineProps<{
+        events: ServerStateEvent[]
+        isMini?: boolean
+    }>(),
+    { isMini: false }
+)
+
+const emit = defineEmits<{ 'command-click': [msg: string] }>()
+
+function commandClick(msg: string) {
+    emit('command-click', msg)
 }
 </script>
