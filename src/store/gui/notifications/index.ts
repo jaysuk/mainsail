@@ -93,7 +93,7 @@ export const useGuiNotificationsStore = defineStore('guiNotifications', () => {
         storeDismiss({ entry_id: id, category, type: 'ever', time: null })
     }
 
-    const dismiss = (payload: { id: string; type: string; time: number }) => {
+    const dismiss = (payload: { id: string; type: string; time: number | null }) => {
         const posFirstSlash = payload.id.indexOf('/')
         if (posFirstSlash === -1) return
 

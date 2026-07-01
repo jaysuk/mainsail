@@ -66,7 +66,7 @@ export const useServerAnnouncementsStore = defineStore('serverAnnouncements', ()
         webSocketClient.emit('server.announcements.dismiss', { entry_id: payload.entry_id })
     }
 
-    const dismiss = (payload: { entry_id: string; time: number }) => {
+    const dismiss = (payload: { entry_id: string; time: number | null }) => {
         webSocketClient.emit('server.announcements.dismiss', { entry_id: payload.entry_id, wake_time: payload.time })
     }
 
