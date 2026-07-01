@@ -21,7 +21,7 @@ export interface ServerTimelapseSettingsState {
     stream_delay_compensation: number
     gcode_verbose: boolean
     parkhead: boolean
-    parkpos: 'center' | 'front_left' | 'front_right' | 'back_left' | 'back_right' | 'custom'
+    parkpos: 'center' | 'front_left' | 'front_right' | 'back_left' | 'back_right' | 'x_only' | 'y_only' | 'custom'
     park_custom_pos_x: number
     park_custom_pos_y: number
     park_custom_pos_dz: number

@@ -1,45 +1,36 @@
 <template>
     <div>
         <v-card-text>
-            <h3 class="text-h5 mb-3">{{ $t('Settings.NavigationTab.Navigation') }}</h3>
-            <draggable
-                v-model="sortableNaviPoints"
-                handle=".handle"
-                ghost-class="ghost"
-                group="navigation-points"
-                :force-fallback="true">
-                <settings-navigation-tab-item
-                    v-for="(naviPoint, index) in sortableNaviPoints"
-                    :key="index"
-                    class="my-2 mx-0"
-                    :style="draggableBgStyle"
-                    :navi-point="naviPoint" />
+            <h3 class="text-h5 mb-3">{{ t('Settings.NavigationTab.Navigation') }}</h3>
+            <draggable v-model="sortableNaviPoints" handle=".handle" ghost-class="ghost" group="navigation-points" :force-fallback="true">
+                <template #item="{ element }">
+                    <settings-navigation-tab-item class="my-2 mx-0" :style="draggableBgStyle" :navi-point="element" />
+                </template>
             </draggable>
         </v-card-text>
     </div>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import NavigationMixin, { NaviPoint } from '@/components/mixins/navigation'
-import ThemeMixin from '@/components/mixins/theme'
-import SettingsRow from '@/components/settings/SettingsRow.vue'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import draggable from 'vuedraggable'
 import SettingsNavigationTabItem from '@/components/settings/SettingsNavigationTabItem.vue'
+import { useMainsailTheme } from '@/composables/useMainsailTheme'
+import { useNavigation, type NaviPoint } from '@/composables/useNavigation'
+import { useGuiNavigationStore } from '@/store/gui/navigation'
 
-@Component({
-    components: { SettingsNavigationTabItem, SettingsRow, draggable },
-})
-export default class SettingsNavigationTab extends Mixins(NavigationMixin, BaseMixin, ThemeMixin) {
-    get sortableNaviPoints() {
-        return this.naviPoints.filter((naviPoint) => naviPoint.position > 0)
-    }
+const { t } = useI18n()
+const { draggableBgStyle } = useMainsailTheme()
+const { naviPoints } = useNavigation()
+const guiNavigationStore = useGuiNavigationStore()
 
-    set sortableNaviPoints(newVal: NaviPoint[]) {
+const sortableNaviPoints = computed<NaviPoint[]>({
+    get: () => naviPoints.value.filter((naviPoint) => naviPoint.position > 0),
+    set: (newVal) => {
         // update store with new positions
         newVal.forEach((naviPoint, index) => {
-            this.$store.dispatch('gui/navigation/updatePos', {
+            guiNavigationStore.updatePos({
                 type: naviPoint.type,
                 title: naviPoint.orgTitle ?? naviPoint.title,
                 visible: naviPoint.visible,
@@ -48,7 +39,7 @@ export default class SettingsNavigationTab extends Mixins(NavigationMixin, BaseM
         })
 
         // upload to moonraker db
-        this.$store.dispatch('gui/navigation/upload')
-    }
-}
+        guiNavigationStore.upload()
+    },
+})
 </script>

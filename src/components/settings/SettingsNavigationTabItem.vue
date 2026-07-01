@@ -5,53 +5,40 @@
         </v-col>
         <v-col class="py-2">
             <settings-row :title="title" :sub-title="subtitle" :dynamic-slot-width="true">
-                <v-icon :color="checkboxColor" @click="changeVisibility" v-html="checkboxIcon" />
+                <v-icon :color="checkboxColor" @click="changeVisibility">{{ checkboxIcon }}</v-icon>
             </settings-row>
         </v-col>
     </v-row>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import NavigationMixin, { NaviPoint } from '@/components/mixins/navigation'
-import ThemeMixin from '@/components/mixins/theme'
-import SettingsRow from '@/components/settings/SettingsRow.vue'
-import draggable from 'vuedraggable'
+<script setup lang="ts">
+import { computed } from 'vue'
 import { mdiDragVertical, mdiCheckboxMarked, mdiCheckboxBlankOutline } from '@mdi/js'
+import SettingsRow from '@/components/settings/SettingsRow.vue'
+import { useMainsailTheme } from '@/composables/useMainsailTheme'
+import { useGuiNavigationStore } from '@/store/gui/navigation'
+import type { NaviPoint } from '@/composables/useNavigation'
 
-@Component({
-    components: { SettingsRow, draggable },
+const props = defineProps<{
+    naviPoint: NaviPoint
+}>()
+
+const { draggableBgStyle } = useMainsailTheme()
+const guiNavigationStore = useGuiNavigationStore()
+
+const title = computed(() => props.naviPoint.title)
+
+const subtitle = computed(() => {
+    if (props.naviPoint.type === 'link') return `URL: ${props.naviPoint.href ?? 'Unknown'}`
+
+    return undefined
 })
-export default class SettingsNavigationTab extends Mixins(NavigationMixin, BaseMixin, ThemeMixin) {
-    mdiDragVertical = mdiDragVertical
 
-    @Prop({ type: Object, required: true }) naviPoint!: NaviPoint
+const checkboxColor = computed(() => (props.naviPoint.visible ? 'primary' : 'grey-lighten-1'))
 
-    get title() {
-        return this.naviPoint.title
-    }
+const checkboxIcon = computed(() => (props.naviPoint.visible ? mdiCheckboxMarked : mdiCheckboxBlankOutline))
 
-    get subtitle() {
-        if (this.naviPoint.type === 'link') return `URL: ${this.naviPoint.href ?? 'Unknown'}`
-
-        return undefined
-    }
-
-    get checkboxColor() {
-        if (this.naviPoint.visible) return 'primary'
-
-        return 'grey lighten-1'
-    }
-
-    get checkboxIcon() {
-        if (this.naviPoint.visible) return mdiCheckboxMarked
-
-        return mdiCheckboxBlankOutline
-    }
-
-    changeVisibility() {
-        this.$store.dispatch('gui/navigation/changeVisibility', this.naviPoint)
-    }
+function changeVisibility() {
+    guiNavigationStore.changeVisibility(props.naviPoint)
 }
 </script>
