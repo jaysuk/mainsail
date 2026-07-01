@@ -1,165 +1,158 @@
 <template>
     <v-list-item :lines="lines" :class="listItemClass">
-        <v-list-item-content class="my-0">
-            <div class="text-overline reduced-line-height" :class="toplineClass">{{ title }}</div>
-            <v-list-item-title :class="titleClass">
-                {{ name }}
-            </v-list-item-title>
-            <v-list-item-subtitle class="d-flex justify-space-between w-100" :class="subtitleClass">
-                {{ subtitle }}
-            </v-list-item-subtitle>
-            <v-list-item-subtitle class="d-flex justify-space-between w-100 smaller-font">
-                {{ extra }}
-            </v-list-item-subtitle>
-        </v-list-item-content>
+        <div class="text-overline reduced-line-height" :class="toplineClass">{{ title }}</div>
+        <v-list-item-title :class="titleClass">
+            {{ name }}
+        </v-list-item-title>
+        <v-list-item-subtitle class="d-flex justify-space-between w-100" :class="subtitleClass">
+            {{ subtitle }}
+        </v-list-item-subtitle>
+        <v-list-item-subtitle class="d-flex justify-space-between w-100 smaller-font">
+            {{ extra }}
+        </v-list-item-subtitle>
     </v-list-item>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, { TOOL_GATE_BYPASS } from '@/components/mixins/mmu'
-import { ServerSpoolmanStateSpool } from '@/store/server/spoolman/types'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import type { ServerSpoolmanStateSpool } from '@/store/server/spoolman/types'
+import { useMmu, TOOL_GATE_BYPASS } from '@/composables/useMmu'
+import { useServerSpoolmanStore } from '@/store/server/spoolman'
 
-@Component({})
-export default class MmuGateSummary extends Mixins(BaseMixin, MmuMixin) {
-    @Prop({ required: true }) readonly gateIndex!: number
-    @Prop({ default: false }) readonly compact!: boolean
-
-    get gateStatus() {
-        const status = this.mmu?.gate_status ?? []
-
-        return status[this.gateIndex] ?? 0
+const props = withDefaults(
+    defineProps<{
+        gateIndex: number
+        compact?: boolean
+    }>(),
+    {
+        compact: false,
     }
+)
 
-    get lines() {
-        return this.compact ? 'three' : 'two'
-    }
+const { t } = useI18n()
+const { mmu } = useMmu()
+const spoolmanStore = useServerSpoolmanStore()
 
-    get title() {
-        const output = []
+const gateStatus = computed(() => {
+    const status = mmu.value?.gate_status ?? []
 
-        if (!this.compact && this.gateIndex === TOOL_GATE_BYPASS) output.push('Bypass')
-        else if (!this.compact) output.push(`@${this.gateIndex}`)
+    return status[props.gateIndex] ?? 0
+})
 
-        if (this.vendorText) output.push(this.vendorText)
+const lines = computed(() => (props.compact ? 'three' : 'two'))
 
-        return output.join(' | ')
-    }
+const gateMaterial = computed(() => {
+    const materials = mmu.value?.gate_material ?? []
 
-    get name() {
-        const names = this.mmu?.gate_filament_name ?? []
+    return materials[props.gateIndex] || t('Panels.MmuPanel.Unknown')
+})
 
-        return names[this.gateIndex] || this.$t('Panels.MmuPanel.Unknown')
-    }
+const gateTemperature = computed(() => {
+    const temperatures = mmu.value?.gate_temperature ?? []
 
-    get subtitle() {
-        const output = [this.gateMaterial]
-        if (this.gateTemperature > 0) output.push(`${this.gateTemperature}°C`)
-        if (this.gateSpeedOverride !== 100) output.push(`Speed: ${this.gateSpeedOverride.toFixed(0)}%`)
+    return temperatures[props.gateIndex] || -1
+})
 
-        return output.join(' | ')
-    }
+const gateSpeedOverride = computed(() => {
+    const speedOverrides = mmu.value?.gate_speed_override ?? []
 
-    get extra() {
-        if (!this.spoolmanSpool) return 'No spool ID'
+    return speedOverrides[props.gateIndex] || 100
+})
 
-        const output = [`Spool ID: #${this.gateSpoolId}`]
-        if (this.weightText) output.push(this.weightText)
-        if (this.lengthText) output.push(this.lengthText)
+const gateSpoolId = computed(() => {
+    const spoolIds = mmu.value?.gate_spool_id ?? []
 
-        return output.join(' | ')
-    }
+    return spoolIds[props.gateIndex] || -1
+})
 
-    get gateMaterial() {
-        const materials = this.mmu?.gate_material ?? []
+const spoolmanSpool = computed<ServerSpoolmanStateSpool | null>(() => {
+    const spools = spoolmanStore.spools ?? []
 
-        return materials[this.gateIndex] || this.$t('Panels.MmuPanel.Unknown')
-    }
+    return spools.find((s: ServerSpoolmanStateSpool) => s.id === gateSpoolId.value) ?? null
+})
 
-    get gateTemperature() {
-        const temperatures = this.mmu?.gate_temperature ?? []
+const vendorText = computed(() => spoolmanSpool.value?.filament?.vendor?.name ?? t('Panels.MmuPanel.Unknown'))
 
-        return temperatures[this.gateIndex] || -1
-    }
+const title = computed(() => {
+    const output = []
 
-    get gateSpeedOverride() {
-        const speedOverrides = this.mmu?.gate_speed_override ?? []
+    if (!props.compact && props.gateIndex === TOOL_GATE_BYPASS) output.push('Bypass')
+    else if (!props.compact) output.push(`@${props.gateIndex}`)
 
-        return speedOverrides[this.gateIndex] || 100
-    }
+    if (vendorText.value) output.push(vendorText.value)
 
-    get gateSpoolId() {
-        const spoolIds = this.mmu?.gate_spool_id ?? []
+    return output.join(' | ')
+})
 
-        return spoolIds[this.gateIndex] || -1
-    }
+const name = computed(() => {
+    const names = mmu.value?.gate_filament_name ?? []
 
-    // Only available with Spoolman...
+    return names[props.gateIndex] || t('Panels.MmuPanel.Unknown')
+})
 
-    get spoolmanSpool() {
-        const spools = this.$store.state.server.spoolman.spools ?? []
+const subtitle = computed(() => {
+    const output = [gateMaterial.value]
+    if (gateTemperature.value > 0) output.push(`${gateTemperature.value}°C`)
+    if (gateSpeedOverride.value !== 100) output.push(`Speed: ${gateSpeedOverride.value.toFixed(0)}%`)
 
-        return spools.find((s: ServerSpoolmanStateSpool) => s.id === this.gateSpoolId) ?? null
-    }
+    return output.join(' | ')
+})
 
-    get vendorText() {
-        return this.spoolmanSpool?.filament?.vendor?.name ?? this.$t('Panels.MmuPanel.Unknown')
-    }
+const weightText = computed(() => {
+    const remaining = spoolmanSpool.value?.remaining_weight ?? null
+    const total = spoolmanSpool.value?.initial_weight ?? spoolmanSpool.value?.filament?.weight ?? null
+    if (remaining === null || total === null) return null
 
-    get weightText() {
-        const remaining = this.spoolmanSpool?.remaining_weight ?? null
-        const total = this.spoolmanSpool?.initial_weight ?? this.spoolmanSpool?.filament?.weight ?? null
-        if (remaining === null || total === null) return null
-
-        if (total >= 1000) {
-            let totalRound = Math.floor(total / 1000)
-            if (totalRound !== total / 1000) {
-                totalRound = Math.round(total / 100) / 10
-            }
-
-            return `${Math.round(remaining)}g / ${totalRound}kg`
+    if (total >= 1000) {
+        let totalRound = Math.floor(total / 1000)
+        if (totalRound !== total / 1000) {
+            totalRound = Math.round(total / 100) / 10
         }
 
-        return `${Math.round(remaining)} / ${Math.round(total)}g`
+        return `${Math.round(remaining)}g / ${totalRound}kg`
     }
 
-    get lengthText() {
-        const remaining = this.spoolmanSpool?.remaining_length ?? null
-        if (remaining === null) return null
+    return `${Math.round(remaining)} / ${Math.round(total)}g`
+})
 
-        return `${Math.round(remaining / 1000)}m`
-    }
+const lengthText = computed(() => {
+    const remaining = spoolmanSpool.value?.remaining_length ?? null
+    if (remaining === null) return null
 
-    get listItemClass() {
-        return {
-            'disabled-panel': !this.gateStatus,
-            'px-0': this.compact,
-        }
-    }
+    return `${Math.round(remaining / 1000)}m`
+})
 
-    get toplineClass() {
-        return {
-            'mb-2': !this.compact,
-            'mb-1': this.compact,
-            'small-overline-font': this.compact,
-        }
-    }
+const extra = computed(() => {
+    if (!spoolmanSpool.value) return 'No spool ID'
 
-    get titleClass() {
-        return {
-            'text-h7': this.compact,
-            'text-h6': !this.compact,
-            'mb-1': true,
-        }
-    }
+    const output = [`Spool ID: #${gateSpoolId.value}`]
+    if (weightText.value) output.push(weightText.value)
+    if (lengthText.value) output.push(lengthText.value)
 
-    get subtitleClass() {
-        return {
-            'smaller-font': this.compact,
-        }
-    }
-}
+    return output.join(' | ')
+})
+
+const listItemClass = computed(() => ({
+    'disabled-panel': !gateStatus.value,
+    'px-0': props.compact,
+}))
+
+const toplineClass = computed(() => ({
+    'mb-2': !props.compact,
+    'mb-1': props.compact,
+    'small-overline-font': props.compact,
+}))
+
+const titleClass = computed(() => ({
+    'text-h7': props.compact,
+    'text-h6': !props.compact,
+    'mb-1': true,
+}))
+
+const subtitleClass = computed(() => ({
+    'smaller-font': props.compact,
+}))
 </script>
 
 <style scoped>

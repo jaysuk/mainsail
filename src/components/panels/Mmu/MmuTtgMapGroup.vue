@@ -7,70 +7,63 @@
     </g>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, {
-    MmuTtgMap_GROUP_SPACING,
-    MmuTtgMap_START_Y,
-    MmuTtgMap_VERTICAL_SPACING,
-} from '@/components/mixins/mmu'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useMmu, MmuTtgMap_GROUP_SPACING, MmuTtgMap_START_Y, MmuTtgMap_VERTICAL_SPACING } from '@/composables/useMmu'
 
-@Component
-export default class MmuTtgMapLine extends Mixins(BaseMixin, MmuMixin) {
-    @Prop({ required: true }) readonly groupNumber!: number
-    @Prop({ required: true }) readonly group!: number[]
-    @Prop({ required: true }) readonly index!: number
-    @Prop({ required: true }) readonly gateX!: number
-    @Prop({ required: true }) readonly groupX!: number
-    @Prop({ default: -1 }) readonly currentGroup!: number
-
-    get textPositionX() {
-        return this.groupX + this.index * MmuTtgMap_GROUP_SPACING
+const props = withDefaults(
+    defineProps<{
+        groupNumber: number
+        group: number[]
+        index: number
+        gateX: number
+        groupX: number
+        currentGroup?: number
+    }>(),
+    {
+        currentGroup: -1,
     }
+)
 
-    get textPositionY() {
-        return MmuTtgMap_START_Y + this.mmuNumGates * MmuTtgMap_VERTICAL_SPACING + 2
-    }
+const { mmuNumGates } = useMmu()
 
-    get path() {
-        const tick = 5 // length of the horizontal tick
-        const y1 = MmuTtgMap_START_Y + 4 // small offset to align with gate lines
+const textPositionX = computed(() => props.groupX + props.index * MmuTtgMap_GROUP_SPACING)
 
-        const paths: string[] = []
-        let y0: number | null = null
+const textPositionY = computed(() => MmuTtgMap_START_Y + mmuNumGates.value * MmuTtgMap_VERTICAL_SPACING + 2)
 
-        this.group.forEach((gate) => {
-            const y = y1 + gate * MmuTtgMap_VERTICAL_SPACING
-            paths.push(`M ${this.textPositionX + tick} ${y} L ${this.textPositionX} ${y}`)
-            if (y0 !== null) {
-                paths.push(`M ${this.textPositionX + tick} ${y0} L ${this.textPositionX + tick} ${y}`)
-            }
-            y0 = y
-        })
+const path = computed(() => {
+    const tick = 5 // length of the horizontal tick
+    const y1 = MmuTtgMap_START_Y + 4 // small offset to align with gate lines
 
-        return paths.join(' ')
-    }
+    const paths: string[] = []
+    let y0: number | null = null
 
-    get groupChar() {
-        return String.fromCharCode(this.groupNumber + 65)
-    }
+    props.group.forEach((gate) => {
+        const y = y1 + gate * MmuTtgMap_VERTICAL_SPACING
+        paths.push(`M ${textPositionX.value + tick} ${y} L ${textPositionX.value} ${y}`)
+        if (y0 !== null) {
+            paths.push(`M ${textPositionX.value + tick} ${y0} L ${textPositionX.value + tick} ${y}`)
+        }
+        y0 = y
+    })
 
-    get elementClass() {
-        return this.groupNumber === this.currentGroup ? 'selected' : 'regular'
-    }
-}
+    return paths.join(' ')
+})
+
+const groupChar = computed(() => String.fromCharCode(props.groupNumber + 65))
+
+const elementClass = computed(() => (props.groupNumber === props.currentGroup ? 'selected' : 'regular'))
 </script>
 
 <style scoped>
 .regular {
-    stroke: var(--v-secondary-lighten2, #808080);
-    fill: var(--v-secondary-lighten2, #808080);
+    stroke: rgb(var(--v-theme-secondary, 128 128 128));
+    fill: rgb(var(--v-theme-secondary, 128 128 128));
     font-weight: normal;
 }
 .selected {
-    stroke: var(--v-primary-lighten1, #2ca9bc);
-    fill: var(--v-primary-lighten1, #2ca9bc);
+    stroke: rgb(var(--v-theme-primary, 44 169 188));
+    fill: rgb(var(--v-theme-primary, 44 169 188));
     font-weight: bold;
 }
 </style>

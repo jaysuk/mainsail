@@ -8,55 +8,47 @@
     </g>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, {
-    FILAMENT_POS_HOMED_ENTRY,
-    FILAMENT_POS_HOMED_GATE,
-    FILAMENT_POS_HOMED_TS,
-    Mmu,
-} from '@/components/mixins/mmu'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useMmu, FILAMENT_POS_HOMED_ENTRY, FILAMENT_POS_HOMED_GATE, FILAMENT_POS_HOMED_TS, type Mmu } from '@/composables/useMmu'
 
-@Component
-export default class MmuFilamentStatusSensor extends Mixins(BaseMixin, MmuMixin) {
-    @Prop({ required: true }) readonly sensorName!: keyof Mmu['sensors']
-    @Prop({ required: true }) readonly sensorText!: string
-    @Prop({ required: true }) readonly yPosition!: number
-    @Prop({ default: false }) readonly outsideZone!: boolean
-
-    get hasSensor() {
-        return this.hasMmuSensor(this.sensorName)
+const props = withDefaults(
+    defineProps<{
+        sensorName: keyof Mmu['sensors']
+        sensorText: string
+        yPosition: number
+        outsideZone?: boolean
+    }>(),
+    {
+        outsideZone: false,
     }
+)
 
-    get sensorStatus() {
-        return this.getMmuSensor(this.sensorName)
-    }
+const { mmuFilamentPos, configGateHomingEndstop, hasMmuSensor, getMmuSensor } = useMmu()
 
-    get circleClass() {
-        return {
-            'sensor-disabled': this.sensorStatus === null,
-            'sensor-triggered': this.sensorStatus === true,
-            'sensor-open': this.sensorStatus === false,
-            'outside-zone': this.outsideZone,
-        }
-    }
+const hasSensor = computed(() => hasMmuSensor(props.sensorName))
 
-    get textClass() {
-        return {
-            'text-disabled': this.sensorStatus === null,
-        }
-    }
+const sensorStatus = computed(() => getMmuSensor(props.sensorName))
 
-    get homedTo() {
-        if (this.sensorName === 'extruder') return this.mmuFilamentPos === FILAMENT_POS_HOMED_ENTRY
-        if (this.sensorName === 'toolhead') return this.mmuFilamentPos === FILAMENT_POS_HOMED_TS
+const circleClass = computed(() => ({
+    'sensor-disabled': sensorStatus.value === null,
+    'sensor-triggered': sensorStatus.value === true,
+    'sensor-open': sensorStatus.value === false,
+    'outside-zone': props.outsideZone,
+}))
 
-        if (!['mmu_gear', 'mmu_gate'].includes(this.sensorName)) return false
+const textClass = computed(() => ({
+    'text-disabled': sensorStatus.value === null,
+}))
 
-        return this.configGateHomingEndstop === this.sensorName && this.mmuFilamentPos === FILAMENT_POS_HOMED_GATE
-    }
-}
+const homedTo = computed(() => {
+    if (props.sensorName === 'extruder') return mmuFilamentPos.value === FILAMENT_POS_HOMED_ENTRY
+    if (props.sensorName === 'toolhead') return mmuFilamentPos.value === FILAMENT_POS_HOMED_TS
+
+    if (!['mmu_gear', 'mmu_gate'].includes(props.sensorName)) return false
+
+    return configGateHomingEndstop.value === props.sensorName && mmuFilamentPos.value === FILAMENT_POS_HOMED_GATE
+})
 </script>
 
 <style scoped>

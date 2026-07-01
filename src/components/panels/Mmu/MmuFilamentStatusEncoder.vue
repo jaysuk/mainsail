@@ -2,7 +2,7 @@
     <g>
         <circle cx="258" cy="140" r="8" stroke-width="1" :class="encoderClass" />
         <path d="M257 135 L261 140 L257 145" stroke-width="2" fill="none" />
-        <text x="278" y="145" :class="textClass">{{ $t('Panels.MmuPanel.Encoder') }}</text>
+        <text x="278" y="145" :class="textClass">{{ t('Panels.MmuPanel.Encoder') }}</text>
         <text x="345" y="145" :class="textClass" font-size="11px">{{ encoderPosText }}</text>
         <transition name="fade">
             <text v-if="homedToEncoder" x="219.5" y="145" font-weight="bold">H</text>
@@ -10,39 +10,25 @@
     </g>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, { DIRECTION_UNKNOWN, FILAMENT_POS_START_BOWDEN } from '@/components/mixins/mmu'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useMmu, FILAMENT_POS_START_BOWDEN } from '@/composables/useMmu'
 
-@Component
-export default class MmuFilamentStatusEncoder extends Mixins(BaseMixin, MmuMixin) {
-    get encoderClass() {
-        return this.mmuEncoder?.enabled ? 'sensor-normal' : 'sensor-disabled'
-    }
+const { t } = useI18n()
+const { mmuEncoder, mmuFilamentPos, configGateHomingEndstop } = useMmu()
 
-    get textClass() {
-        return {
-            'text-disabled': !this.mmuEncoder?.enabled,
-        }
-    }
+const encoderClass = computed(() => (mmuEncoder.value?.enabled ? 'sensor-normal' : 'sensor-disabled'))
 
-    get encoderPosText() {
-        return this.encoderPos < 10000 ? `${this.encoderPos} mm` : `${this.encoderPos}`
-    }
+const textClass = computed(() => ({
+    'text-disabled': !mmuEncoder.value?.enabled,
+}))
 
-    get filamentDirection() {
-        return this.mmu?.filament_direction ?? DIRECTION_UNKNOWN
-    }
+const encoderPos = computed(() => Math.round(mmuEncoder.value?.encoder_pos ?? 0))
 
-    get homedToEncoder(): boolean {
-        return this.configGateHomingEndstop === 'encoder' && this.mmuFilamentPos === FILAMENT_POS_START_BOWDEN
-    }
+const encoderPosText = computed(() => (encoderPos.value < 10000 ? `${encoderPos.value} mm` : `${encoderPos.value}`))
 
-    get encoderPos() {
-        return Math.round(this.mmuEncoder?.encoder_pos ?? 0)
-    }
-}
+const homedToEncoder = computed<boolean>(() => configGateHomingEndstop.value === 'encoder' && mmuFilamentPos.value === FILAMENT_POS_START_BOWDEN)
 </script>
 
 <style scoped>

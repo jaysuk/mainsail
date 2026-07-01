@@ -13,75 +13,70 @@
                 :has-bypass="hasBypass"
                 @edit-filament="editFilament"
                 @select-gate="selectGate" />
-            <mmu-unit-gate
-                v-if="hasBypass"
-                :gate-index="TOOL_GATE_BYPASS"
-                :mmu-machine-unit="mmuMachineUnit"
-                :show-context-menu="showContextMenu"
-                :selected-gate="selectedGate"
-                @select-gate="selectGate" />
+            <mmu-unit-gate v-if="hasBypass" :gate-index="TOOL_GATE_BYPASS" :mmu-machine-unit="mmuMachineUnit" :show-context-menu="showContextMenu" :selected-gate="selectedGate" @select-gate="selectGate" />
         </div>
-        <mmu-unit-footer
-            class="pt-0 position-relative"
-            :style="footerStyle"
-            :mmu-machine-unit="mmuMachineUnit"
-            :show-details="showDetails"
-            :show-footer="showFooter"
-            :unit-index="unitIndex" />
+        <mmu-unit-footer class="pt-0 position-relative" :style="footerStyle" :mmu-machine-unit="mmuMachineUnit" :show-details="showDetails" :show-footer="showFooter" :unit-index="unitIndex" />
     </div>
 </template>
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, { TOOL_GATE_BYPASS } from '@/components/mixins/mmu'
 
-@Component
-export default class MmuUnit extends Mixins(BaseMixin, MmuMixin) {
-    TOOL_GATE_BYPASS = TOOL_GATE_BYPASS
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useMmu, TOOL_GATE_BYPASS } from '@/composables/useMmu'
+import MmuUnitGate from '@/components/panels/Mmu/MmuUnitGate.vue'
+import MmuUnitFooter from '@/components/panels/Mmu/MmuUnitFooter.vue'
 
-    @Prop({ required: true }) readonly selectedGate!: number
-    @Prop({ required: true }) readonly unitIndex!: number
-    @Prop({ default: false }) readonly showDetails!: boolean
-    @Prop({ default: true }) readonly showContextMenu!: boolean
-    @Prop({ default: true }) readonly showFooter!: boolean
-    @Prop({ default: false }) readonly hideBypass!: boolean
-    @Prop({ default: false }) readonly unhighlightSpools!: boolean
-
-    get mmuUnitClass() {
-        return this.unitIndex < 0 ? 'mmu-unit-clear' : ''
+const props = withDefaults(
+    defineProps<{
+        selectedGate: number
+        unitIndex: number
+        showDetails?: boolean
+        showContextMenu?: boolean
+        showFooter?: boolean
+        hideBypass?: boolean
+        unhighlightSpools?: boolean
+    }>(),
+    {
+        showDetails: false,
+        showContextMenu: true,
+        showFooter: true,
+        hideBypass: false,
+        unhighlightSpools: false,
     }
+)
 
-    get mmuMachineUnit() {
-        return this.getMmuMachineUnit(this.unitIndex)
-    }
+const emit = defineEmits<{
+    'edit-filament': [gateIndex: number]
+    'select-gate': [gateIndex: number]
+}>()
 
-    get numGates() {
-        return this.mmuMachineUnit?.num_gates ?? 0
-    }
+const { getMmuMachineUnit, spoolWidth } = useMmu()
 
-    get firstGateNumber() {
-        return this.mmuMachineUnit?.first_gate ?? 0
-    }
+const mmuUnitClass = computed(() => (props.unitIndex < 0 ? 'mmu-unit-clear' : ''))
 
-    get hasBypass() {
-        if (this.hideBypass) return false
+const mmuMachineUnit = computed(() => getMmuMachineUnit(props.unitIndex))
 
-        return this.mmuMachineUnit?.has_bypass ?? true
-    }
+const numGates = computed(() => mmuMachineUnit.value?.num_gates ?? 0)
 
-    get footerStyle() {
-        const numSpools = this.numGates + (this.hasBypass ? 1 : 0)
-        const maxWidth = this.spoolWidth * numSpools + 32
-        return `max-width: ${maxWidth}px;`
-    }
+const firstGateNumber = computed(() => mmuMachineUnit.value?.first_gate ?? 0)
 
-    editFilament(gateIndex: number) {
-        this.$emit('edit-filament', gateIndex)
-    }
+const hasBypass = computed(() => {
+    if (props.hideBypass) return false
 
-    selectGate(gateIndex: number) {
-        this.$emit('select-gate', gateIndex)
-    }
+    return mmuMachineUnit.value?.has_bypass ?? true
+})
+
+const footerStyle = computed(() => {
+    const numSpools = numGates.value + (hasBypass.value ? 1 : 0)
+    const maxWidth = spoolWidth.value * numSpools + 32
+    return `max-width: ${maxWidth}px;`
+})
+
+function editFilament(gateIndex: number) {
+    emit('edit-filament', gateIndex)
+}
+
+function selectGate(gateIndex: number) {
+    emit('select-gate', gateIndex)
 }
 </script>
 

@@ -1,131 +1,87 @@
 <template>
-    <v-menu :offset-y="true" :left="true" :close-on-content-click="false">
-        <template #activator="{ on, attrs }">
-            <v-btn icon tile v-bind="attrs" v-on="on">
-                <v-icon small>{{ mdiCog }}</v-icon>
+    <v-menu :close-on-content-click="false" location="bottom end">
+        <template #activator="{ props: activatorProps }">
+            <v-btn icon="" variant="text" v-bind="activatorProps">
+                <v-icon size="small">{{ mdiCog }}</v-icon>
             </v-btn>
         </template>
         <v-list>
             <v-list-item v-if="hasMmuEncoder || hasSyncFeedback" class="minHeight36">
-                <v-checkbox
-                    v-model="showClogDetection"
-                    class="mt-0"
-                    hide-details
-                    :label="$t('Panels.MmuPanel.ShowClogTangleDetection')" />
+                <v-checkbox v-model="showClogDetection" class="mt-0" hide-details :label="t('Panels.MmuPanel.ShowClogTangleDetection')" />
             </v-list-item>
             <v-list-item class="minHeight36">
-                <v-checkbox v-model="showTtgMap" class="mt-0" hide-details :label="$t('Panels.MmuPanel.ShowTtgMap')" />
+                <v-checkbox v-model="showTtgMap" class="mt-0" hide-details :label="t('Panels.MmuPanel.ShowTtgMap')" />
             </v-list-item>
             <v-list-item class="minHeight36">
-                <v-checkbox
-                    v-model="showDetails"
-                    class="mt-0"
-                    hide-details
-                    :label="$t('Panels.MmuPanel.ShowDetails')" />
+                <v-checkbox v-model="showDetails" class="mt-0" hide-details :label="t('Panels.MmuPanel.ShowDetails')" />
             </v-list-item>
             <v-list-item class="minHeight36">
-                <v-checkbox
-                    v-model="largeFilamentStatus"
-                    class="mt-0"
-                    hide-details
-                    :label="$t('Panels.MmuPanel.LargeFilamentStatus')" />
+                <v-checkbox v-model="largeFilamentStatus" class="mt-0" hide-details :label="t('Panels.MmuPanel.LargeFilamentStatus')" />
             </v-list-item>
             <v-list-item class="minHeight36">
-                <v-checkbox
-                    v-model="showUnavailableSpoolColor"
-                    class="mt-0"
-                    hide-details
-                    :label="$t('Panels.MmuPanel.ShowUnavailableSpoolColor')" />
+                <v-checkbox v-model="showUnavailableSpoolColor" class="mt-0" hide-details :label="t('Panels.MmuPanel.ShowUnavailableSpoolColor')" />
             </v-list-item>
             <v-list-item class="minHeight36">
-                <v-checkbox v-model="showName" class="mt-0" hide-details :label="$t('Panels.MmuPanel.ShowName')" />
+                <v-checkbox v-model="showName" class="mt-0" hide-details :label="t('Panels.MmuPanel.ShowName')" />
             </v-list-item>
             <v-list-item class="minHeight36">
-                <v-checkbox v-model="showLogos" class="mt-0" hide-details :label="$t('Panels.MmuPanel.ShowLogos')" />
+                <v-checkbox v-model="showLogos" class="mt-0" hide-details :label="t('Panels.MmuPanel.ShowLogos')" />
             </v-list-item>
             <v-list-item class="minHeight36">
-                <v-checkbox
-                    v-model="showClimate"
-                    class="mt-0"
-                    hide-details
-                    :label="$t('Panels.MmuPanel.ShowClimate')" />
+                <v-checkbox v-model="showClimate" class="mt-0" hide-details :label="t('Panels.MmuPanel.ShowClimate')" />
             </v-list-item>
         </v-list>
     </v-menu>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin from '@/components/mixins/mmu'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { mdiCog } from '@mdi/js'
+import { useMmu } from '@/composables/useMmu'
+import { useGuiStore } from '@/store/gui'
 
-@Component
-export default class MmuPanelSettings extends Mixins(BaseMixin, MmuMixin) {
-    mdiCog = mdiCog
+const { t } = useI18n()
+const { hasMmuEncoder, hasSyncFeedback } = useMmu()
+const guiStore = useGuiStore()
 
-    get showClogDetection(): boolean {
-        return this.$store.state.gui.view.mmu.showClogDetection
-    }
+const showClogDetection = computed<boolean>({
+    get: () => guiStore.view.mmu.showClogDetection,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.mmu.showClogDetection', value: newVal }),
+})
 
-    set showClogDetection(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.mmu.showClogDetection', value: newVal })
-    }
+const showTtgMap = computed<boolean>({
+    get: () => guiStore.view.mmu.showTtgMap,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.mmu.showTtgMap', value: newVal }),
+})
 
-    get showTtgMap(): boolean {
-        return this.$store.state.gui.view.mmu.showTtgMap
-    }
+const showDetails = computed<boolean>({
+    get: () => guiStore.view.mmu.showDetails,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.mmu.showDetails', value: newVal }),
+})
 
-    set showTtgMap(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.mmu.showTtgMap', value: newVal })
-    }
+const largeFilamentStatus = computed<boolean>({
+    get: () => guiStore.view.mmu.largeFilamentStatus,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.mmu.largeFilamentStatus', value: newVal }),
+})
 
-    get showDetails(): boolean {
-        return this.$store.state.gui.view.mmu.showDetails
-    }
+const showLogos = computed<boolean>({
+    get: () => guiStore.view.mmu.showLogos,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.mmu.showLogos', value: newVal }),
+})
 
-    set showDetails(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.mmu.showDetails', value: newVal })
-    }
+const showName = computed<boolean>({
+    get: () => guiStore.view.mmu.showName,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.mmu.showName', value: newVal }),
+})
 
-    get largeFilamentStatus(): boolean {
-        return this.$store.state.gui.view.mmu.largeFilamentStatus
-    }
+const showClimate = computed<boolean>({
+    get: () => guiStore.view.mmu.showClimate,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.mmu.showClimate', value: newVal }),
+})
 
-    set largeFilamentStatus(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.mmu.largeFilamentStatus', value: newVal })
-    }
-
-    get showLogos(): boolean {
-        return this.$store.state.gui.view.mmu.showLogos
-    }
-
-    set showLogos(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.mmu.showLogos', value: newVal })
-    }
-
-    set showName(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.mmu.showName', value: newVal })
-    }
-
-    get showName(): boolean {
-        return this.$store.state.gui.view.mmu.showName
-    }
-
-    set showClimate(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.mmu.showClimate', value: newVal })
-    }
-
-    get showClimate(): boolean {
-        return this.$store.state.gui.view.mmu.showClimate
-    }
-
-    get showUnavailableSpoolColor(): boolean {
-        return this.$store.state.gui.view.mmu.showUnavailableSpoolColor
-    }
-
-    set showUnavailableSpoolColor(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.mmu.showUnavailableSpoolColor', value: newVal })
-    }
-}
+const showUnavailableSpoolColor = computed<boolean>({
+    get: () => guiStore.view.mmu.showUnavailableSpoolColor,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.mmu.showUnavailableSpoolColor', value: newVal }),
+})
 </script>

@@ -1,10 +1,6 @@
 <template>
     <div class="mmu-unit-footer zindex-4 d-flex flex-row align-center px-2 pb-1">
-        <v-icon
-            v-if="showFooter && showLogos"
-            class="mr-4 flex-grow-0 flex-shrink-0 opacity-70"
-            :class="logoClasses"
-            :size="logoHeight">
+        <v-icon v-if="showFooter && showLogos" class="mr-4 flex-grow-0 flex-shrink-0 opacity-70" :class="logoClasses" :size="logoHeight">
             {{ logo }}
         </v-icon>
         <div v-if="showFooter" class="flex-grow-1 flex-shrink-1 min-width-0 text-caption">
@@ -13,124 +9,111 @@
         </div>
     </div>
 </template>
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, { MmuMachineUnit } from '@/components/mixins/mmu'
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import type { MmuMachineUnit } from '@/composables/useMmu'
+import { useMmu } from '@/composables/useMmu'
+import { useMainsailTheme } from '@/composables/useMainsailTheme'
 import MmuUnitFooterClimate from '@/components/panels/Mmu/MmuUnitFooterClimate.vue'
-import {
-    mmuIcon3MS,
-    mmuIconAngryBeaver,
-    mmuIconBoxTurtle,
-    mmuIconEmu,
-    mmuIconErcf,
-    mmuIconHappyHare,
-    mmuIconKms,
-    mmuIconMmx,
-    mmuIconNightOwl,
-    mmuIconQuattroBox,
-    mmuIconTradrack,
-    mmuIconVvd,
-    mmuThemeIcons,
-} from '@/plugins/mmuIcons'
+import { mmuIcon3MS, mmuIconAngryBeaver, mmuIconBoxTurtle, mmuIconEmu, mmuIconErcf, mmuIconHappyHare, mmuIconKms, mmuIconMmx, mmuIconNightOwl, mmuIconQuattroBox, mmuIconTradrack, mmuIconVvd, mmuThemeIcons } from '@/plugins/mmuIcons'
+import { useGuiStore } from '@/store/gui'
 
 const squareLogoVendors = ['3MS', 'AngryBeaver', 'EMU', 'ERCF', 'KMS']
 
-@Component({
-    components: { MmuUnitFooterClimate },
+const props = withDefaults(
+    defineProps<{
+        unitIndex: number
+        mmuMachineUnit: MmuMachineUnit | undefined
+        showDetails?: boolean
+        showFooter?: boolean
+    }>(),
+    {
+        showDetails: true,
+        showFooter: true,
+    }
+)
+
+const { spoolWidth } = useMmu()
+const { isDark } = useMainsailTheme()
+const guiStore = useGuiStore()
+
+const unitDisplayName = computed<string>(() => {
+    const name = props.mmuMachineUnit?.name
+
+    return `#${props.unitIndex + 1} ${name}`
 })
-export default class MmuUnitFooter extends Mixins(BaseMixin, MmuMixin) {
-    @Prop({ required: true }) readonly unitIndex!: number
-    @Prop({ required: true }) readonly mmuMachineUnit!: MmuMachineUnit
-    @Prop({ default: true }) readonly showDetails!: boolean
-    @Prop({ default: true }) readonly showFooter!: boolean
 
-    get unitDisplayName(): string {
-        const name = this.mmuMachineUnit?.name
+const showLogos = computed<boolean>(() => guiStore.view.mmu.showLogos ?? true)
 
-        return `#${this.unitIndex + 1} ${name}`
-    }
+const showName = computed<boolean>(() => guiStore.view.mmu.showName ?? true)
 
-    get showLogos(): boolean {
-        return this.$store.state.gui.view.mmu.showLogos ?? true
-    }
+const showClimate = computed<boolean>(() => guiStore.view.mmu.showClimate ?? true)
 
-    get showName(): boolean {
-        return this.$store.state.gui.view.mmu.showName ?? true
-    }
+const mmuVendor = computed(() => props.mmuMachineUnit?.vendor ?? 'Unknown')
 
-    get showClimate(): boolean {
-        return this.$store.state.gui.view.mmu.showClimate ?? true
-    }
+const logoHeight = computed(() => {
+    if (squareLogoVendors.includes(mmuVendor.value)) return spoolWidth.value - 16
 
-    get mmuVendor() {
-        return this.mmuMachineUnit?.vendor ?? 'Unknown'
-    }
+    return spoolWidth.value - 8
+})
 
-    get logoHeight() {
-        if (squareLogoVendors.includes(this.mmuVendor)) return this.spoolWidth - 16
+const logoClasses = computed(() => {
+    if (squareLogoVendors.includes(mmuVendor.value)) return ['my-1']
 
-        return this.spoolWidth - 8
-    }
+    return []
+})
 
-    get logoClasses() {
-        if (squareLogoVendors.includes(this.mmuVendor)) return ['my-1']
+function getBaseIcon(vendor: string) {
+    switch (vendor) {
+        case '3MS':
+            return mmuIcon3MS
 
-        return []
-    }
+        case 'AngryBeaver':
+            return mmuIconAngryBeaver
 
-    get logo() {
-        const baseIcon = this.getBaseIcon(this.mmuVendor)
-        const themeVariants = mmuThemeIcons[this.mmuVendor]
+        case 'BoxTurtle':
+            return mmuIconBoxTurtle
 
-        if (!themeVariants) return baseIcon
+        case 'EMU':
+            return mmuIconEmu
 
-        const isDark = this.$vuetify.theme.dark
-        const themeIcon = isDark ? themeVariants.dark : themeVariants.light
+        case 'ERCF':
+            return mmuIconErcf
 
-        return themeIcon ?? baseIcon
-    }
+        case 'KMS':
+            return mmuIconKms
 
-    private getBaseIcon(vendor: string) {
-        switch (vendor) {
-            case '3MS':
-                return mmuIcon3MS
+        case 'MMX':
+            return mmuIconMmx
 
-            case 'AngryBeaver':
-                return mmuIconAngryBeaver
+        case 'NightOwl':
+            return mmuIconNightOwl
 
-            case 'BoxTurtle':
-                return mmuIconBoxTurtle
+        case 'QuattroBox':
+            return mmuIconQuattroBox
 
-            case 'EMU':
-                return mmuIconEmu
+        case 'Tradrack':
+            return mmuIconTradrack
 
-            case 'ERCF':
-                return mmuIconErcf
+        case 'VVD':
+            return mmuIconVvd
 
-            case 'KMS':
-                return mmuIconKms
-
-            case 'MMX':
-                return mmuIconMmx
-
-            case 'NightOwl':
-                return mmuIconNightOwl
-
-            case 'QuattroBox':
-                return mmuIconQuattroBox
-
-            case 'Tradrack':
-                return mmuIconTradrack
-
-            case 'VVD':
-                return mmuIconVvd
-
-            default:
-                return mmuIconHappyHare
-        }
+        default:
+            return mmuIconHappyHare
     }
 }
+
+const logo = computed(() => {
+    const baseIcon = getBaseIcon(mmuVendor.value)
+    const themeVariants = mmuThemeIcons[mmuVendor.value]
+
+    if (!themeVariants) return baseIcon
+
+    const themeIcon = isDark.value ? themeVariants.dark : themeVariants.light
+
+    return themeIcon ?? baseIcon
+})
 </script>
 
 <style scoped>

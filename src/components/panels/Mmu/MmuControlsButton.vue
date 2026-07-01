@@ -1,18 +1,8 @@
 <template>
-    <v-tooltip top :disabled="!showTooltip">
-        <template #activator="{ on, attrs }">
-            <v-btn
-                ref="button"
-                block
-                :small="btnSizeSmall"
-                :large="btnSizeLarge"
-                color="secondary"
-                :disabled="disabled"
-                :loading="btnLoading"
-                v-bind="attrs"
-                v-on="on"
-                @click="sendCommand">
-                <v-icon :left="!showTooltip">{{ icon }}</v-icon>
+    <v-tooltip location="top" :disabled="!showTooltip">
+        <template #activator="{ props: activatorProps }">
+            <v-btn ref="button" block :size="size" color="secondary" :disabled="disabled" :loading="btnLoading" v-bind="activatorProps" @click="sendCommand">
+                <v-icon :start="!showTooltip">{{ icon }}</v-icon>
                 <template v-if="!showTooltip">{{ text }}</template>
             </v-btn>
         </template>
@@ -20,66 +10,61 @@
     </v-tooltip>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop, Ref, Watch } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin from '@/components/mixins/mmu'
-import Vue from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useBase } from '@/composables/useBase'
+import { useMmu } from '@/composables/useMmu'
+import { useGuiStore } from '@/store/gui'
 
-@Component
-export default class MmuControlsButton extends Mixins(BaseMixin, MmuMixin) {
-    @Prop({ required: true }) readonly disabled!: boolean
-    @Prop({ required: true }) readonly icon!: string
-    @Prop({ required: true }) readonly text!: string
-    @Prop({ required: true }) readonly command!: string
-    @Prop({ default: 'small' }) readonly size!: 'small' | 'large'
-    @Ref() readonly button!: Vue
+const props = withDefaults(
+    defineProps<{
+        disabled: boolean
+        icon: string
+        text: string
+        command: string
+        size?: 'small' | 'large'
+    }>(),
+    {
+        size: 'small',
+    }
+)
 
-    showTooltip = false
+const { loadings } = useBase()
+const { doSend } = useMmu()
+const guiStore = useGuiStore()
 
-    get largeFilamentStatus(): boolean {
-        return this.$store.state.gui.view.mmu.largeFilamentStatus ?? false
+const showTooltip = ref(false)
+const button = ref<{ $el: HTMLElement } | null>(null)
+
+const largeFilamentStatus = computed<boolean>(() => guiStore.view.mmu.largeFilamentStatus ?? false)
+
+const btnLoading = computed(() => loadings.value.includes(props.command.toLowerCase()))
+
+function calcBtnSize() {
+    const width = button.value?.$el.clientWidth ?? undefined
+
+    if (width === undefined || width > 130) {
+        showTooltip.value = false
+        return
     }
 
-    get btnSizeSmall() {
-        return this.size === 'small'
-    }
-
-    get btnSizeLarge() {
-        return this.size === 'large'
-    }
-
-    get btnLoading() {
-        return this.loadings.includes(this.command.toLowerCase())
-    }
-
-    calcBtnSize() {
-        const width = this.button.$el.clientWidth ?? undefined
-
-        if (width === undefined || width > 130) {
-            this.showTooltip = false
-            return
-        }
-
-        this.showTooltip = true
-    }
-
-    mounted() {
-        this.calcBtnSize()
-        window.addEventListener('resize', this.calcBtnSize)
-    }
-
-    beforeDestroy() {
-        window.removeEventListener('resize', this.calcBtnSize)
-    }
-
-    sendCommand() {
-        this.doSend(this.command, this.command.toLowerCase())
-    }
-
-    @Watch('largeFilamentStatus')
-    onFilamentStatusSizeChange() {
-        this.calcBtnSize()
-    }
+    showTooltip.value = true
 }
+
+function sendCommand() {
+    doSend(props.command, props.command.toLowerCase())
+}
+
+onMounted(() => {
+    calcBtnSize()
+    window.addEventListener('resize', calcBtnSize)
+})
+
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', calcBtnSize)
+})
+
+watch(largeFilamentStatus, () => {
+    calcBtnSize()
+})
 </script>

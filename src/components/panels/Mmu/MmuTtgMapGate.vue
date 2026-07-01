@@ -4,31 +4,26 @@
     </text>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, { GATE_UNKNOWN, MmuTtgMap_START_Y, MmuTtgMap_VERTICAL_SPACING } from '@/components/mixins/mmu'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { GATE_UNKNOWN, MmuTtgMap_START_Y, MmuTtgMap_VERTICAL_SPACING } from '@/composables/useMmu'
 
-@Component
-export default class MmuTtgMapGate extends Mixins(BaseMixin, MmuMixin) {
-    @Prop({ required: true }) readonly gate!: number
-    @Prop({ required: true }) readonly gateX!: number
-    @Prop({ default: GATE_UNKNOWN }) readonly selectedGate!: number
-
-    get name() {
-        return `#${this.gate}`
+const props = withDefaults(
+    defineProps<{
+        gate: number
+        gateX: number
+        selectedGate?: number
+    }>(),
+    {
+        selectedGate: GATE_UNKNOWN,
     }
+)
 
-    get positionY() {
-        return this.gate * MmuTtgMap_VERTICAL_SPACING + MmuTtgMap_START_Y + 8
-    }
+const name = computed(() => `#${props.gate}`)
 
-    get fill() {
-        return this.gate === this.selectedGate ? 'var(--v-primary-lighten1, #2CA9BC)' : 'currentColor'
-    }
+const positionY = computed(() => props.gate * MmuTtgMap_VERTICAL_SPACING + MmuTtgMap_START_Y + 8)
 
-    get fontWeight() {
-        return this.gate === this.selectedGate ? 'bold' : 'inherit'
-    }
-}
+const fill = computed(() => (props.gate === props.selectedGate ? 'rgb(var(--v-theme-primary, 44 169 188))' : 'currentColor'))
+
+const fontWeight = computed(() => (props.gate === props.selectedGate ? 'bold' : 'inherit'))
 </script>

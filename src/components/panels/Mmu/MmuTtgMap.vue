@@ -1,31 +1,10 @@
 <template>
-    <svg
-        ref="ttgMap"
-        :viewBox="viewbox"
-        preserveAspectRatio="xMidYMid meet"
-        class="cursor-pointer"
-        @click="$emit('click')">
+    <svg :viewBox="viewbox" preserveAspectRatio="xMidYMid meet" class="cursor-pointer" @click="emit('click')">
         <defs>
-            <marker
-                id="squareStart"
-                fill="context-stroke"
-                markerWidth="7"
-                markerHeight="7"
-                refX="7"
-                refY="3.5"
-                orient="auto"
-                markerUnits="userSpaceOnUse">
+            <marker id="squareStart" fill="context-stroke" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
                 <rect x="0" y="0" width="7" height="7" stroke-width="2" />
             </marker>
-            <marker
-                id="arrowEnd"
-                fill="context-stroke"
-                markerWidth="7"
-                markerHeight="7"
-                refX="0"
-                refY="3.5"
-                orient="auto"
-                markerUnits="userSpaceOnUse">
+            <marker id="arrowEnd" fill="context-stroke" markerWidth="7" markerHeight="7" refX="0" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
                 <polygon points="0 0, 7 3.5, 0 7" stroke-width="1" />
             </marker>
         </defs>
@@ -36,119 +15,101 @@
             <mmu-ttg-map-line :tool="tool" :selected-tool="selectedTool" />
         </g>
 
-        <mmu-ttg-map-group
-            v-for="([key, gates], index) in Object.entries(printGroups)"
-            :key="'group_' + key"
-            :group-number="+key"
-            :group="gates"
-            :current-group="currentGroup"
-            :index="index"
-            :gate-x="gateX"
-            :group-x="groupX" />
+        <mmu-ttg-map-group v-for="([key, gates], index) in Object.entries(printGroups)" :key="'group_' + key" :group-number="+key" :group="gates" :current-group="currentGroup" :index="index" :gate-x="gateX" :group-x="groupX" />
     </svg>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, {
-    GATE_UNKNOWN,
-    MmuTtgMap_START_X,
-    MmuTtgMap_START_Y,
-    MmuTtgMap_VERTICAL_SPACING,
-    MmuTtgMap_GROUP_SPACING,
-    MmuTtgMap_MAP_SPACE,
-    MmuTtgMap_LEADER,
-    TOOL_GATE_UNKNOWN,
-} from '@/components/mixins/mmu'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useMmu, GATE_UNKNOWN, MmuTtgMap_START_X, MmuTtgMap_START_Y, MmuTtgMap_VERTICAL_SPACING, MmuTtgMap_GROUP_SPACING, MmuTtgMap_MAP_SPACE, MmuTtgMap_LEADER, TOOL_GATE_UNKNOWN } from '@/composables/useMmu'
+import MmuTtgMapTool from '@/components/panels/Mmu/MmuTtgMapTool.vue'
 import MmuTtgMapGate from '@/components/panels/Mmu/MmuTtgMapGate.vue'
+import MmuTtgMapLine from '@/components/panels/Mmu/MmuTtgMapLine.vue'
 import MmuTtgMapGroup from '@/components/panels/Mmu/MmuTtgMapGroup.vue'
 
-@Component({
-    components: { MmuTtgMapGroup, MmuTtgMapGate },
+const props = withDefaults(
+    defineProps<{
+        selectedTool?: number
+        selectedGate?: number
+        filteredTtgMap?: { tool: number; gate: number }[] | null
+    }>(),
+    {
+        selectedTool: TOOL_GATE_UNKNOWN,
+        selectedGate: GATE_UNKNOWN,
+        filteredTtgMap: null,
+    }
+)
+
+const emit = defineEmits<{
+    click: []
+}>()
+
+const { mmu, mmuNumGates, ttgMap } = useMmu()
+
+const gateX = computed(() => MmuTtgMap_START_X + MmuTtgMap_LEADER + MmuTtgMap_MAP_SPACE + MmuTtgMap_LEADER + 40)
+
+const groupX = computed(() => {
+    const xOffset = 10 // extra space between gates and groups
+
+    return gateX.value + xOffset
 })
-export default class MmuTtgMap extends Mixins(BaseMixin, MmuMixin) {
-    @Prop({ default: TOOL_GATE_UNKNOWN }) readonly selectedTool!: number
-    @Prop({ default: GATE_UNKNOWN }) readonly selectedGate!: number
-    @Prop({ default: null }) readonly filteredTtgMap!: { tool: number; gate: number }[] | null
 
-    get gateX() {
-        return MmuTtgMap_START_X + MmuTtgMap_LEADER + MmuTtgMap_MAP_SPACE + MmuTtgMap_LEADER + 40
-    }
+const groups = computed(() => mmu.value?.endless_spool_groups ?? [])
 
-    get groupX() {
-        const xOffset = 10 // extra space between gates and groups
+const printGroups = computed(() => {
+    if (props.filteredTtgMap !== null && props.filteredTtgMap?.length !== mmuNumGates.value) return {}
 
-        return this.gateX + xOffset
-    }
-
-    get width() {
-        return this.groupX + Object.keys(this.printGroups).length * MmuTtgMap_GROUP_SPACING // Single gate groups aren't displayed
-    }
-
-    get height() {
-        return MmuTtgMap_START_Y + this.mmuNumGates * MmuTtgMap_VERTICAL_SPACING + 6
-    }
-
-    get viewbox() {
-        return `0 0 ${this.width} ${this.height}`
-    }
-
-    get toolsArray() {
-        const array = []
-
-        for (let tool = 0; tool < this.mmuNumGates; tool++) {
-            if (tool === this.selectedTool) continue
-            if (this.filteredTtgMap !== null && !this.filteredTtgMap?.some((map) => map.tool === tool)) continue
-
-            array.push(tool)
+    const groups_: { [key: number]: number[] } = {}
+    groups.value.forEach((group, index) => {
+        if (!groups_[group]) {
+            groups_[group] = []
         }
 
-        // add selected tool at the end, because of the svg layering (last drawn is on top)
-        if (this.selectedTool >= 0) array.push(this.selectedTool)
+        groups_[group].push(index)
+    })
 
-        return array
+    Object.keys(groups_).forEach((key) => {
+        if (groups_[+key].length > 1) return
+
+        delete groups_[+key]
+    })
+
+    return groups_
+})
+
+const width = computed(() => groupX.value + Object.keys(printGroups.value).length * MmuTtgMap_GROUP_SPACING)
+
+const height = computed(() => MmuTtgMap_START_Y + mmuNumGates.value * MmuTtgMap_VERTICAL_SPACING + 6)
+
+const viewbox = computed(() => `0 0 ${width.value} ${height.value}`)
+
+const toolsArray = computed(() => {
+    const array = []
+
+    for (let tool = 0; tool < mmuNumGates.value; tool++) {
+        if (tool === props.selectedTool) continue
+        if (props.filteredTtgMap !== null && !props.filteredTtgMap?.some((map) => map.tool === tool)) continue
+
+        array.push(tool)
     }
 
-    get groups() {
-        return this.mmu?.endless_spool_groups ?? []
+    if (props.selectedTool >= 0) array.push(props.selectedTool)
+
+    return array
+})
+
+const currentGroup = computed(() => {
+    if (props.selectedGate !== GATE_UNKNOWN) {
+        return groups.value[props.selectedGate]
     }
 
-    get currentGroup() {
-        if (this.selectedGate !== GATE_UNKNOWN) {
-            return this.groups[this.selectedGate]
+    if (props.selectedTool !== TOOL_GATE_UNKNOWN) {
+        const gate = ttgMap.value[props.selectedTool]
+        if (gate !== GATE_UNKNOWN) {
+            return groups.value[gate]
         }
-
-        if (this.selectedTool !== TOOL_GATE_UNKNOWN) {
-            const gate = this.ttgMap[this.selectedTool]
-            if (gate !== GATE_UNKNOWN) {
-                return this.groups[gate]
-            }
-        }
-
-        return -1
     }
 
-    get printGroups() {
-        if (this.filteredTtgMap !== null && this.filteredTtgMap?.length !== this.mmuNumGates) return []
-
-        const groups: { [key: number]: number[] } = {}
-        this.groups.forEach((group, index) => {
-            if (!groups[group]) {
-                groups[group] = []
-            }
-
-            groups[group].push(index)
-        })
-
-        // remove single gate groups
-        Object.keys(groups).forEach((key) => {
-            if (groups[+key].length > 1) return
-
-            delete groups[+key]
-        })
-
-        return groups
-    }
-}
+    return -1
+})
 </script>

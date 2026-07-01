@@ -108,7 +108,7 @@ export interface Mmu {
         enabled: boolean
         encoder_pos: number
         flow_rate: number
-        detection_mode: typeof DIRECTION_LOAD | typeof DIRECTION_UNKNOWN | typeof DIRECTION_UNLOAD
+        detection_mode: number
         desired_headroom: number
         detection_length: number
         headroom: number
@@ -146,6 +146,7 @@ export interface MmuMachineUnit {
     require_bowden_move: boolean
     filament_always_gripped: boolean
     can_crossload: boolean
+    has_bypass: boolean
     multi_gear: boolean
     environment_sensor?: string
     environment_sensors?: string[]

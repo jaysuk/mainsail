@@ -28,31 +28,23 @@
     </g>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, { FILAMENT_POS_END_BOWDEN } from '@/components/mixins/mmu'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useMmu, FILAMENT_POS_END_BOWDEN } from '@/composables/useMmu'
 
-@Component
-export default class MmuFilamentStatusSyncFeedback extends Mixins(BaseMixin, MmuMixin) {
-    get syncFeedbackActive(): boolean {
-        const enabled = this.mmu?.sync_feedback_enabled ?? false
-        const loaded = this.mmuFilamentPos >= FILAMENT_POS_END_BOWDEN
-        return this.hasSyncFeedback && enabled && loaded
-    }
+const { mmu, mmuFilamentPos, hasSyncFeedback } = useMmu()
 
-    get syncFeedbackBiasModelled() {
-        return this.mmu?.sync_feedback_bias_modelled ?? 0.0
-    }
+const syncFeedbackActive = computed<boolean>(() => {
+    const enabled = mmu.value?.sync_feedback_enabled ?? false
+    const loaded = mmuFilamentPos.value >= FILAMENT_POS_END_BOWDEN
+    return hasSyncFeedback.value && enabled && loaded
+})
 
-    get syncFeedbackPistonPos(): number {
-        return this.syncFeedbackBiasModelled * 12 + 234
-    }
+const syncFeedbackBiasModelled = computed(() => mmu.value?.sync_feedback_bias_modelled ?? 0.0)
 
-    get syncFeedbackState() {
-        return this.mmu?.sync_feedback_state ?? ''
-    }
-}
+const syncFeedbackPistonPos = computed<number>(() => syncFeedbackBiasModelled.value * 12 + 234)
+
+const syncFeedbackState = computed(() => mmu.value?.sync_feedback_state ?? '')
 </script>
 
 <style scoped>

@@ -1,59 +1,24 @@
 <template>
-    <svg ref="filStatusSvg" viewBox="140 0 285 441" preserveAspectRatio="xMidYMid meet" class="svg-colors">
+    <svg viewBox="140 0 285 441" preserveAspectRatio="xMidYMid meet" class="svg-colors">
         <defs>
-            <g
-                id="sync-feedback"
-                fill="none"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                style="stroke: var(--color-outline)">
+            <g id="sync-feedback" fill="none" stroke-linecap="round" stroke-linejoin="round" style="stroke: var(--color-outline)">
                 <path d="M18,9,13.78,3.39a1,1,0,0,0-1.56,0L8,9" stroke-width="1" stroke-opacity="0.8" />
                 <path d="M13,8.24,18,15H15H8Z" stroke-width="2" />
             </g>
-            <g
-                id="sync-feedback-buffer-piston"
-                fill="none"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                style="stroke: var(--color-outline); fill: var(--color-outline)">
+            <g id="sync-feedback-buffer-piston" fill="none" stroke-linecap="round" stroke-linejoin="round" style="stroke: var(--color-outline); fill: var(--color-outline)">
                 <rect x="3" y="0" width="30" height="40" rx="3" ry="3" fill="none" stroke-width="1.5" />
                 <path d="M-15 -4 L-6 0 L-15 4 Z" stroke-width="1" fill-opacity="0.6" />
                 <path d="M8 40 L 28 40" stroke-width="4" />
-                <text
-                    v-if="hasFilamentProportionalSensor"
-                    x="-22"
-                    y="4"
-                    font-size="11px"
-                    text-anchor="end"
-                    style="fill: var(--color-outline)">
+                <text v-if="hasFilamentProportionalSensor" x="-22" y="4" font-size="11px" text-anchor="end" style="fill: var(--color-outline)">
                     {{ syncFeedbackPistonText }}
                 </text>
             </g>
-            <g
-                id="sync-feedback-buffer-box"
-                fill="none"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                style="stroke: var(--color-outline)">
-                <rect
-                    x="0"
-                    y="0"
-                    width="36"
-                    height="45"
-                    rx="3"
-                    ry="3"
-                    class="fil-background"
-                    stroke-width="2"
-                    fill-opacity="0.6" />
+            <g id="sync-feedback-buffer-box" fill="none" stroke-linecap="round" stroke-linejoin="round" style="stroke: var(--color-outline)">
+                <rect x="0" y="0" width="36" height="45" rx="3" ry="3" class="fil-background" stroke-width="2" fill-opacity="0.6" />
                 <path d="M-3 10 0 10 M-3 22 0.5 22 M-3 34.5 0 34.5" stroke-width="2" stroke-opacity="0.6" />
                 <path d="M8 0 L 28 0" stroke-width="4" />
             </g>
-            <g
-                id="sissors"
-                fill="none"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                style="stroke: var(--color-outline)">
+            <g id="sissors" fill="none" stroke-linecap="round" stroke-linejoin="round" style="stroke: var(--color-outline)">
                 <path
                     d="M8.8,7.72c-.6,1.21-2.34,1.64-3.89,1S2.6,6.48,3.2,5.28s2.34-1.64,3.89-1S9.4,6.52,8.8,7.72Zm-3.89,1L21,16M7.09,19.68c-1.55.68-3.29.25-3.89-1s.17-2.73,1.71-3.4,3.29-.25,3.89,1S8.63,19,7.09,19.68ZM21,8,4.91,15.32"
                     fill="none"
@@ -64,13 +29,7 @@
             </g>
             <g id="blob" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="0,0 -1,1 1,1 0,0" stroke-width="4" vector-effect="non-scaling-stroke" />
-                <polygon
-                    points="-0.1,0.3 -0.5,0.7 0.3,0.7 -0.1,0.3"
-                    stroke-width="1"
-                    stroke="white"
-                    fill="white"
-                    opacity="0.3"
-                    vector-effect="non-scaling-stroke" />
+                <polygon points="-0.1,0.3 -0.5,0.7 0.3,0.7 -0.1,0.3" stroke-width="1" stroke="white" fill="white" opacity="0.3" vector-effect="non-scaling-stroke" />
             </g>
         </defs>
 
@@ -81,59 +40,27 @@
         <rect x="150" y="30" width="265" height="130" class="zone-background" rx="10" ry="10" />
         <rect x="150" y="333" width="265" height="66" class="zone-background" rx="10" ry="10" />
         <g style="stroke: var(--color-outline)">
-            <path
-                fill="none"
-                d="M242 25 L242 405 L249 411 L251 411 L258 405 L258 25"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1" />
+            <path fill="none" d="M242 25 L242 405 L249 411 L251 411 L258 405 L258 25" stroke-linecap="round" stroke-linejoin="round" stroke-width="1" />
         </g>
 
-        <rect
-            ref="filamentRect"
-            x="243"
-            y="25"
-            width="14"
-            :height="filamentRectHeight"
-            :fill="currentGateColor"
-            class="filament-animation"
-            :class="tipFormingClass" />
+        <rect x="243" y="25" width="14" :height="filamentRectHeight" :fill="currentGateColor" class="filament-animation" :class="tipFormingClass" />
         <polygon v-if="upperNozzleFull" points="257,380 243,380 243,396 257,396" :fill="upperNozzleColor" />
-        <polygon
-            v-if="lowerNozzleFull"
-            points="257,396 243,396 243,405 249,412 249,413 251,413 251,412 257,405"
-            :fill="lowerNozzleColor" />
+        <polygon v-if="lowerNozzleFull" points="257,396 243,396 243,405 249,412 249,413 251,413 251,412 257,405" :fill="lowerNozzleColor" />
 
-        <g
-            style="stroke: var(--color-outline); font-family: 'Roboto', sans-serif; font-size: 16px"
-            stroke-linejoin="round"
-            stroke-width="0">
-            <mmu-filament-status-sensor
-                sensor-name="mmu_pre_gate"
-                :sensor-text="$t('Panels.MmuPanel.PreGate')"
-                :y-position="50" />
-            <mmu-filament-status-sensor
-                sensor-name="mmu_gear"
-                :sensor-text="$t('Panels.MmuPanel.Gear')"
-                :y-position="80" />
+        <g style="stroke: var(--color-outline); font-family: 'Roboto', sans-serif; font-size: 16px" stroke-linejoin="round" stroke-width="0">
+            <mmu-filament-status-sensor sensor-name="mmu_pre_gate" :sensor-text="t('Panels.MmuPanel.PreGate')" :y-position="50" />
+            <mmu-filament-status-sensor sensor-name="mmu_gear" :sensor-text="t('Panels.MmuPanel.Gear')" :y-position="80" />
             <mmu-filament-status-sensor sensor-name="mmu_gate" :sensor-text="gateSensorName" :y-position="110" />
 
             <mmu-filament-status-encoder v-if="hasMmuEncoder" />
 
-            <mmu-filament-status-sensor
-                sensor-name="extruder"
-                :sensor-text="$t('Panels.MmuPanel.Extruder')"
-                :y-position="320"
-                :outside-zone="true" />
+            <mmu-filament-status-sensor sensor-name="extruder" :sensor-text="t('Panels.MmuPanel.Extruder')" :y-position="320" :outside-zone="true" />
 
             <transition name="fade">
                 <text v-if="homedToExtruderEntrance" x="219.5" y="339" font-weight="bold">H</text>
             </transition>
 
-            <mmu-filament-status-sensor
-                sensor-name="toolhead"
-                :sensor-text="$t('Panels.MmuPanel.Toolhead')"
-                :y-position="350" />
+            <mmu-filament-status-sensor sensor-name="toolhead" :sensor-text="t('Panels.MmuPanel.Toolhead')" :y-position="350" />
 
             <mmu-filament-status-temperature />
 
@@ -143,14 +70,8 @@
         </g>
 
         <transition name="fade">
-            <g v-if="mmuSyncDrive" id="sync-extruder" ref="sync" transform="translate(278, 385) scale(.030)">
-                <g
-                    stroke="none"
-                    stroke-width="2"
-                    stroke-dasharray="none"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-miterlimit="4">
+            <g v-if="mmuSyncDrive" id="sync-extruder" transform="translate(278, 385) scale(.030)">
+                <g stroke="none" stroke-width="2" stroke-dasharray="none" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4">
                     <rect fill="rgb(131, 148, 150)" x="145" y="506" width="710" height="256" />
                     <rect fill="rgb(147, 161, 161)" x="324" y="506" width="355" height="256" />
                     <rect fill="rgb(101, 123, 131)" x="274" y="364" width="455" height="142" />
@@ -177,40 +98,27 @@
         </transition>
 
         <transition name="fade">
-            <g
-                v-if="isGripped"
-                id="filament-grip"
-                ref="grip"
-                transform="scale(.1) translate(1900, 420)"
-                stroke-linecap="round"
-                stroke-linejoin="round">
+            <g v-if="isGripped" id="filament-grip" transform="scale(.1) translate(1900, 420)" stroke-linecap="round" stroke-linejoin="round">
                 <path
                     fill="rgb(131,148,150)"
                     d="M368,368 V376 C368,380.41,364.41,384,360,384 H344 V360 H360 C364.41,360,368,363.59,368,368 Z M368,408 V416 C368,420.41,364.41,424,360,424 C293.65,424,340.73,424,312,424 C307.59,424,304,420.41,304,416 V408 C304,403.59,307.59,400,312,400 C326.91,400,345.09,400,360,400 C364.41,400,368,403.59,368,408 Z M248.97,461.66 L242.34,455.03 C237.81,450.5,231.78,448,225.38,448 H160 V368 H193.38 C199.79,368,205.82,365.5,210.35,360.97 L248.97,322.35 C250.49,320.84,252.5,320,254.63,320 H320 C324.42,320,328,323.59,328,328 V384 C322.21,384,317.79,384,312,384 C307.59,384,304,380.42,304,376 V350.61 C304,346.19,300.43,342.61,296,342.61 S288,346.19,288,350.61 V357.2 L262.56,389 C261.04,390.91,258.75,392,256.31,392 H217.05 C212.63,392,209.05,395.58,209.05,400 S212.63,408,217.05,408 H256.31 C263.64,408,270.47,404.72,275.06,399 L288.74,381.9 C289.71,385.74,291.62,389.21,294.2,392.06 C290.39,396.31,288,401.86,288,408 V416 C288,427.06,295.56,436.31,305.76,439.08 C304.65,441.84,304,444.85,304,448.01 V456.01 C304,458.82,304.58,461.49,305.48,464.01 H254.63 C252.49,464.01,250.48,463.17,248.97,461.67 Z M368,456 C368,460.41,364.41,464,360,464 H328 C323.59,464,320,460.41,320,456 V448 C320,443.59,323.59,440,328,440 H360 C364.41,440,368,443.59,368,448 V456 Z M368,328 V336 C368,340.41,364.41,344,360,344 H344 V328 C344,325.18,343.42,322.51,342.53,320 H360 C364.41,320,368,323.59,368,328 Z" />
-                <path
-                    :fill="currentGateColor"
-                    d="M300,250 L350,250 L350,310 L300,310 Z M300,475 L350,475 L350,520 L300,520 Z" />
+                <path :fill="currentGateColor" d="M300,250 L350,250 L350,310 L300,310 Z M300,475 L350,475 L350,520 L300,520 Z" />
             </g>
         </transition>
 
-        <use v-if="mmuAction === ACTION_CUTTING_FILAMENT" ref="cut" xlink:href="#sissors" class="cut1-effect" />
-        <use v-if="mmuAction === ACTION_CUTTING_TIP" ref="cutTip" xlink:href="#sissors" class="cut2-effect" />
+        <use v-if="mmuAction === ACTION_CUTTING_FILAMENT" xlink:href="#sissors" class="cut1-effect" />
+        <use v-if="mmuAction === ACTION_CUTTING_TIP" xlink:href="#sissors" class="cut2-effect" />
 
-        <use
-            v-if="mmuAction === ACTION_PURGING"
-            ref="poop"
-            xlink:href="#blob"
-            class="blob-effect"
-            :stroke="lowerNozzleColor"
-            :fill="lowerNozzleColor" />
+        <use v-if="mmuAction === ACTION_PURGING" xlink:href="#blob" class="blob-effect" :stroke="lowerNozzleColor" :fill="lowerNozzleColor" />
     </svg>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { capitalize } from '@/plugins/helpers'
-import MmuMixin, {
+import {
+    useMmu,
     ACTION_IDLE,
     ACTION_LOADING,
     ACTION_UNLOADING,
@@ -231,10 +139,13 @@ import MmuMixin, {
     FILAMENT_POS_UNLOADED,
     TOOL_GATE_BYPASS,
     TOOL_GATE_UNKNOWN,
-} from '@/components/mixins/mmu'
+} from '@/composables/useMmu'
 import MmuFilamentStatusEncoder from '@/components/panels/Mmu/MmuFilamentStatusEncoder.vue'
 import MmuFilamentStatusSensor from '@/components/panels/Mmu/MmuFilamentStatusSensor.vue'
 import MmuFilamentStatusTemperature from '@/components/panels/Mmu/MmuFilamentStatusTemperature.vue'
+import MmuFilamentStatusSyncFeedback from '@/components/panels/Mmu/MmuFilamentStatusSyncFeedback.vue'
+import { usePrinterStore } from '@/store/printer'
+import { useServerSpoolmanStore } from '@/store/server/spoolman'
 
 const POSITIONS = {
     UNKNOWN: 8,
@@ -259,225 +170,168 @@ const POSITIONS = {
     NOZZLE_START: 371,
 } as const
 
-@Component({
-    components: {
-        MmuFilamentStatusTemperature,
-        MmuFilamentStatusSensor,
-        MmuFilamentStatusEncoder,
-    },
+const { t } = useI18n()
+const { mmu, mmuGate, mmuTool, mmuUnit, mmuGrip, mmuServo, mmuSyncDrive, mmuAction, mmuPrintState, mmuSettings, hasMmuEncoder, hasFilamentProportionalSensor, getMmuSensor, getMmuMachineUnit, formColorString } = useMmu()
+const printerStore = usePrinterStore()
+const spoolmanStore = useServerSpoolmanStore()
+
+const tipFormingClass = computed(() => (mmuAction.value === ACTION_FORMING_TIP ? 'form-tip-effect' : ''))
+
+const bowdenProgress = computed(() => mmu.value?.bowden_progress ?? -1)
+
+const toolheadSensor = computed(() => getMmuSensor('toolhead'))
+const extruderSensor = computed(() => getMmuSensor('extruder'))
+const mmuGearSensor = computed(() => getMmuSensor('mmu_gear'))
+const mmuPreGateSensor = computed(() => getMmuSensor('mmu_pre_gate'))
+
+const configExtruderForceHoming = computed<boolean>(() => (printerStore.configfile?.config?.mmu?.extruder_force_homing ?? 0) === 1)
+
+const configExtruderHomingEndstop = computed(() => mmuSettings.value?.extruder_homing_endstop ?? 'none')
+
+const endOfBowdenPos = computed(() => {
+    if (typeof toolheadSensor.value === 'boolean' && !configExtruderForceHoming.value) return POSITIONS.END_BOWDEN
+
+    const extruderHomingEndstops = ['none', 'collision', 'mmu_gear_touch', 'filament_compression']
+    if (extruderHomingEndstops.includes(configExtruderHomingEndstop.value)) return POSITIONS.EXTRUDER_ENTRANCE
+
+    if (configExtruderHomingEndstop.value === 'extruder') return POSITIONS.EXTRUDER
+
+    return POSITIONS.END_BOWDEN
 })
-export default class MmuFilamentStatus extends Mixins(BaseMixin, MmuMixin) {
-    ACTION_CUTTING_FILAMENT = ACTION_CUTTING_FILAMENT
-    ACTION_CUTTING_TIP = ACTION_CUTTING_TIP
-    ACTION_PURGING = ACTION_PURGING
 
-    get tipFormingClass() {
-        return this.mmuAction === ACTION_FORMING_TIP ? 'form-tip-effect' : ''
+const filamentRectHeight = computed(() => {
+    if (mmuGate.value === TOOL_GATE_BYPASS) {
+        if (mmu.value?.filament_pos === FILAMENT_POS_EXTRUDER_ENTRY) return POSITIONS.BEFORE_TOOLHEAD
+        if (mmu.value?.filament_pos === FILAMENT_POS_HOMED_TS) return POSITIONS.TOOLHEAD
+        if (mmu.value?.filament_pos === FILAMENT_POS_IN_EXTRUDER) return POSITIONS.COOLING_TUBE
+        if (mmu.value?.filament_pos === FILAMENT_POS_LOADED) return POSITIONS.NOZZLE_START
+
+        if (toolheadSensor.value === true) return POSITIONS.TOOLHEAD
+        if (extruderSensor.value === true) return POSITIONS.EXTRUDER
+        if (mmuGearSensor.value === true) return POSITIONS.AFTER_GEAR
+        if (mmuPreGateSensor.value === true) return POSITIONS.AFTER_PRE_GATE
+
+        return POSITIONS.BEFORE_PRE_GATE
     }
 
-    get filamentRectHeight() {
-        if (this.mmuGate === TOOL_GATE_BYPASS) {
-            if (this.mmuFilamentPos === FILAMENT_POS_EXTRUDER_ENTRY) return POSITIONS.BEFORE_TOOLHEAD
-            if (this.mmuFilamentPos === FILAMENT_POS_HOMED_TS) return POSITIONS.TOOLHEAD
-            if (this.mmuFilamentPos === FILAMENT_POS_IN_EXTRUDER) return POSITIONS.COOLING_TUBE
-            if (this.mmuFilamentPos === FILAMENT_POS_LOADED) return POSITIONS.NOZZLE_START
+    const filamentPos = mmu.value?.filament_pos
 
-            if (this.toolheadSensor === true) return POSITIONS.TOOLHEAD
-            if (this.extruderSensor === true) return POSITIONS.EXTRUDER
-            if (this.mmuGearSensor === true) return POSITIONS.AFTER_GEAR
-            if (this.mmuPreGateSensor === true) return POSITIONS.AFTER_PRE_GATE
+    if (filamentPos === FILAMENT_POS_UNLOADED) {
+        if (mmuGearSensor.value === true) return POSITIONS.AFTER_GEAR
+        if (mmuPreGateSensor.value === true) return POSITIONS.AFTER_PRE_GATE
 
-            return POSITIONS.BEFORE_PRE_GATE
-        }
-
-        if (this.mmuFilamentPos === FILAMENT_POS_UNLOADED) {
-            if (this.mmuGearSensor === true) return POSITIONS.AFTER_GEAR
-            if (this.mmuPreGateSensor === true) return POSITIONS.AFTER_PRE_GATE
-
-            return POSITIONS.BEFORE_PRE_GATE
-        }
-
-        if (this.mmuFilamentPos === FILAMENT_POS_HOMED_GATE) {
-            if (this.configGateHomingEndstop === 'mmu_gear') return POSITIONS.GEAR
-            if (this.configGateHomingEndstop === 'mmu_gate') return POSITIONS.GATE
-            if (this.configGateHomingEndstop === 'extruder') return POSITIONS.EXTRUDER
-
-            return POSITIONS.AFTER_GATE
-        }
-
-        if (
-            [FILAMENT_POS_START_BOWDEN, FILAMENT_POS_IN_BOWDEN].includes(this.mmuFilamentPos) &&
-            this.bowdenProgress >= 0
-        ) {
-            const bowdenRange = this.endOfBowdenPos - POSITIONS.START_BOWDEN
-            return POSITIONS.START_BOWDEN + (bowdenRange * this.bowdenProgress) / 100
-        }
-
-        if (this.mmuFilamentPos === FILAMENT_POS_START_BOWDEN) return POSITIONS.START_BOWDEN
-        if (this.mmuFilamentPos === FILAMENT_POS_IN_BOWDEN) return POSITIONS.MID_BOWDEN
-        if (this.mmuFilamentPos === FILAMENT_POS_END_BOWDEN) return this.endOfBowdenPos
-        if (this.mmuFilamentPos === FILAMENT_POS_HOMED_ENTRY) return POSITIONS.EXTRUDER
-        if (this.mmuFilamentPos === FILAMENT_POS_HOMED_EXTRUDER) return POSITIONS.EXTRUDER_ENTRANCE
-        if (this.mmuFilamentPos === FILAMENT_POS_EXTRUDER_ENTRY) return POSITIONS.BEFORE_TOOLHEAD
-        if (this.mmuFilamentPos === FILAMENT_POS_HOMED_TS) return POSITIONS.TOOLHEAD
-        if (this.mmuFilamentPos === FILAMENT_POS_IN_EXTRUDER) {
-            if (this.toolheadSensor === false) return POSITIONS.BEFORE_TOOLHEAD
-
-            return POSITIONS.COOLING_TUBE
-        }
-
-        if (this.mmuFilamentPos === FILAMENT_POS_LOADED) return POSITIONS.NOZZLE_START
-
-        return POSITIONS.UNKNOWN
+        return POSITIONS.BEFORE_PRE_GATE
     }
 
-    get endOfBowdenPos() {
-        if (typeof this.toolheadSensor === 'boolean' && !this.configExtruderForceHoming) return POSITIONS.END_BOWDEN
+    if (filamentPos === FILAMENT_POS_HOMED_GATE) {
+        if (configGateHomingEndstop.value === 'mmu_gear') return POSITIONS.GEAR
+        if (configGateHomingEndstop.value === 'mmu_gate') return POSITIONS.GATE
+        if (configGateHomingEndstop.value === 'extruder') return POSITIONS.EXTRUDER
 
-        const extruderHomingEndstops = ['none', 'collision', 'mmu_gear_touch', 'filament_compression']
-        if (extruderHomingEndstops.includes(this.configExtruderHomingEndstop)) return POSITIONS.EXTRUDER_ENTRANCE
-
-        if (this.configExtruderHomingEndstop === 'extruder') return POSITIONS.EXTRUDER
-
-        return POSITIONS.END_BOWDEN
+        return POSITIONS.AFTER_GATE
     }
 
-    get bowdenProgress() {
-        return this.mmu?.bowden_progress ?? -1
+    if (filamentPos !== undefined && [FILAMENT_POS_START_BOWDEN, FILAMENT_POS_IN_BOWDEN].includes(filamentPos) && bowdenProgress.value >= 0) {
+        const bowdenRange = endOfBowdenPos.value - POSITIONS.START_BOWDEN
+        return POSITIONS.START_BOWDEN + (bowdenRange * bowdenProgress.value) / 100
     }
 
-    get toolheadSensor() {
-        return this.getMmuSensor('toolhead')
+    if (filamentPos === FILAMENT_POS_START_BOWDEN) return POSITIONS.START_BOWDEN
+    if (filamentPos === FILAMENT_POS_IN_BOWDEN) return POSITIONS.MID_BOWDEN
+    if (filamentPos === FILAMENT_POS_END_BOWDEN) return endOfBowdenPos.value
+    if (filamentPos === FILAMENT_POS_HOMED_ENTRY) return POSITIONS.EXTRUDER
+    if (filamentPos === FILAMENT_POS_HOMED_EXTRUDER) return POSITIONS.EXTRUDER_ENTRANCE
+    if (filamentPos === FILAMENT_POS_EXTRUDER_ENTRY) return POSITIONS.BEFORE_TOOLHEAD
+    if (filamentPos === FILAMENT_POS_HOMED_TS) return POSITIONS.TOOLHEAD
+    if (filamentPos === FILAMENT_POS_IN_EXTRUDER) {
+        if (toolheadSensor.value === false) return POSITIONS.BEFORE_TOOLHEAD
+
+        return POSITIONS.COOLING_TUBE
     }
 
-    get extruderSensor() {
-        return this.getMmuSensor('extruder')
+    if (filamentPos === FILAMENT_POS_LOADED) return POSITIONS.NOZZLE_START
+
+    return POSITIONS.UNKNOWN
+})
+
+const configGateHomingEndstop = computed<string>(() => mmuSettings.value?.gate_homing_endstop)
+
+const gateSensorName = computed(() => {
+    const unit = getMmuMachineUnit(mmuUnit.value)
+    const multiGate = unit?.multi_gear ?? false
+
+    return multiGate ? 'Hub (Gate)' : 'Gate'
+})
+
+const toolClass = computed(() => (mmuTool.value === TOOL_GATE_BYPASS ? 'tool-bypass' : 'tool-text'))
+
+const toolText = computed(() => {
+    if (mmuTool.value === TOOL_GATE_UNKNOWN) return 'T?'
+
+    return mmuTool.value === TOOL_GATE_BYPASS ? 'Bypass' : `T${mmuTool.value}`
+})
+
+const homedToExtruderEntrance = computed<boolean>(() => mmu.value?.filament_pos === FILAMENT_POS_HOMED_EXTRUDER)
+
+const varsFilamentRemaining = computed<number>(() => printerStore.save_variables?.variables?.mmu_state_filament_remaining ?? 0)
+
+const varsFilamentRemainingColor = computed<string>(() => {
+    const color = printerStore.save_variables?.variables?.mmu_state_filament_remaining_color ?? ''
+
+    return color ? formColorString(color) : color
+})
+
+const upperNozzleFull = computed<boolean>(() => mmu.value?.filament_pos === FILAMENT_POS_LOADED || !!varsFilamentRemaining.value)
+
+const lowerNozzleFull = computed(() => mmu.value?.filament_pos === FILAMENT_POS_LOADED || !!varsFilamentRemaining.value || !!varsFilamentRemainingColor.value)
+
+const upperNozzleColor = computed(() => (varsFilamentRemaining.value ? varsFilamentRemainingColor.value : 'none'))
+
+const lowerNozzleColor = computed(() => varsFilamentRemainingColor.value || currentGateColor.value)
+
+const currentGateColor = computed(() => {
+    let color = printerStore.mmu?.gate_color?.[mmuGate.value] ?? ''
+
+    if (mmuGate.value === TOOL_GATE_BYPASS) {
+        color = spoolmanStore.active_spool?.filament.color_hex ?? null
+    }
+    return formColorString(color)
+})
+
+const isGripped = computed(() => mmuGrip.value === 'Gripped' || mmuServo.value === 'Down')
+
+const slicerToolMap = computed(() => mmu.value?.slicer_tool_map ?? undefined)
+
+const syncFeedbackPistonText = computed(() => (mmu.value?.sync_feedback_bias_modelled ?? 0.0).toFixed(2))
+
+const totalToolchanges = computed(() => slicerToolMap.value?.total_toolchanges ?? 0)
+
+const numToolchanges = computed(() => mmu.value?.num_toolchanges ?? 0)
+
+const filamentPosition = computed(() => (mmu.value?.filament_position ?? 0).toFixed(1))
+
+const statusText = computed(() => {
+    if (['complete', 'error', 'cancelled', 'started'].includes(mmuPrintState.value)) {
+        return capitalize(mmuPrintState.value)
     }
 
-    get mmuGearSensor() {
-        return this.getMmuSensor('mmu_gear')
+    if ([ACTION_LOADING, ACTION_UNLOADING].includes(mmuAction.value)) {
+        return `${mmuAction.value}: ${filamentPosition.value}mm`
     }
 
-    get mmuPreGateSensor() {
-        return this.getMmuSensor('mmu_pre_gate')
+    if (mmuAction.value !== ACTION_IDLE) return mmuAction.value
+
+    if (mmuPrintState.value === 'printing') {
+        let str = `Printing (${numToolchanges.value}`
+        if (totalToolchanges.value > 0) str += `/${totalToolchanges.value}`
+        str += ' swaps)'
+        return str
     }
 
-    get configExtruderForceHoming(): boolean {
-        return (this.$store.state.printer.configfile.config.mmu?.extruder_force_homing ?? 0) === 1
-    }
+    const filament = mmu.value?.filament ?? 'Unknown'
 
-    get configExtruderHomingEndstop() {
-        return this.mmuSettings?.extruder_homing_endstop ?? 'none'
-    }
-
-    get gateSensorName() {
-        const unit = this.getMmuMachineUnit(this.mmuUnit)
-        const multiGate = unit?.multi_gear ?? false
-
-        return multiGate ? 'Hub (Gate)' : 'Gate'
-    }
-
-    get toolClass() {
-        return this.mmuTool === TOOL_GATE_BYPASS ? 'tool-bypass' : 'tool-text'
-    }
-
-    get toolText() {
-        if (this.mmuTool === TOOL_GATE_UNKNOWN) return 'T?'
-
-        return this.mmuTool === TOOL_GATE_BYPASS ? 'Bypass' : `T${this.mmuTool}`
-    }
-
-    get homedToExtruderEntrance(): boolean {
-        return this.mmuFilamentPos === FILAMENT_POS_HOMED_EXTRUDER
-    }
-
-    get varsFilamentRemaining(): number {
-        return this.$store.state.printer.save_variables?.variables?.mmu_state_filament_remaining ?? 0
-    }
-
-    get varsFilamentRemainingColor(): string {
-        const color = this.$store.state.printer.save_variables?.variables?.mmu_state_filament_remaining_color ?? ''
-
-        return color ? this.formColorString(color) : color
-    }
-
-    get upperNozzleFull(): boolean {
-        return this.mmuFilamentPos === FILAMENT_POS_LOADED || !!this.varsFilamentRemaining
-    }
-
-    get lowerNozzleFull() {
-        return (
-            this.mmuFilamentPos === FILAMENT_POS_LOADED ||
-            !!this.varsFilamentRemaining ||
-            !!this.varsFilamentRemainingColor
-        )
-    }
-
-    get upperNozzleColor() {
-        return this.varsFilamentRemaining ? this.varsFilamentRemainingColor : 'none'
-    }
-
-    get lowerNozzleColor() {
-        return this.varsFilamentRemainingColor || this.currentGateColor
-    }
-
-    get currentGateColor() {
-        let color = this.$store.state.printer.mmu?.gate_color[this.mmuGate] ?? ''
-
-        if (this.mmuGate === TOOL_GATE_BYPASS) {
-            // Assume active spoolman spool if available
-            color = this.$store.state.server.spoolman?.active_spool?.filament.color_hex ?? null
-        }
-        return this.formColorString(color)
-    }
-
-    get isGripped() {
-        return this.mmuGrip === 'Gripped' || this.mmuServo === 'Down'
-    }
-
-    get slicerToolMap() {
-        return this.mmu?.slicer_tool_map ?? undefined
-    }
-
-    get syncFeedbackPistonText() {
-        return (this.mmu?.sync_feedback_bias_modelled ?? 0.0).toFixed(2)
-    }
-
-    get totalToolchanges() {
-        return this.slicerToolMap?.total_toolchanges ?? 0
-    }
-
-    get numToolchanges() {
-        return this.mmu?.num_toolchanges ?? 0
-    }
-
-    get statusText() {
-        if (['complete', 'error', 'cancelled', 'started'].includes(this.mmuPrintState)) {
-            return capitalize(this.mmuPrintState)
-        }
-
-        if ([ACTION_LOADING, ACTION_UNLOADING].includes(this.mmuAction)) {
-            return `${this.mmuAction}: ${this.filamentPosition}mm`
-        }
-
-        if (this.mmuAction !== ACTION_IDLE) return this.mmuAction
-
-        if (this.mmuPrintState === 'printing') {
-            let str = `Printing (${this.numToolchanges}`
-            if (this.totalToolchanges > 0) str += `/${this.totalToolchanges}`
-            str += ' swaps)'
-            return str
-        }
-
-        const filament = this.mmu?.filament ?? 'Unknown'
-
-        return filament !== 'Unloaded' ? `Filament: ${this.filamentPosition}mm` : 'Filament: Unloaded'
-    }
-
-    get filamentPosition() {
-        return (this.mmu?.filament_position ?? 0).toFixed(1)
-    }
-}
+    return filament !== 'Unloaded' ? `Filament: ${filamentPosition.value}mm` : 'Filament: Unloaded'
+})
 </script>
 
 <style scoped>

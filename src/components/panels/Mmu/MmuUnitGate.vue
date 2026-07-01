@@ -1,12 +1,7 @@
 <template>
     <div class="d-flex flex-column align-center" :class="cursorType" @click="handleClickGate" @contextmenu.prevent>
         <div class="d-flex flex-wrap mb-n5 pt-1 position-relative">
-            <mmu-unit-gate-spool
-                class="position-relative zindex-1"
-                :gate-index="gateIndex"
-                :show-details="showDetails"
-                :is-selected="isSelected"
-                :unhighlight-spools="unhighlightSpools" />
+            <mmu-unit-gate-spool class="position-relative zindex-1" :gate-index="gateIndex" :show-details="showDetails" :is-selected="isSelected" :unhighlight-spools="unhighlightSpools" />
         </div>
 
         <div class="mmu-unit-box d-flex zindex-3 pb-1 pt-2 position-relative" :class="gateClass">
@@ -24,120 +19,118 @@
             :menu-y="menuY"
             :selected-gate="selectedGate"
             @select-gate="selectGate"
-            @edit-filament="$emit('edit-filament', $event)" />
+            @edit-filament="emit('edit-filament', $event)" />
     </div>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
+<script setup lang="ts">
+import { ref, computed, onBeforeUnmount } from 'vue'
 import type { LongpressEvent } from '@/directives/longpress'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, { MmuMachineUnit, TOOL_GATE_BYPASS } from '@/components/mixins/mmu'
+import { useMmu, type MmuMachineUnit, TOOL_GATE_BYPASS } from '@/composables/useMmu'
 import MmuUnitGateMenu from '@/components/panels/Mmu/MmuUnitGateMenu.vue'
+import MmuUnitGateSpool from '@/components/panels/Mmu/MmuUnitGateSpool.vue'
 
-@Component({
-    components: { MmuUnitGateMenu },
+const props = withDefaults(
+    defineProps<{
+        gateIndex: number
+        mmuMachineUnit?: MmuMachineUnit
+        showDetails?: boolean
+        showContextMenu?: boolean
+        selectedGate: number
+        unhighlightSpools?: boolean
+        hasBypass?: boolean
+    }>(),
+    {
+        showDetails: false,
+        showContextMenu: false,
+        unhighlightSpools: false,
+        hasBypass: false,
+    }
+)
+
+const emit = defineEmits<{
+    'select-gate': [gateIndex: number]
+    'edit-filament': [gateIndex: number]
+}>()
+
+const { mmu } = useMmu()
+
+let closeTimeout: number | null = null
+const contextMenu = ref(false)
+const menuX = ref(0)
+const menuY = ref(0)
+
+const cursorType = computed(() => (props.showContextMenu ? 'gate-menu' : 'gate-selection'))
+
+const gateName = computed(() => (props.gateIndex === TOOL_GATE_BYPASS ? 'Bypass' : props.gateIndex.toString()))
+
+const gateStatus = computed(() => mmu.value?.gate_status[props.gateIndex] ?? 0)
+
+const isSelected = computed(() => props.selectedGate === props.gateIndex)
+
+const gateNumberClass = computed(() => ({
+    active: isSelected.value,
+    'border-unknown': gateStatus.value < 0,
+    'border-active': gateStatus.value > 0,
+    bypass: props.gateIndex === TOOL_GATE_BYPASS,
+}))
+
+const gatePosition = computed(() => {
+    const firstGateNumber = props.mmuMachineUnit?.first_gate ?? 0
+    return props.gateIndex + 1 - firstGateNumber
 })
-export default class MmuUnitGate extends Mixins(BaseMixin, MmuMixin) {
-    @Prop({ required: true }) readonly gateIndex!: number
-    @Prop({ required: false }) readonly mmuMachineUnit!: MmuMachineUnit
-    @Prop({ default: false }) readonly showDetails!: boolean
-    @Prop({ default: false }) readonly showContextMenu!: boolean
-    @Prop({ required: true }) readonly selectedGate!: number
-    @Prop({ default: false }) readonly unhighlightSpools!: boolean
-    @Prop({ default: false }) readonly hasBypass!: boolean
 
-    closeTimeout: number | null = null
-    contextMenu = false
-    menuX = 0
-    menuY = 0
+const firstGate = computed(() => !props.mmuMachineUnit || gatePosition.value === 1)
 
-    get cursorType() {
-        return this.showContextMenu ? 'gate-menu' : 'gate-selection'
-    }
+const lastGate = computed(() => {
+    if (!props.mmuMachineUnit || props.gateIndex === TOOL_GATE_BYPASS) return true
 
-    get gateName() {
-        return this.gateIndex === TOOL_GATE_BYPASS ? 'Bypass' : this.gateIndex.toString()
-    }
+    return gatePosition.value === props.mmuMachineUnit?.num_gates && !props.hasBypass
+})
 
-    get gateStatus() {
-        return this.mmu?.gate_status[this.gateIndex] ?? 0
-    }
+const gateClass = computed(() => ({
+    'left-gate': firstGate.value,
+    'right-gate': lastGate.value,
+}))
 
-    get gateNumberClass() {
-        return {
-            active: this.isSelected,
-            'border-unknown': this.gateStatus < 0,
-            'border-active': this.gateStatus > 0,
-            bypass: this.gateIndex === TOOL_GATE_BYPASS,
-        }
-    }
-
-    get isSelected() {
-        return this.selectedGate === this.gateIndex
-    }
-
-    get gatePosition() {
-        const firstGateNumber = this.mmuMachineUnit?.first_gate ?? 0
-        return this.gateIndex + 1 - firstGateNumber
-    }
-
-    get firstGate() {
-        return !this.mmuMachineUnit || this.gatePosition === 1
-    }
-
-    get lastGate() {
-        if (!this.mmuMachineUnit || this.gateIndex === TOOL_GATE_BYPASS) return true
-
-        return this.gatePosition === this.mmuMachineUnit?.num_gates && !this.hasBypass
-    }
-
-    get gateClass() {
-        return {
-            'left-gate': this.firstGate,
-            'right-gate': this.lastGate,
-        }
-    }
-
-    handleClickGate(e: MouseEvent) {
-        if (this.showContextMenu) return this.openContextMenu(e)
-
-        this.selectGate()
-    }
-
-    selectGate() {
-        this.$emit('select-gate', this.gateIndex)
-    }
-
-    openContextMenu(e: MouseEvent | LongpressEvent) {
-        e.preventDefault()
-
-        this.menuX = (e.clientX ?? 0) - 20
-        this.menuY = (e.clientY ?? 0) - 20
-
-        this.closeContextMenu()
-
-        this.contextMenu = true
-        this.closeTimeout = window.setTimeout(() => {
-            this.closeContextMenu()
-        }, 8000)
-    }
-
-    closeContextMenu() {
-        this.clearCloseTimeout()
-        this.contextMenu = false
-    }
-
-    clearCloseTimeout() {
-        if (this.closeTimeout === null) return
-        clearTimeout(this.closeTimeout)
-        this.closeTimeout = null
-    }
-
-    beforeDestroy() {
-        this.clearCloseTimeout()
-    }
+function selectGate() {
+    emit('select-gate', props.gateIndex)
 }
+
+function clearCloseTimeout() {
+    if (closeTimeout === null) return
+    clearTimeout(closeTimeout)
+    closeTimeout = null
+}
+
+function closeContextMenu() {
+    clearCloseTimeout()
+    contextMenu.value = false
+}
+
+function openContextMenu(e: MouseEvent | LongpressEvent) {
+    e.preventDefault()
+
+    menuX.value = (e.clientX ?? 0) - 20
+    menuY.value = (e.clientY ?? 0) - 20
+
+    closeContextMenu()
+
+    contextMenu.value = true
+    closeTimeout = window.setTimeout(() => {
+        closeContextMenu()
+    }, 8000)
+}
+
+function handleClickGate(e: MouseEvent) {
+    if (props.showContextMenu) return openContextMenu(e)
+
+    selectGate()
+}
+
+onBeforeUnmount(() => {
+    clearCloseTimeout()
+})
 </script>
 
 <style scoped>

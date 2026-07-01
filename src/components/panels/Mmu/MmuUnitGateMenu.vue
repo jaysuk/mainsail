@@ -1,129 +1,109 @@
 <template>
-    <v-menu
-        v-model="showContextMenu"
-        transition="slide-y-transition"
-        :position-x="menuX"
-        :position-y="menuY"
-        :close-on-content-click="false"
-        absolute
-        offset-y>
-        <v-list dense @mouseleave="closeContextMenu">
-            <v-subheader class="d-block text-subtitle-2 text-center mb-0 h-auto pb-2">
+    <v-menu v-model="showContextMenu" transition="slide-y-transition" :target="[menuX, menuY]" :close-on-content-click="false">
+        <v-list density="compact" @mouseleave="closeContextMenu">
+            <v-list-subheader class="d-block text-subtitle-2 text-center mb-0 h-auto pb-2">
                 {{ contextMenuHeader }}
-            </v-subheader>
+            </v-list-subheader>
             <v-divider class="mb-2" />
-            <mmu-unit-gate-menu-item
-                v-for="(item, index) in contextMenuItems"
-                :key="index"
-                :item="item"
-                :gate-index="gateIndex"
-                @close-context-menu="closeContextMenu" />
+            <mmu-unit-gate-menu-item v-for="(item, index) in contextMenuItems" :key="index" :item="item" :gate-index="gateIndex" @close-context-menu="closeContextMenu" />
         </v-list>
     </v-menu>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop, VModel } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, {
-    MmuMachineUnit,
-    TOOL_GATE_BYPASS,
-    FILAMENT_POS_LOADED,
-    MmuUnitGateContextMenuItem,
-} from '@/components/mixins/mmu'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useMmu, type MmuMachineUnit, TOOL_GATE_BYPASS, FILAMENT_POS_LOADED, type MmuUnitGateContextMenuItem } from '@/composables/useMmu'
 import { mdiSwapHorizontal, mdiDownloadOutline, mdiEject, mdiAxisArrow, mdiDatabaseEdit } from '@mdi/js'
 import MmuUnitGateMenuItem from '@/components/panels/Mmu/MmuUnitGateMenuItem.vue'
+import { useBase } from '@/composables/useBase'
 
-@Component({
-    components: { MmuUnitGateMenuItem },
+const props = defineProps<{
+    gateIndex: number
+    mmuMachineUnit: MmuMachineUnit | undefined
+    selectedGate: number
+    menuX: number
+    menuY: number
+}>()
+
+const emit = defineEmits<{
+    'edit-filament': [gateIndex: number]
+    'select-gate': [gateIndex: number]
+}>()
+
+const showContextMenu = defineModel<boolean>({ required: true })
+
+const { t } = useI18n()
+const { printerIsPrintingOnly } = useBase()
+const { mmuFilamentPos, canSend } = useMmu()
+
+const gateName = computed(() => (props.gateIndex === TOOL_GATE_BYPASS ? 'Bypass' : props.gateIndex.toString()))
+
+const contextMenuHeader = computed(() => {
+    if (props.gateIndex >= 0) return `${t('Panels.MmuPanel.Gate')} ${props.gateIndex}`
+
+    return gateName.value
 })
-export default class MmuUnitGateMenu extends Mixins(BaseMixin, MmuMixin) {
-    @VModel({ type: Boolean }) showContextMenu!: boolean
-    @Prop({ type: Number, required: true }) readonly gateIndex!: number
-    @Prop({ required: true }) readonly mmuMachineUnit!: MmuMachineUnit | undefined
-    @Prop({ type: Number, required: true }) readonly selectedGate!: number
-    @Prop({ type: Number, required: true }) readonly menuX!: number
-    @Prop({ type: Number, required: true }) readonly menuY!: number
 
-    get gateName() {
-        return this.gateIndex === TOOL_GATE_BYPASS ? 'Bypass' : this.gateIndex.toString()
-    }
+const canCrossload = computed(() => props.mmuMachineUnit?.can_crossload ?? false)
 
-    get contextMenuHeader() {
-        if (this.gateIndex >= 0) return `${this.$t('Panels.MmuPanel.Gate').toString()} ${this.gateIndex}`
+const isLoaded = computed(() => mmuFilamentPos.value === FILAMENT_POS_LOADED)
 
-        return this.gateName
-    }
+const isSelectedGate = computed(() => props.gateIndex === props.selectedGate)
 
-    get canCrossload() {
-        return this.mmuMachineUnit?.can_crossload ?? false
-    }
-
-    get isLoaded() {
-        return this.mmuFilamentPos === FILAMENT_POS_LOADED
-    }
-
-    get isSelectedGate() {
-        return this.gateIndex === this.selectedGate
-    }
-
-    get contextMenuItems(): MmuUnitGateContextMenuItem[] {
-        const items: MmuUnitGateContextMenuItem[] = [
-            {
-                icon: mdiSwapHorizontal,
-                label: this.$t('Panels.MmuPanel.ButtonSelect').toString(),
-                loading: '',
-                action: { kind: 'call', fn: () => this.selectGate() },
-                disabled: () => !this.canSend || this.isSelectedGate || this.printerIsPrintingOnly || this.isLoaded,
-            },
-            {
-                icon: mdiDatabaseEdit,
-                label: this.$t('Panels.MmuPanel.EditGateMap').toString(),
-                loading: '',
-                action: { kind: 'call', fn: () => this.editFilament() },
-                disabled: () => false,
-            },
-            {
-                icon: mdiDownloadOutline,
-                label: this.$t('Panels.MmuPanel.ButtonPreload').toString(),
-                loading: 'mmu_preload',
-                action: { kind: 'gcode', command: 'MMU_PRELOAD' },
-                disabled: () =>
-                    !this.canSend ||
-                    (!this.isSelectedGate && !this.canCrossload) ||
-                    (this.isSelectedGate && this.isLoaded),
-            },
-            {
-                icon: mdiEject,
-                label: this.$t('Panels.MmuPanel.ButtonEject').toString(),
-                loading: 'mmu_eject',
-                action: { kind: 'gcode', command: 'MMU_EJECT' },
-                disabled: () => !this.canSend || (this.gateIndex !== this.selectedGate && !this.canCrossload),
-            },
-            {
-                icon: mdiAxisArrow,
-                label: this.$t('Panels.MmuPanel.ButtonChangeTool').toString(),
-                loading: 'mmu_change_tool',
-                action: { kind: 'gcode', command: 'MMU_CHANGE_TOOL' },
-                disabled: () => !this.canSend || this.isSelectedGate || this.printerIsPrintingOnly,
-            },
-        ]
-
-        if (this.gateIndex < 0) return items.slice(0, 1)
-
-        return items
-    }
-
-    closeContextMenu() {
-        this.showContextMenu = false
-    }
-
-    editFilament() {
-        this.$emit('edit-filament', this.gateIndex)
-    }
-
-    selectGate() {
-        this.$emit('select-gate', this.gateIndex)
-    }
+function editFilament() {
+    emit('edit-filament', props.gateIndex)
 }
+
+function selectGate() {
+    emit('select-gate', props.gateIndex)
+}
+
+function closeContextMenu() {
+    showContextMenu.value = false
+}
+
+const contextMenuItems = computed<MmuUnitGateContextMenuItem[]>(() => {
+    const items: MmuUnitGateContextMenuItem[] = [
+        {
+            icon: mdiSwapHorizontal,
+            label: t('Panels.MmuPanel.ButtonSelect'),
+            loading: '',
+            action: { kind: 'call', fn: () => selectGate() },
+            disabled: () => !canSend.value || isSelectedGate.value || printerIsPrintingOnly.value || isLoaded.value,
+        },
+        {
+            icon: mdiDatabaseEdit,
+            label: t('Panels.MmuPanel.EditGateMap'),
+            loading: '',
+            action: { kind: 'call', fn: () => editFilament() },
+            disabled: () => false,
+        },
+        {
+            icon: mdiDownloadOutline,
+            label: t('Panels.MmuPanel.ButtonPreload'),
+            loading: 'mmu_preload',
+            action: { kind: 'gcode', command: 'MMU_PRELOAD' },
+            disabled: () => !canSend.value || (!isSelectedGate.value && !canCrossload.value) || (isSelectedGate.value && isLoaded.value),
+        },
+        {
+            icon: mdiEject,
+            label: t('Panels.MmuPanel.ButtonEject'),
+            loading: 'mmu_eject',
+            action: { kind: 'gcode', command: 'MMU_EJECT' },
+            disabled: () => !canSend.value || (props.gateIndex !== props.selectedGate && !canCrossload.value),
+        },
+        {
+            icon: mdiAxisArrow,
+            label: t('Panels.MmuPanel.ButtonChangeTool'),
+            loading: 'mmu_change_tool',
+            action: { kind: 'gcode', command: 'MMU_CHANGE_TOOL' },
+            disabled: () => !canSend.value || isSelectedGate.value || printerIsPrintingOnly.value,
+        },
+    ]
+
+    if (props.gateIndex < 0) return items.slice(0, 1)
+
+    return items
+})
 </script>
