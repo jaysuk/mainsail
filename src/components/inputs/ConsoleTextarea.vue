@@ -2,17 +2,15 @@
     <v-textarea
         ref="gcodeCommandField"
         v-model="gcode"
-        :items="items"
-        :label="$t('Panels.MiniconsolePanel.SendCode')"
-        solo
+        :label="t('Panels.MiniconsolePanel.SendCode')"
+        variant="solo"
         class="gcode-command-field"
         autocomplete="off"
         no-resize
         auto-grow
         :rows="rows"
         hide-details
-        outlined
-        dense
+        density="compact"
         :prepend-icon="isTouchDevice ? mdiChevronDoubleRight : ''"
         :append-icon="mdiSend"
         @keydown.enter.prevent.stop="doSend"
@@ -22,127 +20,132 @@
         @click:prepend="onAutocomplete"
         @click:append="doSend" />
 </template>
-<script lang="ts">
-import { Component, Mixins, Ref } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import ConsoleMixin from '@/components/mixins/console'
+<script setup lang="ts">
+import { ref, computed, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { mdiSend, mdiChevronDoubleRight } from '@mdi/js'
-import { VTextareaType } from '@/store/printer/types'
 import { strLongestEqual } from '@/plugins/helpers'
+import { useBase } from '@/composables/useBase'
+import { useConsole } from '@/composables/useConsole'
+import { usePrinterStore } from '@/store/printer'
+import { useServerStore } from '@/store/server'
+import { useGuiGcodehistoryStore } from '@/store/gui/gcodehistory'
 
-@Component
-export default class ConsoleTextarea extends Mixins(BaseMixin, ConsoleMixin) {
-    mdiSend = mdiSend
-    mdiChevronDoubleRight = mdiChevronDoubleRight
+const { t } = useI18n()
+const { isTouchDevice } = useBase()
+const { lastCommands, helplist } = useConsole()
 
-    @Ref() readonly gcodeCommandField!: VTextareaType
+// Vuetify 4's VTextarea doesn't expose the Vue 2-era `$refs.input` shape;
+// the underlying native <textarea> is queried from the component's root
+// element instead.
+const gcodeCommandField = ref<{ $el: HTMLElement; focus: () => void } | null>(null)
 
-    gcode = ''
-    lastCommandNumber: number | null = null
-    items = []
+const gcode = ref('')
+const lastCommandNumber = ref<number | null>(null)
 
-    get rows(): number {
-        return this.gcode?.split('\n').length ?? 1
-    }
+const rows = computed<number>(() => gcode.value?.split('\n').length ?? 1)
 
-    getCurrentLine(): number {
-        const textarea = this.gcodeCommandField.$refs.input
-        const textBeforeCursor = textarea.value.substring(0, textarea.selectionStart)
-        return textBeforeCursor.split('\n').length
-    }
+function getTextareaEl(): HTMLTextAreaElement | null {
+    return gcodeCommandField.value?.$el.querySelector('textarea') ?? null
+}
 
-    setGcode(gcode: string): void {
-        this.gcode = gcode
+function getCurrentLine(): number {
+    const textarea = getTextareaEl()
+    if (!textarea) return 1
 
-        this.$nextTick(() => {
-            this.gcodeCommandField.focus()
-        })
-    }
+    const textBeforeCursor = textarea.value.substring(0, textarea.selectionStart ?? 0)
+    return textBeforeCursor.split('\n').length
+}
 
-    onKeyUp(event: KeyboardEvent): void {
-        const currentLine = this.getCurrentLine()
-        if (this.rows > 1 && currentLine > 1) return
+function setGcode(value: string): void {
+    gcode.value = value
 
-        event.preventDefault()
-        if (this.lastCommandNumber === null && this.lastCommands.length) {
-            this.lastCommandNumber = this.lastCommands.length - 1
-            this.gcode = this.lastCommands[this.lastCommandNumber]
-        } else if (this.lastCommandNumber && this.lastCommandNumber > 0) {
-            this.lastCommandNumber--
-            this.gcode = this.lastCommands[this.lastCommandNumber]
-        }
-    }
+    nextTick(() => {
+        gcodeCommandField.value?.focus()
+    })
+}
 
-    onKeyDown(event: KeyboardEvent): void {
-        const currentLine = this.getCurrentLine()
-        if (this.rows > currentLine) return
+function onKeyUp(event: KeyboardEvent): void {
+    const currentLine = getCurrentLine()
+    if (rows.value > 1 && currentLine > 1) return
 
-        event.preventDefault()
-
-        if (this.lastCommandNumber === null) return
-
-        if (this.lastCommandNumber < this.lastCommands.length - 1) {
-            this.lastCommandNumber++
-            this.gcode = this.lastCommands[this.lastCommandNumber]
-        } else if (this.lastCommandNumber === this.lastCommands.length - 1) {
-            this.lastCommandNumber = null
-            this.gcode = ''
-        }
-    }
-
-    doSend(cmd: KeyboardEvent) {
-        if (cmd.shiftKey) {
-            this.gcode += '\n'
-            return
-        }
-
-        if (this.gcode === '') return
-
-        this.$store.dispatch('printer/sendGcode', this.gcode)
-        this.$store.dispatch('gui/gcodehistory/addToHistory', this.gcode)
-        this.gcode = ''
-        this.lastCommandNumber = null
-    }
-
-    onAutocomplete(e: Event): void {
-        e.preventDefault()
-
-        if (!this.gcode.length) return
-
-        const textarea = this.gcodeCommandField.$refs.input
-        const currentPosition = textarea.selectionStart
-        const beforeCursor = this.gcode.substring(0, currentPosition)
-        const lastNewlineIndex = beforeCursor.lastIndexOf('\n')
-        const currentLine = beforeCursor.substring(lastNewlineIndex + 1)
-
-        const currentLineUpperCase = currentLine.toUpperCase()
-        const commands = this.helplist.filter((element) => element.command.startsWith(currentLineUpperCase))
-
-        if (commands.length === 0) return
-
-        if (commands?.length === 1) {
-            this.updateGcode(commands[0].command, lastNewlineIndex, currentPosition)
-            return
-        }
-
-        const longestCommon = commands.reduce((acc, val) => {
-            return strLongestEqual(acc, val.command)
-        }, commands[0].command)
-
-        let output = ''
-        commands.forEach(
-            (command) => (output += `<a class="command font-weight-bold">${command.command}</a>: ${command.help}<br />`)
-        )
-
-        this.$store.dispatch('server/addEvent', { message: output, type: 'autocomplete' })
-
-        this.updateGcode(longestCommon, lastNewlineIndex, currentPosition)
-    }
-
-    updateGcode(text: string, start: number, end: number) {
-        this.gcode = this.gcode.substring(0, start + 1) + text + this.gcode.substring(end)
+    event.preventDefault()
+    if (lastCommandNumber.value === null && lastCommands.value.length) {
+        lastCommandNumber.value = lastCommands.value.length - 1
+        gcode.value = lastCommands.value[lastCommandNumber.value]
+    } else if (lastCommandNumber.value && lastCommandNumber.value > 0) {
+        lastCommandNumber.value--
+        gcode.value = lastCommands.value[lastCommandNumber.value]
     }
 }
+
+function onKeyDown(event: KeyboardEvent): void {
+    const currentLine = getCurrentLine()
+    if (rows.value > currentLine) return
+
+    event.preventDefault()
+
+    if (lastCommandNumber.value === null) return
+
+    if (lastCommandNumber.value < lastCommands.value.length - 1) {
+        lastCommandNumber.value++
+        gcode.value = lastCommands.value[lastCommandNumber.value]
+    } else if (lastCommandNumber.value === lastCommands.value.length - 1) {
+        lastCommandNumber.value = null
+        gcode.value = ''
+    }
+}
+
+function doSend(cmd: KeyboardEvent | MouseEvent) {
+    if (cmd.shiftKey) {
+        gcode.value += '\n'
+        return
+    }
+
+    if (gcode.value === '') return
+
+    usePrinterStore().sendGcode(gcode.value)
+    useGuiGcodehistoryStore().addToHistory(gcode.value)
+    gcode.value = ''
+    lastCommandNumber.value = null
+}
+
+function updateGcode(text: string, start: number, end: number) {
+    gcode.value = gcode.value.substring(0, start + 1) + text + gcode.value.substring(end)
+}
+
+function onAutocomplete(e: Event): void {
+    e.preventDefault()
+
+    if (!gcode.value.length) return
+
+    const textarea = getTextareaEl()
+    const currentPosition = textarea?.selectionStart ?? 0
+    const beforeCursor = gcode.value.substring(0, currentPosition)
+    const lastNewlineIndex = beforeCursor.lastIndexOf('\n')
+    const currentLine = beforeCursor.substring(lastNewlineIndex + 1)
+
+    const currentLineUpperCase = currentLine.toUpperCase()
+    const commands = helplist.value.filter((element) => element.command.startsWith(currentLineUpperCase))
+
+    if (commands.length === 0) return
+
+    if (commands?.length === 1) {
+        updateGcode(commands[0].command, lastNewlineIndex, currentPosition)
+        return
+    }
+
+    const longestCommon = commands.reduce((acc, val) => strLongestEqual(acc, val.command), commands[0].command)
+
+    let output = ''
+    commands.forEach((command) => (output += `<a class="command font-weight-bold">${command.command}</a>: ${command.help}<br />`))
+
+    useServerStore().addEvent({ message: output, type: 'autocomplete' })
+
+    updateGcode(longestCommon, lastNewlineIndex, currentPosition)
+}
+
+defineExpose({ setGcode })
 </script>
 
 <style scoped>

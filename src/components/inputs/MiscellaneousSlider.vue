@@ -2,25 +2,18 @@
     <v-container class="px-0 py-2">
         <v-row>
             <v-col :class="pwm ? 'pb-1' : 'pb-3'">
-                <v-subheader class="_fan-slider-subheader">
-                    <v-icon
-                        v-if="type === 'led' && target > 0"
-                        class="mr-2"
-                        small
-                        :retain-focus-on-click="true"
-                        @click="ledOff">
+                <v-list-subheader class="_fan-slider-subheader">
+                    <v-icon v-if="type === 'led' && target > 0" class="mr-2" size="small" retain-focus-on-click @click="ledOff">
                         {{ mdiLightbulbOnOutline }}
                     </v-icon>
-                    <v-icon v-else-if="type === 'led'" class="mr-2" small :retain-focus-on-click="true" @click="ledOn">
+                    <v-icon v-else-if="type === 'led'" class="mr-2" size="small" retain-focus-on-click @click="ledOn">
                         {{ mdiLightbulbOutline }}
                     </v-icon>
-                    <v-icon v-else-if="type.includes('fan')" small :class="fanClasses">{{ mdiFan }}</v-icon>
+                    <v-icon v-else-if="type.includes('fan')" size="small" :class="fanClasses">{{ mdiFan }}</v-icon>
                     <span>{{ convertName(name) }}</span>
                     <v-spacer />
-                    <small v-if="rpm !== null" :class="rpmClasses">{{ Math.round(rpm ?? 0) }} RPM</small>
-                    <span v-if="!controllable" class="font-weight-bold">
-                        {{ Math.round(parseFloat(value) * 100) }} %
-                    </span>
+                    <small v-if="rpm !== null" :class="rpmClasses">{{ Math.round(rpmValue) }} RPM</small>
+                    <span v-if="!controllable" class="font-weight-bold"> {{ Math.round(parseFloat(String(value)) * 100) }} % </span>
                     <v-icon v-if="controllable && !pwm" @click="switchOutputPin">
                         {{ value ? mdiToggleSwitch : mdiToggleSwitchOffOutline }}
                     </v-icon>
@@ -33,14 +26,14 @@
                             type="number"
                             hide-spin-buttons
                             hide-details
-                            outlined
-                            dense
+                            variant="outlined"
+                            density="compact"
                             class="_slider-input pt-1"
-                            @blur="inputValue = Math.round(parseFloat(sliderValue) * 100)"
-                            @focus="$event.target.select()"
+                            @blur="inputValue = Math.round(parseFloat(String(sliderValue)) * 100)"
+                            @focus="($event.target as HTMLInputElement)?.select()"
                             @keydown="checkInvalidChars" />
                     </form>
-                </v-subheader>
+                </v-list-subheader>
                 <transition v-if="controllable && pwm" name="fade">
                     <!-- display errors -->
                     <div v-show="errors.length > 0" class="_error-msg d-flex justify-end">
@@ -48,14 +41,8 @@
                     </div>
                 </transition>
                 <v-card-text v-if="controllable && pwm" class="py-0 pb-2 d-flex align-center">
-                    <v-btn
-                        v-if="lockSliders && isTouchDevice && pwm"
-                        plain
-                        small
-                        icon
-                        class="_lock-button"
-                        @click="isLocked = !isLocked">
-                        <v-icon small :color="isLocked ? 'red' : ''">
+                    <v-btn v-if="lockSliders && isTouchDevice && pwm" variant="plain" size="small" icon class="_lock-button" @click="isLocked = !isLocked">
+                        <v-icon size="small" :color="isLocked ? 'red' : ''">
                             {{ isLocked ? mdiLockOutline : mdiLockOpenVariantOutline }}
                         </v-icon>
                     </v-btn>
@@ -68,7 +55,7 @@
                         :step="0.01"
                         :color="sliderValue < off_below && sliderValue > 0 ? 'red' : undefined"
                         hide-details
-                        @change="changeSliderValue">
+                        @update:model-value="changeSliderValue">
                         <template #prepend>
                             <v-icon :disabled="isLocked || sliderValue <= min" @click="decrement">
                                 {{ mdiMinus }}
@@ -85,11 +72,10 @@
     </v-container>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { convertName } from '@/plugins/helpers'
-import { Component, Mixins, Prop, Watch } from 'vue-property-decorator'
-import { Debounce } from 'vue-debounce-decorator'
-import BaseMixin from '@/components/mixins/base'
 import {
     mdiFan,
     mdiLockOpenVariantOutline,
@@ -101,223 +87,213 @@ import {
     mdiLightbulbOutline,
     mdiLightbulbOnOutline,
 } from '@mdi/js'
+import { useBase } from '@/composables/useBase'
+import { useGuiStore } from '@/store/gui'
+import { useServerStore } from '@/store/server'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
-@Component
-export default class MiscellaneousSlider extends Mixins(BaseMixin) {
-    mdiFan = mdiFan
-    mdiToggleSwitch = mdiToggleSwitch
-    mdiToggleSwitchOffOutline = mdiToggleSwitchOffOutline
-    mdiLockOutline = mdiLockOutline
-    mdiLockOpenVariantOutline = mdiLockOpenVariantOutline
-    mdiMinus = mdiMinus
-    mdiPlus = mdiPlus
-    mdiLightbulbOutline = mdiLightbulbOutline
-    mdiLightbulbOnOutline = mdiLightbulbOnOutline
+const props = withDefaults(
+    defineProps<{
+        target: number
+        max?: number
+        name?: string
+        type?: string
+        controllable?: boolean
+        pwm?: boolean
+        rpm?: number | boolean
+        multi?: number
+        off_below?: number
+        colorOrder?: string
+    }>(),
+    {
+        max: 1,
+        name: '',
+        type: '',
+        controllable: false,
+        pwm: false,
+        rpm: false,
+        multi: 1,
+        off_below: 0,
+        colorOrder: '',
+    }
+)
 
-    convertName = convertName
-    declare private timeout: ReturnType<typeof setTimeout>
-    private isLocked: boolean = false
-    private invalidChars: string[] = ['e', 'E', '+']
+const { t } = useI18n()
+const { isTouchDevice } = useBase()
+const guiStore = useGuiStore()
 
-    private min = 0
-    private inputValue = 0
-    private sliderValue = 0
+const isLocked = ref(false)
+const invalidChars: string[] = ['e', 'E', '+']
 
-    @Prop({ type: Number, required: true })
-    declare target: number
+const min = 0
+const inputValue = ref(0)
+const sliderValue = ref(0)
+let timeout: ReturnType<typeof setTimeout>
 
-    @Prop({ type: Number, default: 1 })
-    declare max: number
+const value = computed<number>(() => Math.round((props.target / props.max) * 100) / 100)
+const rpmValue = computed<number>(() => (typeof props.rpm === 'number' ? props.rpm : 0))
 
-    @Prop({ type: String, default: '' })
-    declare name: string
+const lockSliders = computed(() => guiStore.uiSettings.lockSlidersOnTouchDevices)
+const lockSlidersDelay = computed(() => guiStore.uiSettings.lockSlidersDelay)
 
-    @Prop({ type: String, default: '' })
-    declare type: string
+watch(
+    lockSliders,
+    () => {
+        isLocked.value = lockSliders.value && isTouchDevice.value
+    },
+    { immediate: true }
+)
 
-    @Prop({ type: Boolean, default: false })
-    declare controllable: boolean
+function startLockTimer(): void {
+    const t = lockSlidersDelay.value
+    if (!isTouchDevice.value || !lockSliders.value || t <= 0) return
+    timeout = setTimeout(() => (isLocked.value = true), t * 1000)
+}
 
-    @Prop({ type: Boolean, default: false })
-    declare pwm: boolean
+function resetLockTimer(): void {
+    clearTimeout(timeout)
+}
 
-    @Prop({ type: [Number, Boolean], default: false })
-    declare rpm: number | boolean
+function sendCmd(newVal: number): void {
+    if (value.value === newVal) return
 
-    @Prop({ type: Number, default: 1 })
-    declare multi: number
+    if (newVal < min) newVal = 0
+    newVal = newVal * props.multi
 
-    @Prop({ type: Number, default: 0 })
-    declare off_below: number
+    let gcode = `SET_PIN PIN=${props.name} VALUE=${newVal.toFixed(2)}`
+    if (props.type === 'fan') gcode = `M106 S${newVal.toFixed(0)}`
+    if (props.type === 'fan_generic') gcode = `SET_FAN_SPEED FAN=${props.name} SPEED=${newVal}`
+    if (props.type === 'led') gcode = `SET_LED LED=${props.name} ${ledChannelName.value}=${newVal.toFixed(2)} SYNC=0 TRANSMIT=1`
 
-    @Prop({ type: String, default: '' })
-    declare colorOrder: string
-
-    get value(): number {
-        return Math.round((this.target / this.max) * 100) / 100
+    if (gcode !== '') {
+        useServerStore().addEvent({ message: gcode, type: 'command' })
+        webSocketClient.emit('printer.gcode.script', { script: gcode })
     }
 
-    @Watch('lockSliders', { immediate: true })
-    lockSlidersChanged(): void {
-        this.isLocked = this.lockSliders && this.isTouchDevice
-    }
+    startLockTimer()
+}
 
-    startLockTimer(): void {
-        const t = this.lockSlidersDelay
-        if (!this.isTouchDevice || !this.lockSliders || t <= 0) return
-        this.timeout = setTimeout(() => (this.isLocked = true), t * 1000)
-    }
+// debounce replaces the removed vue-debounce-decorator @Debounce(500)
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
+function changeSliderValue(): void {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+        if (value.value === sliderValue.value) return
 
-    resetLockTimer(): void {
-        clearTimeout(this.timeout)
-    }
-
-    get lockSliders(): boolean {
-        return this.$store.state.gui.uiSettings.lockSlidersOnTouchDevices
-    }
-
-    get lockSlidersDelay(): number {
-        return this.$store.state.gui.uiSettings.lockSlidersDelay
-    }
-
-    @Debounce(500)
-    changeSliderValue(): void {
-        if (this.value === this.sliderValue) return
-        /**
-         * snap slider handle to 0 if dragging from above 'off_below' to below 'off_below'
-         * snap slider handle to 'off_below' if dragging from 0 to below 'off_below'
-         */
-        if (this.sliderValue < this.value && this.sliderValue < this.off_below) {
-            this.sliderValue = 0
-        } else if (this.sliderValue > this.value && this.sliderValue < this.off_below) {
-            this.sliderValue = this.off_below
+        // snap slider handle to 0 if dragging from above 'off_below' to below 'off_below'
+        // snap slider handle to 'off_below' if dragging from 0 to below 'off_below'
+        if (sliderValue.value < value.value && sliderValue.value < props.off_below) {
+            sliderValue.value = 0
+        } else if (sliderValue.value > value.value && sliderValue.value < props.off_below) {
+            sliderValue.value = props.off_below
         }
 
-        this.sendCmd(this.sliderValue)
+        sendCmd(sliderValue.value)
+    }, 500)
+}
+
+function ledOff() {
+    sendCmd(0)
+}
+
+function ledOn() {
+    sendCmd(1)
+}
+
+function switchOutputPin(): void {
+    const newVal = value.value ? 0 : 1
+    const gcode = `SET_PIN PIN=${props.name} VALUE=${(newVal * props.multi).toFixed(2)}`
+    useServerStore().addEvent({ message: gcode, type: 'command' })
+    webSocketClient.emit('printer.gcode.script', { script: gcode })
+}
+
+function decrement(): void {
+    let newVal = value.value > 0 ? Math.round((value.value - 0.01) * 100) / 100 : 0
+    if (value.value < props.off_below) newVal = 0
+    sendCmd(newVal)
+}
+
+function increment(): void {
+    let newVal = value.value < 1.0 ? Math.round((value.value + 0.01) * 100) / 100 : 1.0
+    if (value.value < props.off_below) newVal = props.off_below
+    sendCmd(newVal)
+}
+
+onMounted(() => {
+    sliderValue.value = value.value
+})
+
+onBeforeUnmount(() => {
+    clearTimeout(timeout)
+    if (debounceTimer) clearTimeout(debounceTimer)
+})
+
+watch(value, (newVal) => {
+    sliderValue.value = newVal
+})
+
+watch(
+    sliderValue,
+    (newVal) => {
+        inputValue.value = Math.round(newVal * 100)
+    },
+    { immediate: true }
+)
+
+function checkInvalidChars(event: KeyboardEvent): void {
+    if (min >= 0 && !invalidChars.includes('-')) invalidChars.push('-')
+    if (invalidChars.includes(event.key)) event.preventDefault()
+}
+
+const errors = computed(() => {
+    const errors = []
+    const input = inputValue.value / 100
+    if (inputValue.value.toString() === '') {
+        errors.push(t('App.NumberInput.NoEmptyAllowedError'))
+    }
+    if (input < min) {
+        errors.push(t('App.NumberInput.GreaterOrEqualError', { min: min * 100 }))
+    }
+    return errors
+})
+
+const disableFanAnimation = computed(() => guiStore.uiSettings.disableFanAnimation ?? false)
+
+const fanClasses = computed(() => {
+    const output = ['mr-2']
+    if (!disableFanAnimation.value && value.value >= props.off_below && value.value > 0) output.push('icon-rotate')
+
+    return output
+})
+
+const rpmClasses = computed(() => {
+    const output: (string | string[])[] = []
+    if (!props.controllable) output.push(['mr-3', 'mt-1'])
+    else output.push(['mt-2'])
+    if (props.rpm === 0 && value.value > 0) output.push('text-red')
+
+    return output
+})
+
+const ledChannelName = computed(() => {
+    if (props.colorOrder === 'R') return 'RED'
+    if (props.colorOrder === 'G') return 'GREEN'
+    if (props.colorOrder === 'B') return 'BLUE'
+
+    return 'WHITE'
+})
+
+function submitInput(): void {
+    if (errors.value.length > 0) return
+
+    let newVal = inputValue.value / 100
+    if (value.value === 0 && newVal < props.off_below) {
+        newVal = props.off_below
+    } else if (value.value >= props.off_below && newVal < props.off_below) {
+        newVal = 0
     }
 
-    sendCmd(newVal: number): void {
-        if (this.value === newVal) return
-
-        if (newVal < this.min) newVal = 0
-        newVal = newVal * this.multi
-
-        let gcode = `SET_PIN PIN=${this.name} VALUE=${newVal.toFixed(2)}`
-        if (this.type === 'fan') gcode = `M106 S${newVal.toFixed(0)}`
-        if (this.type === 'fan_generic') gcode = `SET_FAN_SPEED FAN=${this.name} SPEED=${newVal}`
-        if (this.type === 'led')
-            gcode = `SET_LED LED=${this.name} ${this.ledChannelName}=${newVal.toFixed(2)} SYNC=0 TRANSMIT=1`
-
-        if (gcode !== '') {
-            this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-            this.$socket.emit('printer.gcode.script', { script: gcode })
-        }
-
-        this.startLockTimer()
-    }
-
-    ledOff() {
-        this.sendCmd(0)
-    }
-
-    ledOn() {
-        this.sendCmd(1)
-    }
-
-    switchOutputPin(): void {
-        const newVal = this.value ? 0 : 1
-        const gcode = `SET_PIN PIN=${this.name} VALUE=${(newVal * this.multi).toFixed(2)}`
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode })
-    }
-
-    decrement(): void {
-        let newVal = this.value > 0 ? Math.round((this.value - 0.01) * 100) / 100 : 0
-        if (this.value < this.off_below) newVal = 0
-        this.sendCmd(newVal)
-    }
-
-    increment(): void {
-        let newVal = this.value < 1.0 ? Math.round((this.value + 0.01) * 100) / 100 : 1.0
-        if (this.value < this.off_below) newVal = this.off_below
-        this.sendCmd(newVal)
-    }
-
-    mounted() {
-        this.sliderValue = this.value
-    }
-
-    @Watch('value')
-    valueChanged(newVal: number): void {
-        this.sliderValue = newVal
-    }
-
-    @Watch('sliderValue', { immediate: true })
-    sliderValueChanged(newVal: number): void {
-        this.inputValue = Math.round(newVal * 100)
-    }
-
-    // input validation //
-    checkInvalidChars(event: KeyboardEvent): void {
-        // add '-' to invalid characters if no negative input is allowed
-        if (this.min >= 0) this.invalidChars.push('-')
-        if (this.invalidChars.includes(event.key)) event.preventDefault()
-    }
-
-    get errors() {
-        const errors = []
-        const input = this.inputValue / 100
-        if (this.inputValue.toString() === '') {
-            // "Input must not be empty!"
-            errors.push(this.$t('App.NumberInput.NoEmptyAllowedError'))
-        }
-        if (input < this.min) {
-            // "Must be grater or equal than {min}!"
-            errors.push(this.$t('App.NumberInput.GreaterOrEqualError', { min: this.min * 100 }))
-        }
-        return errors
-    }
-
-    get disableFanAnimation() {
-        return this.$store.state.gui.uiSettings.disableFanAnimation ?? false
-    }
-
-    get fanClasses() {
-        const output = ['mr-2']
-        if (!this.disableFanAnimation && this.value >= this.off_below && this.value > 0) output.push('icon-rotate')
-
-        return output
-    }
-
-    get rpmClasses() {
-        const output = []
-        if (!this.controllable) output.push(['mr-3', 'mt-1'])
-        else output.push(['mt-2'])
-        if (this.rpm === 0 && this.value > 0) output.push('red--text')
-
-        return output
-    }
-
-    get ledChannelName() {
-        if (this.colorOrder === 'R') return 'RED'
-        if (this.colorOrder === 'G') return 'GREEN'
-        if (this.colorOrder === 'B') return 'BLUE'
-
-        return 'WHITE'
-    }
-
-    submitInput(): void {
-        if (this.errors.length > 0) return
-
-        let newVal = this.inputValue / 100
-        if (this.value === 0 && newVal < this.off_below) {
-            newVal = this.off_below
-        } else if (this.value >= this.off_below && newVal < this.off_below) {
-            newVal = 0
-        }
-
-        this.sendCmd(newVal)
-    }
+    sendCmd(newVal)
 }
 </script>
 
@@ -358,11 +334,11 @@ export default class MiscellaneousSlider extends Mixins(BaseMixin) {
     margin-left: 12px;
 }
 
-._slider-input >>> .v-input__slot {
+._slider-input :deep(.v-input__slot) {
     min-height: 1rem !important;
 }
 
-._slider-input >>> .v-text-field__slot input {
+._slider-input :deep(.v-text-field__slot input) {
     padding: 4px 0 4px;
 }
 </style>
