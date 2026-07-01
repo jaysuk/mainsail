@@ -56,6 +56,35 @@ export function formatEstimatedTimeETA(eta: number, hours12Format: boolean): str
 export const usePrinterStore = defineStore('printer', () => {
     const state = reactive<PrinterState>(getDefaultState())
 
+    // Pinia's setup-store mechanism only exposes the properties present on
+    // the object this store's setup() function returns, snapshotted *once*
+    // at store-creation time (see `createSetupStore` in pinia's source:
+    // `for (const key in setupStore)` runs a single time against whatever
+    // `setup()` returned). Since getDefaultState() is `{}` -- Klipper's
+    // object model is a fully dynamic bag of keys (`extruder`, `heater_bed`,
+    // arbitrary sensor names, ...) that can't be known ahead of time -- no
+    // key exists at that snapshot moment. Mutating the `state` reactive
+    // object referenced by this closure (via deepMerge/direct assignment)
+    // is real and reactive *internally*, but invisible to any caller of
+    // `usePrinterStore().someKlipperObject`, because that accessor reads
+    // from a *different* object: the one Pinia actually constructed and
+    // handed out, populated only from that one-time snapshot.
+    // `Object.assign(state, {...actions})` below (the store's return value)
+    // only smuggles the *action/getter* methods past that limitation, since
+    // those pre-exist as closures at setup time - it does nothing for
+    // *data* keys that don't exist until real Moonraker traffic arrives.
+    // Bridge every top-level key touched by a mutation onto the live,
+    // Pinia-managed store object explicitly instead. Safe to call
+    // usePrinterStore() recursively here: by the time any of these run
+    // (well after this setup() function has returned), Pinia has already
+    // fully constructed and cached the real store instance.
+    const bridgeKeys = (keys: Iterable<string>) => {
+        const exposedStore = usePrinterStore() as unknown as Record<string, unknown>
+        for (const key of keys) {
+            exposedStore[key] = (state as Record<string, unknown>)[key]
+        }
+    }
+
     // --- print progress getters ---
     const getPrintPercentByFilepositionRelative = computed<number>(() => {
         if (
@@ -768,6 +797,7 @@ export const usePrinterStore = defineStore('printer', () => {
     // --- internal state setters (former mutations) ---
     const setData = (payload: Record<string, unknown>) => {
         deepMerge(state, payload)
+        bridgeKeys(Object.keys(payload))
     }
 
     const setBedMeshProfiles = (payload: unknown) => {
@@ -776,11 +806,13 @@ export const usePrinterStore = defineStore('printer', () => {
 
     const clearCurrentFile = () => {
         state.current_file = {}
+        bridgeKeys(['current_file'])
     }
 
     const setEndstopStatus = (payload: Record<string, unknown>) => {
         delete payload.requestParams
         state.endstops = payload
+        bridgeKeys(['endstops'])
     }
 
     const removeBedMeshProfile = (payload: { name: string }) => {
@@ -796,7 +828,17 @@ export const usePrinterStore = defineStore('printer', () => {
 
     // --- actions ---
     const reset = () => {
+        // Snapshot the keys bridged onto the exposed store before wiping
+        // `state` back to defaults ({}), so stale Klipper object-model data
+        // doesn't linger on `usePrinterStore()` after a disconnect/reconnect.
+        const staleKeys = Object.keys(state)
         resetState(state, getDefaultState)
+
+        const exposedStore = usePrinterStore() as unknown as Record<string, unknown>
+        for (const key of staleKeys) {
+            if (!(key in state)) delete exposedStore[key]
+        }
+
         usePrinterTempHistoryStore().reset()
         useSocketStore().clearLoadings()
     }

@@ -1,24 +1,6 @@
-import Dashboard from '../pages/Dashboard.vue'
-import Webcam from '../pages/Webcam.vue'
-import Farm from '../pages/Farm.vue'
-import Console from '../pages/Console.vue'
-import Files from '../pages/Files.vue'
-import History from '../pages/History.vue'
-import Timelapse from '../pages/Timelapse.vue'
-import Machine from '../pages/Machine.vue'
 import type { Component } from 'vue'
 
-import {
-    mdiMonitorDashboard,
-    mdiWebcam,
-    mdiConsoleLine,
-    mdiGrid,
-    mdiFileDocumentMultipleOutline,
-    mdiVideo3d,
-    mdiHistory,
-    mdiTimelapse,
-    mdiWrench,
-} from '@mdi/js'
+import { mdiMonitorDashboard, mdiWebcam, mdiConsoleLine, mdiGrid, mdiFileDocumentMultipleOutline, mdiVideo3d, mdiHistory, mdiTimelapse, mdiWrench } from '@mdi/js'
 
 const routes: AppRoute[] = [
     {
@@ -26,7 +8,7 @@ const routes: AppRoute[] = [
         title: 'Dashboard',
         path: '/',
         icon: mdiMonitorDashboard,
-        component: Dashboard,
+        component: () => import('../pages/Dashboard.vue'),
         alwaysShow: true,
         showInNavi: true,
         position: 10,
@@ -35,7 +17,7 @@ const routes: AppRoute[] = [
         name: 'farm',
         title: 'Printers',
         path: '/allPrinters',
-        component: Farm,
+        component: () => import('../pages/Farm.vue'),
         alwaysShow: false,
         showInNavi: false,
     },
@@ -44,7 +26,7 @@ const routes: AppRoute[] = [
         title: 'Webcam',
         path: '/cam',
         icon: mdiWebcam,
-        component: Webcam,
+        component: () => import('../pages/Webcam.vue'),
         alwaysShow: true,
         showInNavi: true,
         position: 20,
@@ -55,7 +37,7 @@ const routes: AppRoute[] = [
         title: 'Console',
         path: '/console',
         icon: mdiConsoleLine,
-        component: Console,
+        component: () => import('../pages/Console.vue'),
         alwaysShow: true,
         showInNavi: true,
         klipperIsConnected: true,
@@ -77,7 +59,7 @@ const routes: AppRoute[] = [
         title: 'G-Code Files',
         path: '/files',
         icon: mdiFileDocumentMultipleOutline,
-        component: Files,
+        component: () => import('../pages/Files.vue'),
         alwaysShow: true,
         showInNavi: true,
         registeredDirectory: 'gcodes',
@@ -100,7 +82,7 @@ const routes: AppRoute[] = [
         title: 'History',
         path: '/history',
         icon: mdiHistory,
-        component: History,
+        component: () => import('../pages/History.vue'),
         alwaysShow: true,
         showInNavi: true,
         moonrakerComponent: 'history',
@@ -111,7 +93,7 @@ const routes: AppRoute[] = [
         title: 'Timelapse',
         path: '/timelapse',
         icon: mdiTimelapse,
-        component: Timelapse,
+        component: () => import('../pages/Timelapse.vue'),
         alwaysShow: true,
         showInNavi: true,
         moonrakerComponent: 'timelapse',
@@ -122,7 +104,7 @@ const routes: AppRoute[] = [
         title: 'Machine',
         path: '/config',
         icon: mdiWrench,
-        component: Machine,
+        component: () => import('../pages/Machine.vue'),
         alwaysShow: true,
         showInNavi: true,
         position: 90,

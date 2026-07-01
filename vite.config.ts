@@ -80,7 +80,7 @@ export default defineConfig({
         buildReleaseInfo(),
         vue(),
         // auto-imports Vuetify 4 components/directives and wires up styles
-        vuetify({ autoImport: true }),
+        // vuetify({ autoImport: true }),
         version(),
         checker({
             vueTsc: true,
@@ -160,7 +160,13 @@ export default defineConfig({
     },
 
     test: {
-        environment: 'node',
+        // Pinia stores form one interconnected graph (e.g. store/gui -> the
+        // root store -> the router), so importing almost any single store in
+        // isolation drags in vue-router, which needs `window`/`document` to
+        // exist (createWebHistory reads window.location/history). happy-dom
+        // is the lightest DOM shim that satisfies that without pulling in a
+        // full jsdom dependency.
+        environment: 'happy-dom',
         include: ['tests/**/*.spec.ts'],
     },
 })
