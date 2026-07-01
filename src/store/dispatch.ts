@@ -21,6 +21,8 @@ import { useServerUpdateManagerStore } from '@/store/server/updateManager'
 import { useServerHistoryStore } from '@/store/server/history'
 import { useServerTimelapseStore } from '@/store/server/timelapse'
 import { useServerSpoolmanStore } from '@/store/server/spoolman'
+import { usePrinterStore } from '@/store/printer'
+import { usePrinterTempHistoryStore } from '@/store/printer/tempHistory'
 
 type ActionPayload = Record<string, unknown>
 
@@ -98,7 +100,15 @@ export function dispatchStoreAction(path: string, payload: ActionPayload): void 
         case 'server/spoolman/getSpools':
             return useServerSpoolmanStore().getSpools(payload)
 
-        // TODO(phase-2): add cases as printer, files and gui stores are ported.
+        // printer
+        case 'printer/getInfo':
+            return usePrinterStore().getInfo(payload as never)
+
+        // printer/tempHistory
+        case 'printer/tempHistory/init':
+            return usePrinterTempHistoryStore().init(payload as never)
+
+        // TODO(phase-2): add cases as files and gui stores are ported.
         default:
             window.console.debug(`[ws] no Pinia handler mapped for RPC-result action "${path}"`, payload)
     }

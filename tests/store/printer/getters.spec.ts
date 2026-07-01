@@ -1,7 +1,5 @@
 import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest'
-import { getters } from '@/store/printer/getters'
-import type { PrinterState } from '@/store/printer/types'
-import type { RootState } from '@/store/types'
+import { formatEstimatedTimeETA } from '@/store/printer'
 
 describe('printer/getEstimatedTimeETAFormat', () => {
     beforeEach(() => {
@@ -12,17 +10,7 @@ describe('printer/getEstimatedTimeETAFormat', () => {
         vi.useRealTimers()
     })
 
-    const runGetter = (eta: number, hours12Format = false) => {
-        const moduleGetters = {
-            getEstimatedTimeETA: eta,
-        } as Record<string, number>
-
-        const rootGetters = {
-            'gui/getHours12Format': hours12Format,
-        } as Record<string, boolean>
-
-        return getters.getEstimatedTimeETAFormat({} as PrinterState, moduleGetters, {} as RootState, rootGetters)
-    }
+    const runGetter = (eta: number, hours12Format = false) => formatEstimatedTimeETA(eta, hours12Format)
 
     it('returns "--" when eta is not in the future', () => {
         vi.setSystemTime(new Date(2024, 0, 1, 10, 0, 0))

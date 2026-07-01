@@ -214,10 +214,10 @@ export interface PrinterStateMcu {
     loadPercent: number
     loadProgressColor: string
     tempSensor: {
-        temperature: number
-        measured_min_temp: number | null
-        measured_max_temp: number | null
-    }
+        temperature: string
+        measured_min_temp: string | null
+        measured_max_temp: string | null
+    } | null
 }
 
 export interface PrinterStateKlipperConfigWarning {

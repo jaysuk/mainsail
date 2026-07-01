@@ -121,7 +121,7 @@ export const useSocketStore = defineStore('socket', () => {
                 usePrinterStore().getData(param)
                 break
             case 'notify_gcode_response':
-                useServerStore().addEvent({ result: payload.params?.[0], send: false })
+                useServerStore().addEvent({ result: param, send: false })
                 break
             case 'notify_klippy_ready':
                 useServerStore().setKlippyConnected()
