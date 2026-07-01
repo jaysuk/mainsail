@@ -1,68 +1,74 @@
-import { printer } from '@/store/farm/printer'
-import { Module } from 'vuex'
-import { FarmState } from '@/store/farm/types'
-import { RootState } from '@/store/types'
+import { defineStore } from 'pinia'
+import { reactive, computed } from 'vue'
+import { useFarmPrinterStore, getDefaultState as getFarmPrinterDefaultState } from '@/store/farm/printer'
 
-export const getDefaultState = (): FarmState => {
-    return {}
-}
+// Vuex tracked registered remote printers implicitly via dynamic module
+// registration (`this.hasModule(['farm', id])`); this registry replaces that
+// with an explicit id set, since Pinia's dynamic-id stores are always
+// instantiable on demand (calling useFarmPrinterStore(id) for an
+// unregistered id would otherwise silently spin up a blank store instead of
+// reporting "doesn't exist").
+export const useFarmStore = defineStore('farm', () => {
+    const registeredIds = reactive(new Set<string>())
 
-// initial state
-const state = () => {
-    return getDefaultState()
-}
+    const countPrinters = computed(() => registeredIds.size)
 
-export const farm: Module<FarmState, RootState> = {
-    namespaced: true,
-    state: state,
-    getters: {
-        countPrinters: (state) => {
-            return Object.keys(state).length
-        },
-        getPrinters: (state) => {
-            return state
-        },
-        getPrinterName: (state, getters) => (namespace: string) => {
-            return getters[namespace + '/getPrinterName']
-        },
-        getPrinterSocketState: (state, getters) => (namespace: string) => {
-            return (
-                getters[namespace + '/getPrinterSocketState'] ?? {
-                    isConnecting: false,
-                    isConnected: false,
-                }
-            )
-        },
-        existsPrinter: (state) => (namespace: string) => {
-            return Object.keys(state).includes(namespace)
-        },
-    },
-    actions: {
-        registerPrinter({ commit, dispatch }, payload) {
-            if (!this.hasModule(['farm', payload.id])) {
-                this.registerModule(['farm', payload.id], printer)
-                commit('farm/' + payload.id + '/setSocketData', { ...payload, _namespace: payload.id }, { root: true })
+    const getPrinters = computed(() => {
+        const printers: Record<string, ReturnType<typeof useFarmPrinterStore>> = {}
+        registeredIds.forEach((id) => {
+            printers[id] = useFarmPrinterStore(id)
+        })
+        return printers
+    })
 
-                if ('settings' in payload)
-                    commit('farm/' + payload.id + '/setSettings', payload.settings, { root: true })
-                dispatch('farm/' + payload.id + '/connect', {}, { root: true })
-            }
-        },
-        updatePrinter({ dispatch, commit }, payload) {
-            commit(payload.id + '/setSocketData', {
-                hostname: payload.values.hostname,
-                port: payload.values.port,
-                path: payload.values.path,
-                isConnecting: true,
-            })
-            dispatch(payload.id + '/reconnect')
-        },
-        unregisterPrinter({ state }, id) {
-            if (id in state) {
-                state[id].socket?.instance?.close()
-                this.unregisterModule(['farm', id])
-            }
-        },
-    },
-    mutations: {},
-}
+    const existsPrinter = (namespace: string) => registeredIds.has(namespace)
+
+    const getPrinterName = (namespace: string) => (existsPrinter(namespace) ? useFarmPrinterStore(namespace).getPrinterName : undefined)
+
+    const getPrinterSocketState = (namespace: string) =>
+        existsPrinter(namespace) ? useFarmPrinterStore(namespace).getPrinterSocketState : getFarmPrinterDefaultState().socket
+
+    const registerPrinter = (payload: { id: string; hostname: string; port: number; path: string; name?: string | null; settings?: Record<string, unknown> }) => {
+        if (registeredIds.has(payload.id)) return
+
+        registeredIds.add(payload.id)
+        const printerStore = useFarmPrinterStore(payload.id)
+
+        printerStore.setSocketData({ ...payload, _namespace: payload.id })
+        if ('settings' in payload && payload.settings) printerStore.setSettings(payload.settings)
+        printerStore.connect()
+    }
+
+    const updatePrinter = (payload: { id: string; values: { hostname?: string | null; port?: number | null; path?: string | null } }) => {
+        if (!registeredIds.has(payload.id)) return
+
+        const printerStore = useFarmPrinterStore(payload.id)
+        printerStore.setSocketData({
+            hostname: payload.values.hostname ?? '',
+            port: payload.values.port ?? 7125,
+            path: payload.values.path ?? '',
+            isConnecting: true,
+        })
+        printerStore.reconnect()
+    }
+
+    const unregisterPrinter = (id: string) => {
+        if (!registeredIds.has(id)) return
+
+        const printerStore = useFarmPrinterStore(id)
+        printerStore.socket.instance?.close()
+        registeredIds.delete(id)
+        printerStore.$dispose()
+    }
+
+    return {
+        countPrinters,
+        getPrinters,
+        existsPrinter,
+        getPrinterName,
+        getPrinterSocketState,
+        registerPrinter,
+        updatePrinter,
+        unregisterPrinter,
+    }
+})
