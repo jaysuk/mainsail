@@ -1,14 +1,9 @@
 <template>
-    <panel
-        v-if="showPanel"
-        :title="$t('Machine.SystemPanel.SystemLoad')"
-        :icon="mdiMemory"
-        card-class="machine-systemload-panel"
-        :collapsible="true">
+    <panel v-if="showPanel" :title="t('Machine.SystemPanel.SystemLoad')" :icon="mdiMemory" card-class="machine-systemload-panel" :collapsible="true">
         <template #buttons>
-            <v-btn text tile class="d-none d-md-flex" @click="dialogDevices = true">
-                <v-icon small class="mr-1">{{ mdiUsb }}</v-icon>
-                {{ $t('Editor.DeviceDialog') }}
+            <v-btn variant="text" tile class="d-none d-md-flex" @click="dialogDevices = true">
+                <v-icon size="small" class="mr-1">{{ mdiUsb }}</v-icon>
+                {{ t('Editor.DeviceDialog') }}
             </v-btn>
         </template>
         <v-card-text class="px-0 py-2">
@@ -25,40 +20,38 @@
     </panel>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '../../mixins/base'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Panel from '@/components/ui/Panel.vue'
 import { caseInsensitiveSort } from '@/plugins/helpers'
-import { mdiCloseThick, mdiMemory, mdiUsb } from '@mdi/js'
+import { mdiMemory, mdiUsb } from '@mdi/js'
 import SystemPanelHost from '@/components/panels/Machine/SystemPanelHost.vue'
 import SystemPanelMcu from '@/components/panels/Machine/SystemPanelMcu.vue'
-@Component({
-    components: { SystemPanelMcu, SystemPanelHost, Panel },
+import DevicesDialog from '@/components/dialogs/DevicesDialog.vue'
+import { useBase } from '@/composables/useBase'
+import { usePrinterStore } from '@/store/printer'
+import type { PrinterStateMcu } from '@/store/printer/types'
+import { useServerStore } from '@/store/server'
+
+const { t } = useI18n()
+const { klipperReadyForGui } = useBase()
+const printerStore = usePrinterStore()
+const serverStore = useServerStore()
+
+const dialogDevices = ref(false)
+
+const mcus = computed<PrinterStateMcu[]>(() => {
+    if (!klipperReadyForGui.value) return []
+
+    const mcuList = printerStore.getMcus ?? []
+
+    return caseInsensitiveSort(mcuList, 'name')
 })
-export default class SystemPanel extends Mixins(BaseMixin) {
-    mdiCloseThick = mdiCloseThick
-    mdiMemory = mdiMemory
-    mdiUsb = mdiUsb
 
-    dialogDevices = false
+const hostStats = computed(() => serverStore.getHostStats ?? null)
 
-    get mcus() {
-        if (!this.klipperReadyForGui) return []
-
-        const mcus = this.$store.getters['printer/getMcus'] ?? []
-
-        return caseInsensitiveSort(mcus, 'name')
-    }
-
-    get hostStats() {
-        return this.$store.getters['server/getHostStats'] ?? null
-    }
-
-    get showPanel() {
-        return this.mcus.length > 0 || this.hostStats
-    }
-}
+const showPanel = computed(() => mcus.value.length > 0 || hostStats.value)
 </script>
 
 <style scoped>

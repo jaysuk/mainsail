@@ -108,6 +108,7 @@ export interface ServerStateDistribution {
         name: string
         version_id: string
         id: string
+        codename?: string
     }
 }
 

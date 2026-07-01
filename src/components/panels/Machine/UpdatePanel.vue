@@ -1,14 +1,9 @@
 <template>
     <div>
-        <panel
-            v-if="enableUpdateManager"
-            :title="$t('Machine.UpdatePanel.UpdateManager')"
-            :icon="mdiUpdate"
-            card-class="machine-update-panel"
-            :collapsible="true">
+        <panel v-if="enableUpdateManager" :title="t('Machine.UpdatePanel.UpdateManager')" :icon="mdiUpdate" card-class="machine-update-panel" :collapsible="true">
             <template #buttons>
-                <v-tooltip top>
-                    <template #activator="{ on, attrs }">
+                <v-tooltip location="top">
+                    <template #activator="{ props: activatorProps }">
                         <v-btn
                             icon
                             tile
@@ -16,20 +11,19 @@
                             :ripple="true"
                             :loading="loadings.includes('loadingBtnSyncUpdateManager')"
                             :disabled="['printing', 'paused'].includes(printer_state)"
-                            v-bind="attrs"
-                            @click="btnSync"
-                            v-on="on">
+                            v-bind="activatorProps"
+                            @click="btnSync">
                             <v-icon>{{ mdiRefresh }}</v-icon>
                         </v-btn>
                     </template>
-                    <span>{{ $t('Machine.UpdatePanel.CheckForUpdates') }}</span>
+                    <span>{{ t('Machine.UpdatePanel.CheckForUpdates') }}</span>
                 </v-tooltip>
             </template>
             <v-card-text class="px-0 py-0 update-manager-list">
                 <template v-if="checkInitState">
-                    <template v-for="(module, index) in modules">
-                        <v-divider v-if="index" :key="'divider_' + module.name" class="my-0" />
-                        <update-panel-entry :key="module.name" :repo="module.data" />
+                    <template v-for="(module, index) in modules" :key="module.name">
+                        <v-divider v-if="index" class="my-0" />
+                        <update-panel-entry :repo="module.data" />
                     </template>
                     <template v-if="existsSystemModul">
                         <v-divider v-if="modules.length" class="my-0" />
@@ -43,8 +37,8 @@
                 <template v-else>
                     <v-row class="mt-0 mb-0">
                         <v-col class="px-6">
-                            <v-alert class="mb-0" text dense type="info" border="left">
-                                {{ $t('Machine.UpdatePanel.InitUpdateManager') }}
+                            <v-alert class="mb-0" variant="text" density="compact" type="info" border="start">
+                                {{ t('Machine.UpdatePanel.InitUpdateManager') }}
                             </v-alert>
                         </v-col>
                     </v-row>
@@ -54,90 +48,70 @@
     </div>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '../../mixins/base'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Panel from '@/components/ui/Panel.vue'
 import UpdatePanelEntry from '@/components/panels/Machine/UpdatePanel/Entry.vue'
 import UpdatePanelEntrySystem from '@/components/panels/Machine/UpdatePanel/EntrySystem.vue'
 import UpdatePanelEntryAll from '@/components/panels/Machine/UpdatePanel/EntryAll.vue'
-import { mdiRefresh, mdiInformation, mdiCloseThick, mdiUpdate } from '@mdi/js'
-import { ServerUpdateManagerStateGuiList } from '@/store/server/updateManager/types'
+import { mdiRefresh, mdiUpdate } from '@mdi/js'
+import type { ServerUpdateManagerStateGuiList } from '@/store/server/updateManager/types'
 import semver from 'semver'
+import { useBase } from '@/composables/useBase'
+import { useServerStore } from '@/store/server'
+import { useServerUpdateManagerStore } from '@/store/server/updateManager'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
-@Component({
-    components: { Panel, UpdatePanelEntry, UpdatePanelEntrySystem, UpdatePanelEntryAll },
+const { t } = useI18n()
+const { loadings, printer_state } = useBase()
+const serverStore = useServerStore()
+const serverUpdateManagerStore = useServerUpdateManagerStore()
+
+const enableUpdateManager = computed(() => serverStore.components.includes('update_manager'))
+
+const modules = computed(() => serverUpdateManagerStore.getUpdateManagerList ?? [])
+
+const existsSystemModul = computed(() => 'system' in serverUpdateManagerStore)
+
+const systemPackagesCount = computed(() => serverUpdateManagerStore.system?.package_count ?? 0)
+
+const checkInitState = computed(() => {
+    const initModules = modules.value.filter((module: ServerUpdateManagerStateGuiList) => module.data.remote_version !== '?')
+
+    return initModules.length > 0
 })
-export default class UpdatePanel extends Mixins(BaseMixin) {
-    mdiRefresh = mdiRefresh
-    mdiInformation = mdiInformation
-    mdiCloseThick = mdiCloseThick
-    mdiUpdate = mdiUpdate
 
-    get enableUpdateManager() {
-        return this.$store.state.server.components.includes('update_manager')
-    }
+const showUpdateAll = computed(() => {
+    let count = 0
 
-    get modules() {
-        return this.$store.getters['server/updateManager/getUpdateManagerList'] ?? []
-    }
+    modules.value.forEach((module: ServerUpdateManagerStateGuiList) => {
+        // check git repos for updates
+        if (module.type === 'git' && module.data?.commits_behind?.length) {
+            count++
+            return
+        }
 
-    get existsSystemModul() {
-        return 'system' in this.$store.state.server.updateManager
-    }
+        // check client web for updates
+        if (module.type === 'web' && semver.valid(module.data?.remote_version, { loose: true }) && semver.valid(module.data?.version, { loose: true }) && semver.gt(module.data?.remote_version, module.data?.version, { loose: true })) {
+            count++
+            return
+        }
+    })
 
-    get systemPackagesCount() {
-        return this.$store.state.server.updateManager?.system?.package_count ?? 0
-    }
+    // check system packages for upgrades
+    if (systemPackagesCount.value > 0) count++
 
-    get checkInitState() {
-        const initModules = this.modules.filter(
-            (module: ServerUpdateManagerStateGuiList) => module.data.remote_version !== '?'
-        )
+    return count > 1
+})
 
-        return initModules.length > 0
-    }
-
-    get showUpdateAll() {
-        let count = 0
-
-        this.modules.forEach((module: ServerUpdateManagerStateGuiList) => {
-            // check git repos for updates
-            if (module.type === 'git' && module.data?.commits_behind?.length) {
-                count++
-                return
-            }
-
-            // check client web for updates
-            if (
-                module.type === 'web' &&
-                semver.valid(module.data?.remote_version, { loose: true }) &&
-                semver.valid(module.data?.version, { loose: true }) &&
-                semver.gt(module.data?.remote_version, module.data?.version, { loose: true })
-            ) {
-                count++
-                return
-            }
-        })
-
-        // check system packages for upgrades
-        if (this.systemPackagesCount > 0) count++
-
-        return count > 1
-    }
-
-    btnSync() {
-        this.$socket.emit(
-            'machine.update.status',
-            { refresh: true },
-            { action: 'server/updateManager/onUpdateStatus', loading: 'loadingBtnSyncUpdateManager' }
-        )
-    }
+function btnSync() {
+    webSocketClient.emit('machine.update.status', { refresh: true }, { action: 'server/updateManager/onUpdateStatus', loading: 'loadingBtnSyncUpdateManager' })
 }
 </script>
 
 <style scoped>
-::v-deep .update-manager-list > div:last-child > div.row {
+:deep(.update-manager-list > div:last-child > div.row) {
     padding-bottom: 0 !important;
 }
 </style>

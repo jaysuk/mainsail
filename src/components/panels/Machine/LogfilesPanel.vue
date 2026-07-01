@@ -1,13 +1,9 @@
 <template>
     <div>
-        <panel
-            :title="$t('Machine.LogfilesPanel.Logfiles')"
-            :icon="mdiFileDocumentEdit"
-            card-class="machine-logfiles-panel"
-            :collapsible="true">
+        <panel :title="t('Machine.LogfilesPanel.Logfiles')" :icon="mdiFileDocumentEdit" card-class="machine-logfiles-panel" :collapsible="true">
             <template #buttons>
-                <v-tooltip top>
-                    <template #activator="{ on, attrs }">
+                <v-tooltip location="top">
+                    <template #activator="{ props: activatorProps }">
                         <v-btn
                             icon
                             tile
@@ -15,13 +11,12 @@
                             :ripple="true"
                             :loading="loadings.includes('loadingBtnRolloverLogs')"
                             :disabled="['printing', 'paused'].includes(printer_state)"
-                            v-bind="attrs"
-                            v-on="on"
+                            v-bind="activatorProps"
                             @click="showRolloverDialog = true">
                             <v-icon>{{ mdiFileSyncOutline }}</v-icon>
                         </v-btn>
                     </template>
-                    <span>{{ $t('Machine.LogfilesPanel.Rollover') }}</span>
+                    <span>{{ t('Machine.LogfilesPanel.Rollover') }}</span>
                 </v-tooltip>
             </template>
             <v-card-text :class="'text-center text-lg-left'">
@@ -34,22 +29,18 @@
     </div>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Panel from '@/components/ui/Panel.vue'
 import { mdiFileDocumentEdit, mdiFileSyncOutline } from '@mdi/js'
 import { genericLogfiles } from '@/store/variables'
 import LogfilesPanelGenericLog from '@/components/panels/Machine/LogfilesPanel/LogfilesPanelGenericLog.vue'
-@Component({
-    components: { LogfilesPanelGenericLog, Panel },
-})
-export default class LogfilesPanel extends Mixins(BaseMixin) {
-    mdiFileDocumentEdit = mdiFileDocumentEdit
-    mdiFileSyncOutline = mdiFileSyncOutline
+import LogfilesPanelRolloverDialog from '@/components/panels/Machine/LogfilesPanel/LogfilesPanelRolloverDialog.vue'
+import { useBase } from '@/composables/useBase'
 
-    genericLogfiles = genericLogfiles
+const { t } = useI18n()
+const { loadings, printer_state } = useBase()
 
-    showRolloverDialog = false
-}
+const showRolloverDialog = ref(false)
 </script>

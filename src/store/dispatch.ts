@@ -109,6 +109,8 @@ export function dispatchStoreAction(path: string, payload: ActionPayload): void 
         // printer
         case 'printer/getInfo':
             return usePrinterStore().getInfo(payload as never)
+        case 'printer/getEndstopStatus':
+            return usePrinterStore().getEndstopStatus(payload)
 
         // printer/tempHistory
         case 'printer/tempHistory/init':

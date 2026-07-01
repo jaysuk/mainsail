@@ -1,60 +1,33 @@
 <template>
     <div>
-        <panel
-            :title="$t('Machine.ConfigFilesPanel.ConfigFiles')"
-            card-class="machine-configfiles-panel"
-            :icon="mdiInformation"
-            :collapsible="true">
+        <panel :title="t('Machine.ConfigFilesPanel.ConfigFiles')" card-class="machine-configfiles-panel" :icon="mdiInformation" :collapsible="true">
             <v-card-text>
                 <v-row>
                     <v-col class="col-12 col-lg pr-lg-0">
-                        <v-select
-                            v-model="root"
-                            class="machine-configfiles-panel__root-select"
-                            :items="registeredDirectoriesSelectItems"
-                            :label="$t('Machine.ConfigFilesPanel.Root')"
-                            outlined
-                            hide-details
-                            dense
-                            attach=".machine-configfiles-panel__root-select"
-                            @change="changeRoot" />
+                        <v-select v-model="root" class="machine-configfiles-panel__root-select" :items="registeredDirectoriesSelectItems" :label="t('Machine.ConfigFilesPanel.Root')" variant="outlined" hide-details density="compact" @update:model-value="changeRoot" />
                     </v-col>
                     <v-col class="col col-lg-auto pl-lg-0 text-right">
                         <input ref="fileUpload" type="file" style="display: none" multiple @change="uploadFile" />
-                        <v-btn
-                            v-for="button in filteredToolbarButtons"
-                            :key="button.loadingName"
-                            class="px-2 minwidth-0 ml-3"
-                            :color="button.color"
-                            :loading="button.loadingName !== null && loadings.includes(button.loadingName)"
-                            @click="button.click">
-                            <v-tooltip top>
-                                <template #activator="{ on, attrs }">
-                                    <v-icon v-bind="attrs" v-on="on">{{ button.icon }}</v-icon>
+                        <v-btn v-for="button in filteredToolbarButtons" :key="button.loadingName ?? button.text" class="px-2 minwidth-0 ml-3" :color="button.color" :loading="button.loadingName !== null && loadings.includes(button.loadingName)" @click="button.click">
+                            <v-tooltip location="top">
+                                <template #activator="{ props: activatorProps }">
+                                    <v-icon v-bind="activatorProps">{{ button.icon }}</v-icon>
                                 </template>
                                 <span>{{ button.text }}</span>
                             </v-tooltip>
                         </v-btn>
-                        <v-menu offset-y left :title="$t('Machine.ConfigFilesPanel.SetupCurrentList')">
-                            <template #activator="{ on, attrs }">
-                                <v-btn class="px-2 minwidth-0 ml-3" v-bind="attrs" v-on="on">
+                        <v-menu location="bottom end" :title="t('Machine.ConfigFilesPanel.SetupCurrentList')">
+                            <template #activator="{ props: activatorProps }">
+                                <v-btn class="px-2 minwidth-0 ml-3" v-bind="activatorProps">
                                     <v-icon class="machine-configfiles-panel__settings-icon">{{ mdiCog }}</v-icon>
                                 </v-btn>
                             </template>
                             <v-list>
                                 <v-list-item class="minHeight36">
-                                    <v-checkbox
-                                        v-model="showHiddenFiles"
-                                        class="mt-0"
-                                        hide-details
-                                        :label="$t('Machine.ConfigFilesPanel.HiddenFiles')" />
+                                    <v-checkbox v-model="showHiddenFiles" class="mt-0" hide-details :label="t('Machine.ConfigFilesPanel.HiddenFiles')" />
                                 </v-list-item>
                                 <v-list-item class="minHeight36">
-                                    <v-checkbox
-                                        v-model="hideBackupFiles"
-                                        class="mt-0"
-                                        hide-details
-                                        :label="$t('Machine.ConfigFilesPanel.HideBackupFiles')" />
+                                    <v-checkbox v-model="hideBackupFiles" class="mt-0" hide-details :label="t('Machine.ConfigFilesPanel.HideBackupFiles')" />
                                 </v-list-item>
                             </v-list>
                         </v-menu>
@@ -65,28 +38,24 @@
                 <v-row>
                     <v-col class="col-12 py-2 d-flex align-center">
                         <span>
-                            <b class="mr-1">{{ $t('Machine.ConfigFilesPanel.CurrentPath') }}:</b>
-                            <path-navigation
-                                :path="currentPath"
-                                :base-directory-label="`/${root}`"
-                                :on-segment-click="clickPathNavGoToDirectory" />
+                            <b class="mr-1">{{ t('Machine.ConfigFilesPanel.CurrentPath') }}:</b>
+                            <path-navigation :path="currentPath" :base-directory-label="`/${root}`" :on-segment-click="clickPathNavGoToDirectory" />
                         </span>
                         <v-spacer />
                         <template v-if="disk_usage !== null && !showMissingConfigRootWarning">
-                            <v-tooltip top>
-                                <template #activator="{ on, attrs }">
-                                    <span v-bind="attrs" v-on="on">
-                                        <b>{{ $t('Machine.ConfigFilesPanel.FreeDisk') }}:</b>
+                            <v-tooltip location="top">
+                                <template #activator="{ props: activatorProps }">
+                                    <span v-bind="activatorProps">
+                                        <b>{{ t('Machine.ConfigFilesPanel.FreeDisk') }}:</b>
                                         {{ formatFilesize(disk_usage.free) }}
                                     </span>
                                 </template>
                                 <span>
-                                    {{ $t('Machine.ConfigFilesPanel.Used') }}: {{ formatFilesize(disk_usage.used) }}
+                                    {{ t('Machine.ConfigFilesPanel.Used') }}: {{ formatFilesize(disk_usage.used) }}
                                     <br />
-                                    {{ $t('Machine.ConfigFilesPanel.Free') }}: {{ formatFilesize(disk_usage.free) }}
+                                    {{ t('Machine.ConfigFilesPanel.Free') }}: {{ formatFilesize(disk_usage.free) }}
                                     <br />
-                                    {{ $t('Machine.ConfigFilesPanel.Total') }}:
-                                    {{ formatFilesize(disk_usage.total) }}
+                                    {{ t('Machine.ConfigFilesPanel.Total') }}: {{ formatFilesize(disk_usage.total) }}
                                 </span>
                             </v-tooltip>
                         </template>
@@ -97,27 +66,21 @@
             <v-data-table
                 v-if="!showMissingConfigRootWarning"
                 v-model="selectedFiles"
+                v-model:page="currentPage"
+                v-model:sort-by="vuetifySortBy"
+                v-model:items-per-page="countPerPage"
                 :items="files"
                 class="files-table"
                 :headers="headers"
-                :page.sync="currentPage"
-                :custom-sort="sortFiles"
-                :sort-by.sync="sortBy"
-                :sort-desc.sync="sortDesc"
-                :items-per-page.sync="countPerPage"
-                :footer-props="{
-                    itemsPerPageText: $t('Machine.ConfigFilesPanel.Files'),
-                    itemsPerPageAllText: $t('Machine.ConfigFilesPanel.AllFiles'),
-                    itemsPerPageOptions: [10, 25, 50, 100, -1],
-                }"
-                mobile-breakpoint="0"
-                item-key="filename"
+                item-value="filename"
+                return-object
+                :mobile-breakpoint="0"
                 show-select>
                 <template #no-data>
-                    <div class="text-center">{{ $t('Machine.ConfigFilesPanel.Empty') }}</div>
+                    <div class="text-center">{{ t('Machine.ConfigFilesPanel.Empty') }}</div>
                 </template>
 
-                <template v-if="currentPath !== ''" slot="body.prepend">
+                <template v-if="currentPath !== ''" #body.prepend>
                     <tr
                         class="file-list-cursor"
                         @click="clickRowGoBack"
@@ -125,7 +88,7 @@
                         @dragleave="dragLeaveFilelist"
                         @drop.prevent.stop="dragDropFilelist($event, { isDirectory: true, filename: '..' })">
                         <td class="file-list__select-td pr-0">
-                            <v-simple-checkbox v-ripple disabled class="pa-0 mr-0" />
+                            <v-checkbox-btn disabled class="pa-0 mr-0" />
                         </td>
                         <td class="px-0 text-center" style="width: 32px">
                             <v-icon>{{ mdiFolderUpload }}</v-icon>
@@ -134,7 +97,7 @@
                     </tr>
                 </template>
 
-                <template #item="{ index, item, isSelected, select }">
+                <template #item="{ index, item, isSelected, toggleSelect, internalItem }">
                     <tr
                         :key="`${index} ${item.filename}`"
                         v-longpress:600="{ handler: showContextMenu, args: [item] }"
@@ -149,11 +112,7 @@
                         @dragleave="dragLeaveFilelist"
                         @drop.prevent.stop="dragDropFilelist($event, item)">
                         <td class="file-list__select-td pr-0">
-                            <v-simple-checkbox
-                                v-ripple
-                                :value="isSelected"
-                                class="pa-0 mr-0"
-                                @click.stop="select(!isSelected)" />
+                            <v-checkbox-btn :model-value="isSelected(internalItem)" class="pa-0 mr-0" @click.stop="toggleSelect(internalItem)" />
                         </td>
                         <td class="px-0 text-center" style="width: 32px">
                             <v-icon v-if="item.isDirectory">{{ mdiFolder }}</v-icon>
@@ -161,78 +120,56 @@
                         </td>
                         <td class=" ">{{ item.filename }}</td>
                         <td class="text-no-wrap text-right">
-                            {{ item.isDirectory ? '--' : formatFilesize(item.size) }}
+                            {{ item.isDirectory ? '--' : formatFilesize(item.size ?? 0) }}
                         </td>
-                        <td class="text-right">{{ formatDateTime(item.modified) }}</td>
+                        <td class="text-right">{{ formatDateTime(item.modified.getTime()) }}</td>
                     </tr>
                 </template>
             </v-data-table>
             <v-card-text v-else>
                 <v-row>
                     <v-col class="col-12 col-lg pr-lg-0">
-                        <v-alert
-                            dense
-                            text
-                            type="warning"
-                            elevation="2"
-                            class="mx-auto mt-6"
-                            max-width="500"
-                            :icon="mdiLockOutline">
-                            {{ $t('Machine.ConfigFilesPanel.ConfigRootDirectoryDoesntExists') }}
+                        <v-alert density="compact" variant="text" type="warning" elevation="2" class="mx-auto mt-6" max-width="500" :icon="mdiLockOutline">
+                            {{ t('Machine.ConfigFilesPanel.ConfigRootDirectoryDoesntExists') }}
                         </v-alert>
                     </v-col>
                 </v-row>
             </v-card-text>
         </panel>
-        <v-menu v-model="contextMenu.shown" :position-x="contextMenu.x" :position-y="contextMenu.y" absolute offset-y>
+        <v-menu v-model="contextMenu.shown" :target="[contextMenu.x, contextMenu.y]">
             <v-list>
                 <v-list-item v-if="!contextMenu.item.isDirectory" @click="clickRow(contextMenu.item, true)">
                     <v-icon class="mr-1">{{ mdiFileDocumentEditOutline }}</v-icon>
-                    {{
-                        contextMenu.item.permissions.includes('w')
-                            ? $t('Machine.ConfigFilesPanel.EditFile')
-                            : $t('Machine.ConfigFilesPanel.ShowFile')
-                    }}
+                    {{ contextMenu.item.permissions.includes('w') ? t('Machine.ConfigFilesPanel.EditFile') : t('Machine.ConfigFilesPanel.ShowFile') }}
                 </v-list-item>
                 <v-list-item v-if="!contextMenu.item.isDirectory" @click="downloadFile">
                     <v-icon class="mr-1">{{ mdiCloudDownload }}</v-icon>
-                    {{ $t('Machine.ConfigFilesPanel.Download') }}
+                    {{ t('Machine.ConfigFilesPanel.Download') }}
                 </v-list-item>
-                <v-list-item
-                    v-if="!contextMenu.item.isDirectory && contextMenu.item.permissions.includes('w')"
-                    @click="renameFile(contextMenu.item)">
+                <v-list-item v-if="!contextMenu.item.isDirectory && contextMenu.item.permissions.includes('w')" @click="renameFile(contextMenu.item)">
                     <v-icon class="mr-1">{{ mdiRenameBox }}</v-icon>
-                    {{ $t('Machine.ConfigFilesPanel.Rename') }}
+                    {{ t('Machine.ConfigFilesPanel.Rename') }}
                 </v-list-item>
                 <v-list-item v-if="!contextMenu.item.isDirectory" @click="duplicateFile(contextMenu.item)">
                     <v-icon class="mr-1">{{ mdiContentCopy }}</v-icon>
-                    {{ $t('Machine.ConfigFilesPanel.Duplicate') }}
+                    {{ t('Machine.ConfigFilesPanel.Duplicate') }}
                 </v-list-item>
-                <v-list-item
-                    v-if="contextMenu.item.isDirectory && contextMenu.item.permissions.includes('w')"
-                    @click="renameDirectory(contextMenu.item)">
+                <v-list-item v-if="contextMenu.item.isDirectory && contextMenu.item.permissions.includes('w')" @click="renameDirectory(contextMenu.item)">
                     <v-icon class="mr-1">{{ mdiRenameBox }}</v-icon>
-                    {{ $t('Machine.ConfigFilesPanel.Rename') }}
+                    {{ t('Machine.ConfigFilesPanel.Rename') }}
                 </v-list-item>
-                <v-list-item
-                    v-if="!contextMenu.item.isDirectory && contextMenu.item.permissions.includes('w')"
-                    class="red--text"
-                    @click="deleteDialog = true">
+                <v-list-item v-if="!contextMenu.item.isDirectory && contextMenu.item.permissions.includes('w')" class="text-red" @click="deleteDialog = true">
                     <v-icon class="mr-1" color="error">{{ mdiDelete }}</v-icon>
-                    {{ $t('Buttons.Delete') }}
+                    {{ t('Buttons.Delete') }}
                 </v-list-item>
-                <v-list-item
-                    v-if="contextMenu.item.isDirectory && contextMenu.item.permissions.includes('w')"
-                    class="red--text"
-                    @click="deleteDirectory(contextMenu.item)">
+                <v-list-item v-if="contextMenu.item.isDirectory && contextMenu.item.permissions.includes('w')" class="text-red" @click="deleteDirectory(contextMenu.item)">
                     <v-icon class="mr-1" color="error">{{ mdiDelete }}</v-icon>
-                    {{ $t('Buttons.Delete') }}
+                    {{ t('Buttons.Delete') }}
                 </v-list-item>
             </v-list>
         </v-menu>
         <v-dialog
             v-model="dialogImage.show"
-            hide-overlay
             fullscreen
             class="fill-height"
             @keydown.esc="
@@ -240,10 +177,7 @@
                 dialogImage.item.url = null
                 dialogImage.item.svg = null
             ">
-            <panel
-                :title="dialogImage.item.name ?? ''"
-                card-class="maschine-configfiles-imageviewer-dialog"
-                style="position: relative">
+            <panel :title="dialogImage.item.name ?? ''" card-class="maschine-configfiles-imageviewer-dialog" style="position: relative">
                 <template #buttons>
                     <v-btn
                         icon
@@ -257,82 +191,55 @@
                     </v-btn>
                 </template>
                 <div class="d-flex justify-center" style="max-height: calc(var(--app-height) - 64px); overflow: auto">
-                    <img
-                        v-if="dialogImage.item.url"
-                        :src="dialogImage.item.url"
-                        style="max-height: 100%; width: auto; max-width: 100%; object-fit: contain"
-                        alt="image" />
+                    <img v-if="dialogImage.item.url" :src="dialogImage.item.url" style="max-height: 100%; width: auto; max-width: 100%; object-fit: contain" alt="image" />
                     <div v-else-if="dialogImage.item.svg" class="fill-width" v-html="dialogImage.item.svg" />
                 </div>
             </panel>
         </v-dialog>
         <v-dialog v-model="dialogCreateFile.show" max-width="400">
-            <panel
-                :title="$t('Machine.ConfigFilesPanel.CreateFile')"
-                card-class="maschine-configfiles-create-file-dialog"
-                :margin-bottom="false">
+            <panel :title="t('Machine.ConfigFilesPanel.CreateFile')" card-class="maschine-configfiles-create-file-dialog" :margin-bottom="false">
                 <template #buttons>
                     <v-btn icon tile @click="dialogCreateFile.show = false">
                         <v-icon>{{ mdiCloseThick }}</v-icon>
                     </v-btn>
                 </template>
                 <v-card-text>
-                    <v-text-field
-                        ref="inputDialogCreateFileName"
-                        v-model="dialogCreateFile.name"
-                        :label="$t('Machine.ConfigFilesPanel.Name')"
-                        required
-                        :rules="nameInputRules"
-                        @update:error="setIsInvalidName"
-                        @keyup.enter="createFileAction" />
+                    <v-text-field ref="inputDialogCreateFileName" v-model="dialogCreateFile.name" :label="t('Machine.ConfigFilesPanel.Name')" required :rules="nameInputRules" @update:error="setIsInvalidName" @keyup.enter="createFileAction" />
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer />
-                    <v-btn color="" text @click="dialogCreateFile.show = false">
-                        {{ $t('Buttons.Cancel') }}
+                    <v-btn variant="text" @click="dialogCreateFile.show = false">
+                        {{ t('Buttons.Cancel') }}
                     </v-btn>
-                    <v-btn :disabled="isInvalidName" color="primary" text @click="createFileAction">
-                        {{ $t('Machine.ConfigFilesPanel.Create') }}
+                    <v-btn :disabled="isInvalidName" color="primary" variant="text" @click="createFileAction">
+                        {{ t('Machine.ConfigFilesPanel.Create') }}
                     </v-btn>
                 </v-card-actions>
             </panel>
         </v-dialog>
         <v-dialog v-model="dialogRenameFile.show" max-width="400">
-            <panel
-                :title="$t('Machine.ConfigFilesPanel.RenameFile')"
-                card-class="maschine-configfiles-rename-file-dialog"
-                :margin-bottom="false">
+            <panel :title="t('Machine.ConfigFilesPanel.RenameFile')" card-class="maschine-configfiles-rename-file-dialog" :margin-bottom="false">
                 <template #buttons>
                     <v-btn icon tile @click="dialogRenameFile.show = false">
                         <v-icon>{{ mdiCloseThick }}</v-icon>
                     </v-btn>
                 </template>
                 <v-card-text>
-                    <v-text-field
-                        ref="inputDialogRenameFileName"
-                        v-model="dialogRenameFile.newName"
-                        :label="$t('Machine.ConfigFilesPanel.Name')"
-                        required
-                        :rules="nameInputRules"
-                        @update:error="setIsInvalidName"
-                        @keyup.enter="renameFileAction" />
+                    <v-text-field ref="inputDialogRenameFileName" v-model="dialogRenameFile.newName" :label="t('Machine.ConfigFilesPanel.Name')" required :rules="nameInputRules" @update:error="setIsInvalidName" @keyup.enter="renameFileAction" />
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer />
-                    <v-btn color="" text @click="dialogRenameFile.show = false">
-                        {{ $t('Buttons.Cancel') }}
+                    <v-btn variant="text" @click="dialogRenameFile.show = false">
+                        {{ t('Buttons.Cancel') }}
                     </v-btn>
-                    <v-btn :disabled="isInvalidName" color="primary" text @click="renameFileAction">
-                        {{ $t('Machine.ConfigFilesPanel.Rename') }}
+                    <v-btn :disabled="isInvalidName" color="primary" variant="text" @click="renameFileAction">
+                        {{ t('Machine.ConfigFilesPanel.Rename') }}
                     </v-btn>
                 </v-card-actions>
             </panel>
         </v-dialog>
         <v-dialog v-model="dialogDuplicateFile.show" max-width="400">
-            <panel
-                :title="$t('Machine.ConfigFilesPanel.DuplicateFile')"
-                card-class="maschine-configfiles-duplicate-file-dialog"
-                :margin-bottom="false">
+            <panel :title="t('Machine.ConfigFilesPanel.DuplicateFile')" card-class="maschine-configfiles-duplicate-file-dialog" :margin-bottom="false">
                 <template #buttons>
                     <v-btn icon tile @click="dialogDuplicateFile.show = false">
                         <v-icon>{{ mdiCloseThick }}</v-icon>
@@ -342,7 +249,7 @@
                     <v-text-field
                         ref="inputDialogDuplicateFileName"
                         v-model="dialogDuplicateFile.newName"
-                        :label="$t('Machine.ConfigFilesPanel.Name')"
+                        :label="t('Machine.ConfigFilesPanel.Name')"
                         required
                         :rules="nameInputRules"
                         @update:error="setIsInvalidName"
@@ -350,20 +257,17 @@
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer />
-                    <v-btn color="" text @click="dialogDuplicateFile.show = false">
-                        {{ $t('Buttons.Cancel') }}
+                    <v-btn variant="text" @click="dialogDuplicateFile.show = false">
+                        {{ t('Buttons.Cancel') }}
                     </v-btn>
-                    <v-btn :disabled="isInvalidName" color="primary" text @click="duplicateFileAction">
-                        {{ $t('Machine.ConfigFilesPanel.Duplicate') }}
+                    <v-btn :disabled="isInvalidName" color="primary" variant="text" @click="duplicateFileAction">
+                        {{ t('Machine.ConfigFilesPanel.Duplicate') }}
                     </v-btn>
                 </v-card-actions>
             </panel>
         </v-dialog>
         <v-dialog v-model="dialogCreateDirectory.show" max-width="400">
-            <panel
-                :title="$t('Machine.ConfigFilesPanel.CreateDirectory')"
-                card-class="maschine-configfiles-create-directory-dialog"
-                :margin-bottom="false">
+            <panel :title="t('Machine.ConfigFilesPanel.CreateDirectory')" card-class="maschine-configfiles-create-directory-dialog" :margin-bottom="false">
                 <template #buttons>
                     <v-btn icon tile @click="dialogCreateDirectory.show = false">
                         <v-icon>{{ mdiCloseThick }}</v-icon>
@@ -373,7 +277,7 @@
                     <v-text-field
                         ref="inputDialogCreateDirectoryName"
                         v-model="dialogCreateDirectory.name"
-                        :label="$t('Machine.ConfigFilesPanel.Name')"
+                        :label="t('Machine.ConfigFilesPanel.Name')"
                         required
                         :rules="nameInputRules"
                         @update:error="setIsInvalidName"
@@ -381,20 +285,17 @@
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer />
-                    <v-btn color="" text @click="dialogCreateDirectory.show = false">
-                        {{ $t('Buttons.Cancel') }}
+                    <v-btn variant="text" @click="dialogCreateDirectory.show = false">
+                        {{ t('Buttons.Cancel') }}
                     </v-btn>
-                    <v-btn :disabled="isInvalidName" color="primary" text @click="createDirectoryAction">
-                        {{ $t('Machine.ConfigFilesPanel.Create') }}
+                    <v-btn :disabled="isInvalidName" color="primary" variant="text" @click="createDirectoryAction">
+                        {{ t('Machine.ConfigFilesPanel.Create') }}
                     </v-btn>
                 </v-card-actions>
             </panel>
         </v-dialog>
         <v-dialog v-model="dialogRenameDirectory.show" max-width="400">
-            <panel
-                :title="$t('Machine.ConfigFilesPanel.RenameDirectory')"
-                card-class="maschine-configfiles-rename-directory-dialog"
-                :margin-bottom="false">
+            <panel :title="t('Machine.ConfigFilesPanel.RenameDirectory')" card-class="maschine-configfiles-rename-directory-dialog" :margin-bottom="false">
                 <template #buttons>
                     <v-btn icon tile @click="dialogRenameDirectory.show = false">
                         <v-icon>{{ mdiCloseThick }}</v-icon>
@@ -404,7 +305,7 @@
                     <v-text-field
                         ref="inputDialogRenameDirectoryName"
                         v-model="dialogRenameDirectory.newName"
-                        :label="$t('Machine.ConfigFilesPanel.Name')"
+                        :label="t('Machine.ConfigFilesPanel.Name')"
                         required
                         :rules="nameInputRules"
                         @update:error="setIsInvalidName"
@@ -412,49 +313,38 @@
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer />
-                    <v-btn color="" text @click="dialogRenameDirectory.show = false">
-                        {{ $t('Buttons.Cancel') }}
+                    <v-btn variant="text" @click="dialogRenameDirectory.show = false">
+                        {{ t('Buttons.Cancel') }}
                     </v-btn>
-                    <v-btn :disabled="isInvalidName" color="primary" text @click="renameDirectoryAction">
-                        {{ $t('Machine.ConfigFilesPanel.Rename') }}
+                    <v-btn :disabled="isInvalidName" color="primary" variant="text" @click="renameDirectoryAction">
+                        {{ t('Machine.ConfigFilesPanel.Rename') }}
                     </v-btn>
                 </v-card-actions>
             </panel>
         </v-dialog>
         <confirmation-dialog
             v-model="dialogDeleteDirectory.show"
-            :title="$t('Machine.ConfigFilesPanel.DeleteDirectory')"
-            :text="
-                $t('Machine.ConfigFilesPanel.DeleteDirectoryQuestion', {
-                    name: dialogDeleteDirectory.item.filename,
-                })
-            "
-            :action-button-text="$t('Buttons.Delete')"
+            :title="t('Machine.ConfigFilesPanel.DeleteDirectory')"
+            :text="t('Machine.ConfigFilesPanel.DeleteDirectoryQuestion', { name: dialogDeleteDirectory.item.filename })"
+            :action-button-text="t('Buttons.Delete')"
             @action="deleteDirectoryAction" />
         <confirmation-dialog
             v-model="deleteDialog"
-            :title="$t('Buttons.Delete')"
-            :text="$t('Machine.ConfigFilesPanel.DeleteSingleFileQuestion', { name: contextMenu.item.filename })"
-            :action-button-text="$t('Buttons.Delete')"
+            :title="t('Buttons.Delete')"
+            :text="t('Machine.ConfigFilesPanel.DeleteSingleFileQuestion', { name: contextMenu.item.filename })"
+            :action-button-text="t('Buttons.Delete')"
             @action="removeFile" />
-        <confirmation-dialog
-            v-model="deleteSelectedDialog"
-            :title="$t('Buttons.Delete')"
-            :text="deleteSelectedDialogText"
-            :action-button-text="$t('Buttons.Delete')"
-            @action="deleteSelectedFiles" />
+        <confirmation-dialog v-model="deleteSelectedDialog" :title="t('Buttons.Delete')" :text="deleteSelectedDialogText" :action-button-text="t('Buttons.Delete')" @action="deleteSelectedFiles" />
 
-        <v-snackbar v-model="uploadSnackbar.status" :timeout="-1" fixed right bottom>
-            <span v-if="uploadSnackbar.max > 1" class="mr-1">
-                ({{ uploadSnackbar.number }}/{{ uploadSnackbar.max }})
-            </span>
-            <strong>{{ $t('Machine.ConfigFilesPanel.Uploading') }} {{ uploadSnackbar.filename }}</strong>
+        <v-snackbar v-model="uploadSnackbar.status" :timeout="-1" location="bottom end">
+            <span v-if="uploadSnackbar.max > 1" class="mr-1"> ({{ uploadSnackbar.number }}/{{ uploadSnackbar.max }}) </span>
+            <strong>{{ t('Machine.ConfigFilesPanel.Uploading') }} {{ uploadSnackbar.filename }}</strong>
             <br />
             {{ Math.round(uploadSnackbar.percent) }} % @ {{ formatFilesize(Math.round(uploadSnackbar.speed)) }}/s
             <br />
-            <v-progress-linear class="mt-2" :value="uploadSnackbar.percent" />
-            <template #action="{ attrs }">
-                <v-btn color="red" text v-bind="attrs" style="min-width: auto" @click="cancelUpload">
+            <v-progress-linear class="mt-2" :model-value="uploadSnackbar.percent" />
+            <template #actions>
+                <v-btn color="red" variant="text" style="min-width: auto" @click="cancelUpload">
                     <v-icon class="0">{{ mdiClose }}</v-icon>
                 </v-btn>
             </template>
@@ -462,48 +352,30 @@
     </div>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Ref } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import ThemeMixin from '@/components/mixins/theme'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useToast } from 'vue-toast-notification'
+import type { DataTableSortItem } from 'vuetify'
 import { escapePath, formatFilesize, generateTimestamp, sortFiles } from '@/plugins/helpers'
-import { FileStateFile, FileStateGcodefile } from '@/store/files/types'
+import type { FileStateFile } from '@/store/files/types'
 import axios from 'axios'
 import type { CancelTokenSource } from 'axios'
 import Panel from '@/components/ui/Panel.vue'
 import PathNavigation from '@/components/ui/PathNavigation.vue'
 import { hiddenRootDirectories } from '@/store/variables'
-import {
-    mdiFilePlus,
-    mdiFileUpload,
-    mdiFolderPlus,
-    mdiInformation,
-    mdiRefresh,
-    mdiClose,
-    mdiCog,
-    mdiFolder,
-    mdiFolderUpload,
-    mdiFile,
-    mdiFileDocumentEditOutline,
-    mdiCloudDownload,
-    mdiRenameBox,
-    mdiDelete,
-    mdiCloseThick,
-    mdiLockOutline,
-    mdiContentCopy,
-} from '@mdi/js'
+import { mdiFilePlus, mdiFileUpload, mdiFolderPlus, mdiInformation, mdiRefresh, mdiClose, mdiCog, mdiFolder, mdiFolderUpload, mdiFile, mdiFileDocumentEditOutline, mdiCloudDownload, mdiRenameBox, mdiDelete, mdiCloseThick, mdiLockOutline, mdiContentCopy } from '@mdi/js'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
 import type { FocusableRef } from '@/types/vuetify'
 import type { LongpressEvent } from '@/directives/longpress'
-
-interface contextMenu {
-    shown: boolean
-    isDirectory: boolean
-    touchTimer: number | null
-    x: number
-    y: number
-    item: FileStateFile
-}
+import { useBase } from '@/composables/useBase'
+import { useMainsailTheme } from '@/composables/useMainsailTheme'
+import { useFilesStore } from '@/store/files'
+import { useGuiStore } from '@/store/gui'
+import { useServerStore } from '@/store/server'
+import { useSocketStore } from '@/store/socket'
+import { useEditorStore } from '@/store/editor'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
 interface dialogImageObject {
     show: boolean
@@ -536,745 +408,621 @@ interface uploadSnackbar {
     cancelTokenSource: CancelTokenSource | null
 }
 
-interface draggingFile {
-    item: FileStateFile
+const emptyFile = (): FileStateFile => ({
+    isDirectory: false,
+    filename: '',
+    permissions: '',
+    modified: new Date(),
+})
+
+const { t } = useI18n()
+const { apiUrl, loadings, formatDateTime } = useBase()
+const { machineButtonCol } = useMainsailTheme()
+const filesStore = useFilesStore()
+const guiStore = useGuiStore()
+
+const inputDialogCreateFileName = ref<FocusableRef | undefined>()
+const inputDialogRenameFileName = ref<FocusableRef | undefined>()
+const inputDialogDuplicateFileName = ref<FocusableRef | undefined>()
+const inputDialogCreateDirectoryName = ref<FocusableRef | undefined>()
+const inputDialogRenameDirectoryName = ref<FocusableRef | undefined>()
+const fileUpload = ref<HTMLInputElement | undefined>()
+
+const currentPage = ref(1)
+
+const contextMenu = ref({
+    shown: false,
+    isDirectory: false,
+    x: 0,
+    y: 0,
+    item: emptyFile(),
+})
+
+const dialogImage = ref<dialogImageObject>({
+    show: false,
+    item: {
+        name: null,
+        url: null,
+        svg: null,
+    },
+})
+
+const dialogCreateFile = ref({
+    show: false,
+    name: '',
+})
+
+const dialogRenameFile = ref<dialogRenameObject>({
+    show: false,
+    newName: '',
+    item: emptyFile(),
+})
+
+const dialogDuplicateFile = ref<dialogRenameObject>({
+    show: false,
+    newName: '',
+    item: emptyFile(),
+})
+
+const dialogCreateDirectory = ref({
+    show: false,
+    name: '',
+})
+
+const dialogRenameDirectory = ref<dialogRenameObject>({
+    show: false,
+    newName: '',
+    item: emptyFile(),
+})
+
+const dialogDeleteDirectory = ref<dialogDeleteObject>({
+    show: false,
+    item: emptyFile(),
+})
+
+const uploadSnackbar = ref<uploadSnackbar>({
+    status: false,
+    filename: '',
+    percent: 0,
+    speed: 0,
+    total: 0,
+    number: 0,
+    max: 0,
+    cancelTokenSource: null,
+})
+
+const draggingFile = ref<{ item: FileStateFile }>({
+    item: emptyFile(),
+})
+
+const deleteDialog = ref(false)
+const deleteSelectedDialog = ref(false)
+
+const isInvalidName = ref(true)
+const nameInputRules = [(value: string) => !!value || t('Files.InvalidNameEmpty'), (value: string) => !existsFilename(value) || t('Files.InvalidNameAlreadyExists')]
+
+function existsFilename(name: string) {
+    return files.value.findIndex((file) => file.filename === name) >= 0
 }
 
-@Component({
-    components: { ConfirmationDialog, Panel, PathNavigation },
+const blockFileUpload = computed<boolean>({
+    get: () => guiStore.view.blockFileUpload ?? false,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.blockFileUpload', value: newVal }),
 })
-export default class ConfigFilesPanel extends Mixins(BaseMixin, ThemeMixin) {
-    mdiInformation = mdiInformation
-    mdiClose = mdiClose
-    mdiCog = mdiCog
-    mdiFolder = mdiFolder
-    mdiFolderUpload = mdiFolderUpload
-    mdiFileDocumentEditOutline = mdiFileDocumentEditOutline
-    mdiFile = mdiFile
-    mdiCloudDownload = mdiCloudDownload
-    mdiRenameBox = mdiRenameBox
-    mdiDelete = mdiDelete
-    mdiCloseThick = mdiCloseThick
-    mdiLockOutline = mdiLockOutline
-    mdiContentCopy = mdiContentCopy
 
-    sortFiles = sortFiles
-    formatFilesize = formatFilesize
+const selectedFiles = computed<FileStateFile[]>({
+    get: () => guiStore.view.configfiles.selectedFiles ?? [],
+    set: (newVal) => guiStore.saveSetting({ name: 'view.configfiles.selectedFiles', value: newVal }),
+})
 
-    @Ref() readonly inputDialogCreateFileName!: FocusableRef
-    @Ref() readonly inputDialogRenameFileName!: FocusableRef
-    @Ref() readonly inputDialogDuplicateFileName!: FocusableRef
-    @Ref() readonly inputDialogCreateDirectoryName!: FocusableRef
-    @Ref() readonly inputDialogRenameDirectoryName!: FocusableRef
-    @Ref() readonly fileUpload!: HTMLInputElement
-
-    currentPage = 1
-
-    contextMenu: contextMenu = {
-        shown: false,
-        isDirectory: false,
-        touchTimer: null,
-        x: 0,
-        y: 0,
-        item: {
-            isDirectory: false,
-            filename: '',
-            permissions: '',
-            modified: new Date(),
+const toolbarButtons = computed(() => [
+    {
+        text: t('Machine.ConfigFilesPanel.Download'),
+        color: 'primary',
+        icon: mdiCloudDownload,
+        loadingName: 'configDownloadZip',
+        onlyWriteable: false,
+        condition: selectedFiles.value.length > 0,
+        click: () => {
+            downloadSelectedFiles()
         },
-    }
-
-    dialogImage: dialogImageObject = {
-        show: false,
-        item: {
-            name: null,
-            url: null,
-            svg: null,
+    },
+    {
+        text: t('Buttons.Delete'),
+        color: 'error',
+        icon: mdiDelete,
+        loadingName: null,
+        onlyWriteable: true,
+        condition: selectedFiles.value.length > 0,
+        click: () => {
+            deleteSelectedDialog.value = true
         },
+    },
+    {
+        text: t('Machine.ConfigFilesPanel.UploadFile'),
+        color: machineButtonCol.value,
+        icon: mdiFileUpload,
+        loadingName: null,
+        onlyWriteable: true,
+        condition: true,
+        click: uploadFileButton,
+    },
+    {
+        text: t('Machine.ConfigFilesPanel.CreateFile'),
+        color: machineButtonCol.value,
+        icon: mdiFilePlus,
+        loadingName: null,
+        onlyWriteable: true,
+        condition: true,
+        click: createFile,
+    },
+    {
+        text: t('Machine.ConfigFilesPanel.CreateDirectory'),
+        color: machineButtonCol.value,
+        icon: mdiFolderPlus,
+        loadingName: null,
+        onlyWriteable: true,
+        condition: true,
+        click: createDirectory,
+    },
+    {
+        text: t('Machine.ConfigFilesPanel.RefreshDirectory'),
+        color: machineButtonCol.value,
+        icon: mdiRefresh,
+        loadingName: null,
+        onlyWriteable: false,
+        condition: true,
+        click: refreshFileList,
+    },
+]).value.filter((rule) => rule.condition)
+
+const filteredToolbarButtons = computed(() =>
+    toolbarButtons.filter((button) => {
+        return (directoryPermissions.value.includes('w') && button.onlyWriteable) || !button.onlyWriteable
+    })
+)
+
+const absolutePath = computed(() => {
+    let path = '/' + root.value
+    if (currentPath.value) path += currentPath.value
+
+    return path
+})
+
+const directory = computed(() => filesStore.getDirectory(absolutePath.value))
+
+const disk_usage = computed(() => directory.value?.disk_usage ?? { used: 0, free: 0, total: 0 })
+
+const directoryPermissions = computed(() => directory.value?.permissions ?? 'r')
+
+const files = computed(() => {
+    let output = [...(directory.value?.childrens ?? [])]
+
+    if (!showHiddenFiles.value) {
+        output = output.filter((file) => file.filename.slice(0, 1) !== '.')
     }
 
-    dialogCreateFile = {
-        show: false,
-        name: '',
+    if (hideBackupFiles.value) {
+        const klipperBackupFileMatcher = /^printer-\d{8}_\d{6}\.cfg$/
+        const crowsnestBackupFileMatcher = /^crowsnest\.conf\.\d{4}-\d{2}-\d{2}-\d{4}$/
+
+        output = output.filter((file) => !file.filename.match(klipperBackupFileMatcher) && !file.filename.match(crowsnestBackupFileMatcher) && !file.filename.endsWith('.bkp'))
     }
 
-    dialogRenameFile: dialogRenameObject = {
-        show: false,
-        newName: '',
-        item: {
-            isDirectory: false,
-            filename: '',
-            permissions: '',
-            modified: new Date(),
+    return sortFiles(output, [sortBy.value], [sortDesc.value])
+})
+
+// Vuetify 4's per-column value functions double as the sort key -- prefixing
+// with the directory flag reproduces the old customSort's "directories
+// always first" behaviour without a whole-array custom comparator.
+const headers = computed(() => [
+    { title: '', key: 'select', value: '', sortable: false },
+    { title: t('Machine.ConfigFilesPanel.Name'), key: 'filename', value: (item: FileStateFile) => `${item.isDirectory ? '0' : '1'}_${item.filename.toLowerCase()}` },
+    { title: t('Machine.ConfigFilesPanel.Filesize'), key: 'size', align: 'end' as const, value: (item: FileStateFile) => `${item.isDirectory ? '0' : '1'}_${String(item.size ?? 0).padStart(20, '0')}` },
+    {
+        title: t('Machine.ConfigFilesPanel.LastModified'),
+        key: 'modified',
+        align: 'end' as const,
+        value: (item: FileStateFile) => `${item.isDirectory ? '0' : '1'}_${String(item.modified?.getTime() ?? 0).padStart(20, '0')}`,
+    },
+])
+
+const countPerPage = computed<number>({
+    get: () => guiStore.view.configfiles.countPerPage,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.configfiles.countPerPage', value: newVal }),
+})
+
+const showHiddenFiles = computed<boolean>({
+    get: () => guiStore.view.configfiles.showHiddenFiles,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.configfiles.showHiddenFiles', value: newVal }),
+})
+
+const hideBackupFiles = computed<boolean>({
+    get: () => guiStore.view.configfiles.hideBackupFiles,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.configfiles.hideBackupFiles', value: newVal }),
+})
+
+const sortBy = computed<string>({
+    get: () => guiStore.view.configfiles.sortBy ?? 'filename',
+    set: (newVal) => guiStore.saveSetting({ name: 'view.configfiles.sortBy', value: newVal ?? 'filename' }),
+})
+
+const sortDesc = computed<boolean>({
+    get: () => guiStore.view.configfiles.sortDesc ?? false,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.configfiles.sortDesc', value: newVal ?? false }),
+})
+
+const vuetifySortBy = computed<DataTableSortItem[]>({
+    get: () => [{ key: sortBy.value, order: sortDesc.value ? ('desc' as const) : ('asc' as const) }],
+    set: (newVal: DataTableSortItem[]) => {
+        if (!newVal.length) return
+
+        sortBy.value = newVal[0].key
+        sortDesc.value = newVal[0].order === 'desc'
+    },
+})
+
+const registeredDirectories = computed<string[]>(() => useServerStore().registered_directories ?? [])
+
+const existConfigRoot = computed(() => registeredDirectories.value.findIndex((root: string) => root === 'config') !== -1)
+
+const showMissingConfigRootWarning = computed(() => absolutePath.value.startsWith('/config') && !absolutePath.value.startsWith('/config_example') && !existConfigRoot.value)
+
+const registeredDirectoriesSelectItems = computed(() => {
+    const items = registeredDirectories.value.filter((dir: string) => !hiddenRootDirectories.includes(dir)).sort()
+    if (!existConfigRoot.value) items.push('config')
+
+    return items
+})
+
+const root = computed<string>({
+    get: () => guiStore.view.configfiles.rootPath,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.configfiles.rootPath', value: newVal }),
+})
+
+const currentPath = computed<string>({
+    get: () => guiStore.view.configfiles.currentPath,
+    set: (newVal) => {
+        selectedFiles.value = []
+
+        guiStore.saveSetting({ name: 'view.configfiles.currentPath', value: newVal })
+    },
+})
+
+const deleteSelectedDialogText = computed<string>(() => {
+    if (selectedFiles.value.length === 1) {
+        return t('Machine.ConfigFilesPanel.DeleteSingleFileQuestion', { name: selectedFiles.value[0].filename })
+    }
+
+    return t('Machine.ConfigFilesPanel.DeleteSelectedQuestion', { count: selectedFiles.value.length })
+})
+
+function refreshFileList() {
+    webSocketClient.emit('server.files.get_directory', { path: absolutePath.value.substring(1) }, { action: 'files/getDirectory' })
+}
+
+function changeRoot() {
+    currentPath.value = ''
+}
+
+function clickRow(item: FileStateFile, force = false) {
+    if (contextMenu.value.shown && !force) return
+    if (force) contextMenu.value.shown = false
+
+    if (item.isDirectory) {
+        currentPath.value += '/' + item.filename
+        currentPage.value = 1
+
+        return
+    }
+
+    const extension = item.filename.split('.').pop()?.toLowerCase() ?? ''
+    const url = `${apiUrl.value}/server/files${absolutePath.value}/${item.filename}?t=${Date.now()}`
+
+    if (extension === 'svg') {
+        fetch(url)
+            .then((res) => res.text())
+            .then((svg) => {
+                dialogImage.value.show = true
+                dialogImage.value.item.name = item.filename
+                dialogImage.value.item.svg = svg
+            })
+
+        return
+    }
+
+    if (['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tif'].includes(extension)) {
+        dialogImage.value.show = true
+        dialogImage.value.item.name = item.filename
+        dialogImage.value.item.url = url
+        return
+    }
+
+    useEditorStore().openFile({
+        root: root.value,
+        path: currentPath.value,
+        filename: item.filename,
+        size: item.size ?? null,
+        permissions: item.permissions,
+    })
+}
+
+function clickRowGoBack() {
+    currentPath.value = currentPath.value.slice(0, currentPath.value.lastIndexOf('/'))
+}
+
+function clickPathNavGoToDirectory(segment: { location: string }) {
+    currentPath.value = segment.location
+}
+
+function setIsInvalidName(bool: boolean) {
+    isInvalidName.value = bool
+}
+
+function showContextMenu(e: MouseEvent | LongpressEvent, item: FileStateFile) {
+    e?.preventDefault()
+    contextMenu.value.x = e?.clientX || e?.pageX || window.screenX / 2
+    contextMenu.value.y = e?.clientY || e?.pageY || window.screenY / 2
+    contextMenu.value.item = item
+    contextMenu.value.shown = true
+}
+
+function startDownloadFile(filename: string) {
+    const filepath = `${absolutePath.value}/${filename}`
+    const href = `${apiUrl.value}/server/files${escapePath(filepath)}`
+    window.open(href)
+}
+
+function downloadFile() {
+    startDownloadFile(contextMenu.value.item.filename)
+    contextMenu.value.shown = false
+}
+
+async function downloadSelectedFiles() {
+    if (selectedFiles.value.length === 1) {
+        startDownloadFile(selectedFiles.value[0].filename)
+        selectedFiles.value = []
+        return
+    }
+
+    const items: string[] = []
+
+    const addElementToItems = async (absolutPath: string, directory: FileStateFile[]) => {
+        for (const file of directory) {
+            const filePath = `${absolutPath}/${file.filename}`
+
+            if (file.isDirectory && file.childrens) {
+                await addElementToItems(filePath, file.childrens)
+
+                continue
+            }
+
+            items.push(filePath)
+        }
+    }
+
+    await addElementToItems(absolutePath.value, selectedFiles.value)
+
+    webSocketClient.emit('server.files.zip', { items, dest: `config/${root.value}-${generateTimestamp()}.zip` }, { action: 'files/downloadZip', loading: 'configDownloadZip' })
+
+    selectedFiles.value = []
+}
+
+function createDirectory() {
+    dialogCreateDirectory.value.name = ''
+    dialogCreateDirectory.value.show = true
+
+    setTimeout(() => {
+        inputDialogCreateDirectoryName.value?.focus()
+    }, 200)
+}
+
+function createDirectoryAction() {
+    dialogCreateDirectory.value.show = false
+
+    webSocketClient.emit('server.files.post_directory', { path: absolutePath.value.substring(1) + '/' + dialogCreateDirectory.value.name }, { action: 'files/getCreateDir' })
+}
+
+function renameDirectory(item: FileStateFile) {
+    dialogRenameDirectory.value.item = item
+    dialogRenameDirectory.value.newName = item.filename
+    dialogRenameDirectory.value.show = true
+
+    setTimeout(() => {
+        inputDialogRenameDirectoryName.value?.focus()
+    }, 200)
+}
+
+function renameDirectoryAction() {
+    dialogRenameDirectory.value.show = false
+    webSocketClient.emit(
+        'server.files.move',
+        {
+            source: (absolutePath.value + '/' + dialogRenameDirectory.value.item.filename).slice(1),
+            dest: (absolutePath.value + '/' + dialogRenameDirectory.value.newName).slice(1),
         },
-    }
+        { action: 'files/getMove' }
+    )
+}
 
-    dialogDuplicateFile: dialogRenameObject = {
-        show: false,
-        newName: '',
-        item: {
-            isDirectory: false,
-            filename: '',
-            permissions: '',
-            modified: new Date(),
-        },
-    }
+function deleteDirectory(item: FileStateFile) {
+    dialogDeleteDirectory.value.item = item
+    dialogDeleteDirectory.value.show = true
+}
 
-    dialogCreateDirectory = {
-        show: false,
-        name: '',
-    }
+function deleteDirectoryAction() {
+    webSocketClient.emit('server.files.delete_directory', { path: absolutePath.value + '/' + dialogDeleteDirectory.value.item.filename, force: true }, { action: 'files/getDeleteDir' })
+}
 
-    dialogRenameDirectory: dialogRenameObject = {
-        show: false,
-        newName: '',
-        item: {
-            isDirectory: false,
-            filename: '',
-            permissions: '',
-            modified: new Date(),
-        },
-    }
+function createFile() {
+    dialogCreateFile.value.name = ''
+    dialogCreateFile.value.show = true
 
-    dialogDeleteDirectory: dialogDeleteObject = {
-        show: false,
-        item: {
-            isDirectory: false,
-            filename: '',
-            permissions: '',
-            modified: new Date(),
-        },
-    }
+    setTimeout(() => {
+        inputDialogCreateFileName.value?.focus()
+    }, 200)
+}
 
-    uploadSnackbar: uploadSnackbar = {
-        status: false,
-        filename: '',
-        percent: 0,
-        speed: 0,
-        total: 0,
-        number: 0,
-        max: 0,
-        cancelTokenSource: null,
-    }
+function createFileAction() {
+    const file = new File([''], dialogCreateFile.value.name)
 
-    draggingFile: draggingFile = {
-        item: {
-            isDirectory: false,
-            filename: '',
-            permissions: '',
-            modified: new Date(),
-        },
-    }
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('root', root.value)
+    if (currentPath.value.length) formData.append('path', currentPath.value.slice(1))
 
-    deleteDialog = false
-    deleteSelectedDialog = false
-
-    isInvalidName = true
-    nameInputRules = [
-        (value: string) => !!value || this.$t('Files.InvalidNameEmpty'),
-        (value: string) => !this.existsFilename(value) || this.$t('Files.InvalidNameAlreadyExists'),
-    ]
-
-    existsFilename(name: string) {
-        return this.files.findIndex((file) => file.filename === name) >= 0
-    }
-
-    get blockFileUpload() {
-        return this.$store.state.gui.view.blockFileUpload ?? false
-    }
-
-    set blockFileUpload(newVal) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.blockFileUpload', value: newVal })
-    }
-
-    get toolbarButtons() {
-        return [
-            {
-                text: this.$t('Machine.ConfigFilesPanel.Download'),
-                color: 'primary',
-                icon: mdiCloudDownload,
-                loadingName: 'configDownloadZip',
-                onlyWriteable: false,
-                condition: this.selectedFiles.length > 0,
-                click: () => {
-                    this.downloadSelectedFiles()
-                },
-            },
-            {
-                text: this.$t('Buttons.Delete'),
-                color: 'error',
-                icon: mdiDelete,
-                loadingName: null,
-                onlyWriteable: true,
-                condition: this.selectedFiles.length > 0,
-                click: () => {
-                    this.deleteSelectedDialog = true
-                },
-            },
-            {
-                text: this.$t('Machine.ConfigFilesPanel.UploadFile'),
-                color: this.machineButtonCol,
-                icon: mdiFileUpload,
-                loadingName: null,
-                onlyWriteable: true,
-                condition: true,
-                click: this.uploadFileButton,
-            },
-            {
-                text: this.$t('Machine.ConfigFilesPanel.CreateFile'),
-                color: this.machineButtonCol,
-                icon: mdiFilePlus,
-                loadingName: null,
-                onlyWriteable: true,
-                condition: true,
-                click: this.createFile,
-            },
-            {
-                text: this.$t('Machine.ConfigFilesPanel.CreateDirectory'),
-                color: this.machineButtonCol,
-                icon: mdiFolderPlus,
-                loadingName: null,
-                onlyWriteable: true,
-                condition: true,
-                click: this.createDirectory,
-            },
-            {
-                text: this.$t('Machine.ConfigFilesPanel.RefreshDirectory'),
-                color: this.machineButtonCol,
-                icon: mdiRefresh,
-                loadingName: null,
-                onlyWriteable: false,
-                condition: true,
-                click: this.refreshFileList,
-            },
-        ].filter((rule) => rule.condition)
-    }
-
-    get filteredToolbarButtons() {
-        return this.toolbarButtons.filter((button) => {
-            return (this.directoryPermissions.includes('w') && button.onlyWriteable) || !button.onlyWriteable
+    axios
+        .post(apiUrl.value + '/server/files/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
         })
-    }
+        .then(() => {
+            useToast().success(t('Files.SuccessfullyCreated', { filename: dialogCreateFile.value.name }))
+            dialogCreateFile.value.show = false
+            dialogCreateFile.value.name = ''
+        })
+        .catch(() => {
+            window.console.error('Error create file: ' + dialogCreateFile.value.name)
+        })
+}
 
-    get absolutePath() {
-        let path = '/' + this.root
-        if (this.currentPath) path += this.currentPath
+function renameFile(item: FileStateFile) {
+    dialogRenameFile.value.item = item
+    dialogRenameFile.value.newName = item.filename
+    dialogRenameFile.value.show = true
 
-        return path
-    }
+    setTimeout(() => {
+        inputDialogRenameFileName.value?.focus()
+    }, 200)
+}
 
-    get directory() {
-        return this.$store.getters['files/getDirectory'](this.absolutePath)
-    }
+function renameFileAction() {
+    dialogRenameFile.value.show = false
+    webSocketClient.emit(
+        'server.files.move',
+        {
+            source: (absolutePath.value + '/' + dialogRenameFile.value.item.filename).slice(1),
+            dest: (absolutePath.value + '/' + dialogRenameFile.value.newName).slice(1),
+        },
+        { action: 'files/getMove' }
+    )
+}
 
-    get disk_usage() {
-        return this.directory?.disk_usage ?? { used: 0, free: 0, total: 0 }
-    }
+function duplicateFile(item: FileStateFile) {
+    dialogDuplicateFile.value.item = item
+    dialogDuplicateFile.value.newName = item.filename
+    dialogDuplicateFile.value.show = true
 
-    get directoryPermissions() {
-        return this.directory?.permissions ?? 'r'
-    }
+    setTimeout(() => {
+        inputDialogDuplicateFileName.value?.focus()
+    }, 200)
+}
 
-    get files() {
-        let files = [...(this.directory?.childrens ?? [])]
+function duplicateFileAction() {
+    dialogDuplicateFile.value.show = false
+    webSocketClient.emit('server.files.copy', {
+        source: (absolutePath.value + '/' + dialogDuplicateFile.value.item.filename).slice(1),
+        dest: (absolutePath.value + '/' + dialogDuplicateFile.value.newName).slice(1),
+    })
+}
 
-        if (!this.showHiddenFiles) {
-            files = files.filter((file) => file.filename.slice(0, 1) !== '.')
-        }
+function removeFile() {
+    webSocketClient.emit('server.files.delete_file', { path: absolutePath.value + '/' + contextMenu.value.item.filename }, { action: 'files/getDeleteFile' })
+}
 
-        if (this.hideBackupFiles) {
-            const klipperBackupFileMatcher = /^printer-\d{8}_\d{6}\.cfg$/
-            const crowsnestBackupFileMatcher = /^crowsnest\.conf\.\d{4}-\d{2}-\d{2}-\d{4}$/
-
-            files = files.filter(
-                (file) =>
-                    !file.filename.match(klipperBackupFileMatcher) &&
-                    !file.filename.match(crowsnestBackupFileMatcher) &&
-                    !file.filename.endsWith('.bkp')
-            )
-        }
-
-        return files
-    }
-
-    get headers() {
-        return [
-            { text: '', value: '', sortable: false },
-            { text: this.$t('Machine.ConfigFilesPanel.Name'), value: 'filename' },
-            { text: this.$t('Machine.ConfigFilesPanel.Filesize'), value: 'size', align: 'right' },
-            { text: this.$t('Machine.ConfigFilesPanel.LastModified'), value: 'modified', align: 'right' },
-        ]
-    }
-
-    get selectedFiles() {
-        return this.$store.state.gui.view.configfiles.selectedFiles ?? []
-    }
-
-    set selectedFiles(newVal) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.configfiles.selectedFiles', value: newVal })
-    }
-
-    get countPerPage() {
-        return this.$store.state.gui.view.configfiles.countPerPage
-    }
-
-    set countPerPage(newVal) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.configfiles.countPerPage', value: newVal })
-    }
-
-    get showHiddenFiles() {
-        return this.$store.state.gui.view.configfiles.showHiddenFiles
-    }
-
-    set showHiddenFiles(newVal) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.configfiles.showHiddenFiles', value: newVal })
-    }
-
-    get hideBackupFiles() {
-        return this.$store.state.gui.view.configfiles.hideBackupFiles
-    }
-
-    set hideBackupFiles(newVal) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.configfiles.hideBackupFiles', value: newVal })
-    }
-
-    get sortBy() {
-        return this.$store.state.gui.view.configfiles.sortBy
-    }
-
-    set sortBy(newVal) {
-        if (newVal === undefined) newVal = 'filename'
-
-        this.$store.dispatch('gui/saveSetting', { name: 'view.configfiles.sortBy', value: newVal })
-    }
-
-    get sortDesc() {
-        return this.$store.state.gui.view.configfiles.sortDesc
-    }
-
-    set sortDesc(newVal) {
-        if (newVal === undefined) newVal = false
-
-        this.$store.dispatch('gui/saveSetting', { name: 'view.configfiles.sortDesc', value: newVal })
-    }
-
-    get registeredDirectories() {
-        return this.$store.state.server.registered_directories ?? []
-    }
-
-    get existConfigRoot() {
-        return this.registeredDirectories.findIndex((root: string) => root === 'config') !== -1
-    }
-
-    get showMissingConfigRootWarning() {
-        return (
-            this.absolutePath.startsWith('/config') &&
-            !this.absolutePath.startsWith('/config_example') &&
-            !this.existConfigRoot
-        )
-    }
-
-    get registeredDirectoriesSelectItems() {
-        const items = this.registeredDirectories.filter((dir: string) => !hiddenRootDirectories.includes(dir)).sort()
-        if (!this.existConfigRoot) items.push('config')
-
-        return items
-    }
-
-    get root() {
-        return this.$store.state.gui.view.configfiles.rootPath
-    }
-
-    set root(newVal) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.configfiles.rootPath', value: newVal })
-    }
-
-    get currentPath() {
-        return this.$store.state.gui.view.configfiles.currentPath
-    }
-
-    set currentPath(newVal) {
-        this.selectedFiles = []
-
-        this.$store.dispatch('gui/saveSetting', { name: 'view.configfiles.currentPath', value: newVal })
-    }
-
-    get deleteSelectedDialogText(): string {
-        if (this.selectedFiles.length === 1) {
-            return this.$t('Machine.ConfigFilesPanel.DeleteSingleFileQuestion', {
-                name: this.selectedFiles[0].filename,
-            }).toString()
-        }
-
-        return this.$t('Machine.ConfigFilesPanel.DeleteSelectedQuestion', {
-            count: this.selectedFiles.length,
-        }).toString()
-    }
-
-    refreshFileList() {
-        this.$socket.emit(
-            'server.files.get_directory',
-            { path: this.absolutePath.substring(1) },
-            { action: 'files/getDirectory' }
-        )
-    }
-
-    changeRoot() {
-        this.currentPath = ''
-    }
-
-    clickRow(item: FileStateFile, force = false) {
-        if (this.contextMenu.shown && !force) return
-        if (force) this.contextMenu.shown = false
-
+function deleteSelectedFiles() {
+    selectedFiles.value.forEach((item: FileStateFile) => {
         if (item.isDirectory) {
-            this.currentPath += '/' + item.filename
-            this.currentPage = 1
-
-            return
+            webSocketClient.emit('server.files.delete_directory', { path: absolutePath.value + '/' + item.filename, force: true }, { action: 'files/getDeleteDir' })
+        } else {
+            webSocketClient.emit('server.files.delete_file', { path: absolutePath.value + '/' + item.filename }, { action: 'files/getDeleteFile' })
         }
+    })
 
-        const extension = item.filename.split('.').pop()?.toLowerCase() ?? ''
-        const url = `${this.apiUrl}/server/files${this.absolutePath}/${item.filename}?t=${Date.now()}`
+    selectedFiles.value = []
+}
 
-        if (extension === 'svg') {
-            fetch(url)
-                .then((res) => res.text())
-                .then((svg) => {
-                    this.dialogImage.show = true
-                    this.dialogImage.item.name = item.filename
-                    this.dialogImage.item.svg = svg
-                })
+function uploadFileButton() {
+    fileUpload.value?.click()
+}
 
-            return
-        }
+async function uploadFile() {
+    const files = [...(fileUpload.value?.files ?? [])]
+    if (files.length === 0) return
 
-        if (['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tif'].includes(extension)) {
-            this.dialogImage.show = true
-            this.dialogImage.item.name = item.filename
-            this.dialogImage.item.url = url
-            return
-        }
+    if (fileUpload.value) fileUpload.value.value = ''
 
-        this.$store.dispatch('editor/openFile', {
-            root: this.root,
-            path: this.currentPath,
-            filename: item.filename,
-            size: item.size,
-            permissions: item.permissions,
-        })
-    }
+    const socketStore = useSocketStore()
+    socketStore.addLoading('configFileUpload')
+    filesStore.uploadSetCurrentNumber(0)
+    filesStore.uploadSetMaxNumber(files.length)
 
-    clickRowGoBack() {
-        this.currentPath = this.currentPath.slice(0, this.currentPath.lastIndexOf('/'))
-    }
-
-    clickPathNavGoToDirectory(segment: { location: string }) {
-        this.currentPath = segment.location
-    }
-
-    setIsInvalidName(bool: boolean) {
-        this.isInvalidName = bool
-    }
-
-    showContextMenu(e: MouseEvent | LongpressEvent, item: FileStateFile) {
-        e?.preventDefault()
-        this.contextMenu.x = e?.clientX || e?.pageX || window.screenX / 2
-        this.contextMenu.y = e?.clientY || e?.pageY || window.screenY / 2
-        this.contextMenu.item = item
-        this.contextMenu.shown = true
-    }
-
-    private startDownloadFile(filename: string) {
-        const filepath = `${this.absolutePath}/${filename}`
-        const href = `${this.apiUrl}/server/files${escapePath(filepath)}`
-        window.open(href)
-    }
-
-    downloadFile() {
-        this.startDownloadFile(this.contextMenu.item.filename)
-        this.contextMenu.shown = false
-    }
-
-    async downloadSelectedFiles() {
-        if (this.selectedFiles.length === 1) {
-            this.startDownloadFile(this.selectedFiles[0].filename)
-            this.selectedFiles = []
-            return
-        }
-
-        const items: string[] = []
-
-        const addElementToItems = async (absolutPath: string, directory: FileStateFile[]) => {
-            for (const file of directory) {
-                const filePath = `${absolutPath}/${file.filename}`
-
-                if (file.isDirectory && file.childrens) {
-                    await addElementToItems(filePath, file.childrens)
-
-                    continue
-                }
-
-                items.push(filePath)
-            }
-        }
-
-        await addElementToItems(this.absolutePath, this.selectedFiles)
-
-        this.$socket.emit(
-            'server.files.zip',
-            { items, dest: `config/${this.root}-${generateTimestamp()}.zip` },
-            { action: 'files/downloadZip', loading: 'configDownloadZip' }
-        )
-
-        this.selectedFiles = []
-    }
-
-    createDirectory() {
-        this.dialogCreateDirectory.name = ''
-        this.dialogCreateDirectory.show = true
-
-        setTimeout(() => {
-            this.inputDialogCreateDirectoryName?.focus()
-        }, 200)
-    }
-
-    createDirectoryAction() {
-        this.dialogCreateDirectory.show = false
-
-        this.$socket.emit(
-            'server.files.post_directory',
-            {
-                path: this.absolutePath.substring(1) + '/' + this.dialogCreateDirectory.name,
-            },
-            { action: 'files/getCreateDir' }
-        )
-    }
-
-    renameDirectory(item: FileStateFile) {
-        this.dialogRenameDirectory.item = item
-        this.dialogRenameDirectory.newName = item.filename
-        this.dialogRenameDirectory.show = true
-
-        setTimeout(() => {
-            this.inputDialogRenameDirectoryName?.focus()
-        }, 200)
-    }
-
-    renameDirectoryAction() {
-        this.dialogRenameDirectory.show = false
-        this.$socket.emit(
-            'server.files.move',
-            {
-                source: (this.absolutePath + '/' + this.dialogRenameDirectory.item.filename).slice(1),
-                dest: (this.absolutePath + '/' + this.dialogRenameDirectory.newName).slice(1),
-            },
-            { action: 'files/getMove' }
-        )
-    }
-
-    deleteDirectory(item: FileStateFile) {
-        this.dialogDeleteDirectory.item = item
-        this.dialogDeleteDirectory.show = true
-    }
-
-    deleteDirectoryAction() {
-        this.$socket.emit(
-            'server.files.delete_directory',
-            { path: this.absolutePath + '/' + this.dialogDeleteDirectory.item.filename, force: true },
-            { action: 'files/getDeleteDir' }
-        )
-    }
-
-    createFile() {
-        this.dialogCreateFile.name = ''
-        this.dialogCreateFile.show = true
-
-        setTimeout(() => {
-            this.inputDialogCreateFileName?.focus()
-        }, 200)
-    }
-
-    createFileAction() {
-        const file = new File([''], this.dialogCreateFile.name)
-
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('root', this.root)
-        if (this.currentPath.length) formData.append('path', this.currentPath.slice(1))
-
-        axios
-            .post(this.apiUrl + '/server/files/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            })
-            .then(() => {
-                this.$toast.success(
-                    this.$t('Files.SuccessfullyCreated', { filename: this.dialogCreateFile.name }).toString()
-                )
-                this.dialogCreateFile.show = false
-                this.dialogCreateFile.name = ''
-            })
-            .catch(() => {
-                window.console.error('Error create file: ' + this.dialogCreateFile.name)
-            })
-    }
-
-    renameFile(item: FileStateFile) {
-        this.dialogRenameFile.item = item
-        this.dialogRenameFile.newName = item.filename
-        this.dialogRenameFile.show = true
-
-        setTimeout(() => {
-            this.inputDialogRenameFileName?.focus()
-        }, 200)
-    }
-
-    renameFileAction() {
-        this.dialogRenameFile.show = false
-        this.$socket.emit(
-            'server.files.move',
-            {
-                source: (this.absolutePath + '/' + this.dialogRenameFile.item.filename).slice(1),
-                dest: (this.absolutePath + '/' + this.dialogRenameFile.newName).slice(1),
-            },
-            { action: 'files/getMove' }
-        )
-    }
-
-    duplicateFile(item: FileStateFile) {
-        this.dialogDuplicateFile.item = item
-        this.dialogDuplicateFile.newName = item.filename
-        this.dialogDuplicateFile.show = true
-
-        setTimeout(() => {
-            this.inputDialogDuplicateFileName?.focus()
-        }, 200)
-    }
-
-    duplicateFileAction() {
-        this.dialogDuplicateFile.show = false
-        this.$socket.emit('server.files.copy', {
-            source: (this.absolutePath + '/' + this.dialogDuplicateFile.item.filename).slice(1),
-            dest: (this.absolutePath + '/' + this.dialogDuplicateFile.newName).slice(1),
-        })
-    }
-
-    removeFile() {
-        this.$socket.emit(
-            'server.files.delete_file',
-            { path: this.absolutePath + '/' + this.contextMenu.item.filename },
-            { action: 'files/getDeleteFile' }
-        )
-    }
-
-    deleteSelectedFiles() {
-        this.selectedFiles.forEach((item: FileStateGcodefile) => {
-            if (item.isDirectory) {
-                this.$socket.emit(
-                    'server.files.delete_directory',
-                    { path: this.absolutePath + '/' + item.filename, force: true },
-                    { action: 'files/getDeleteDir' }
-                )
-            } else {
-                this.$socket.emit(
-                    'server.files.delete_file',
-                    { path: this.absolutePath + '/' + item.filename },
-                    { action: 'files/getDeleteFile' }
-                )
-            }
+    for (const file of files) {
+        filesStore.uploadIncrementCurrentNumber()
+        const path = currentPath.value.slice(0, 1) === '/' ? currentPath.value.slice(1) : currentPath.value
+        const result = await filesStore.uploadFile({
+            file,
+            path,
+            root: 'config',
         })
 
-        this.selectedFiles = []
+        if (result !== false) useToast().success(t('Files.SuccessfullyUploaded', { filename: result }))
     }
 
-    uploadFileButton() {
-        this.fileUpload.click()
+    socketStore.removeLoading('configFileUpload')
+}
+
+function cancelUpload() {
+    uploadSnackbar.value.cancelTokenSource?.cancel()
+    uploadSnackbar.value.status = false
+}
+
+function dragFile(e: Event, item: FileStateFile) {
+    e.preventDefault()
+    blockFileUpload.value = true
+    draggingFile.value.item = item
+}
+
+function dragendFile(e: Event) {
+    e.preventDefault()
+    blockFileUpload.value = false
+    draggingFile.value.item = emptyFile()
+}
+
+function dragOverFilelist(e: DragEvent, row: Pick<FileStateFile, 'isDirectory' | 'filename'>) {
+    if (!blockFileUpload.value) return
+    e.preventDefault()
+
+    const parentElement = (e.target as HTMLElement | null)?.parentElement
+    if (row.isDirectory && parentElement) parentElement.style.backgroundColor = '#43A04720'
+}
+
+function dragLeaveFilelist(e: DragEvent) {
+    if (!blockFileUpload.value) return
+    e.preventDefault()
+    e.stopPropagation()
+
+    const parentElement = (e.target as HTMLElement | null)?.parentElement
+    if (parentElement) parentElement.style.backgroundColor = 'transparent'
+}
+
+async function dragDropFilelist(e: DragEvent, row: Pick<FileStateFile, 'isDirectory' | 'filename'>) {
+    if (!blockFileUpload.value) return
+    e.preventDefault()
+    const parentElement = (e.target as HTMLElement | null)?.parentElement
+    if (parentElement) parentElement.style.backgroundColor = 'transparent'
+
+    let dest = absolutePath.value + '/' + row.filename + '/' + draggingFile.value.item.filename
+    if (row.filename === '..') {
+        dest = absolutePath.value.slice(1, absolutePath.value.lastIndexOf('/') + 1) + draggingFile.value.item.filename
     }
 
-    async uploadFile() {
-        const files = [...(this.fileUpload.files ?? [])]
-        if (files.length === 0) return
-
-        this.fileUpload.value = ''
-
-        await this.$store.dispatch('socket/addLoading', { name: 'configFileUpload' })
-        await this.$store.dispatch('files/uploadSetCurrentNumber', 0)
-        await this.$store.dispatch('files/uploadSetMaxNumber', files.length)
-
-        for (const file of files) {
-            await this.$store.dispatch('files/uploadIncrementCurrentNumber')
-            const path = this.currentPath.slice(0, 1) === '/' ? this.currentPath.slice(1) : this.currentPath
-            const result = await this.$store.dispatch('files/uploadFile', {
-                file,
-                path,
-                root: 'config',
-            })
-
-            if (result !== false)
-                this.$toast.success(this.$t('Files.SuccessfullyUploaded', { filename: result }).toString())
-        }
-
-        await this.$store.dispatch('socket/removeLoading', { name: 'configFileUpload' })
-    }
-
-    cancelUpload() {
-        this.uploadSnackbar.cancelTokenSource?.cancel()
-        this.uploadSnackbar.status = false
-    }
-
-    dragFile(e: Event, item: FileStateFile) {
-        e.preventDefault()
-        this.blockFileUpload = true
-        this.draggingFile.item = item
-    }
-
-    dragendFile(e: Event) {
-        e.preventDefault()
-        this.blockFileUpload = false
-        this.draggingFile.item = {
-            isDirectory: false,
-            filename: '',
-            permissions: '',
-            modified: new Date(),
-        }
-    }
-
-    dragOverFilelist(e: DragEvent, row: FileStateFile) {
-        if (!this.blockFileUpload) return
-        e.preventDefault()
-
-        const parentElement = (e.target as HTMLElement | null)?.parentElement
-        if (row.isDirectory && parentElement) parentElement.style.backgroundColor = '#43A04720'
-    }
-
-    dragLeaveFilelist(e: DragEvent) {
-        if (!this.blockFileUpload) return
-        e.preventDefault()
-        e.stopPropagation()
-
-        const parentElement = (e.target as HTMLElement | null)?.parentElement
-        if (parentElement) parentElement.style.backgroundColor = 'transparent'
-    }
-
-    async dragDropFilelist(e: DragEvent, row: FileStateFile) {
-        if (!this.blockFileUpload) return
-        e.preventDefault()
-        const parentElement = (e.target as HTMLElement | null)?.parentElement
-        if (parentElement) parentElement.style.backgroundColor = 'transparent'
-
-        let dest = this.absolutePath + '/' + row.filename + '/' + this.draggingFile.item.filename
-        if (row.filename === '..') {
-            dest = this.absolutePath.slice(1, this.absolutePath.lastIndexOf('/') + 1) + this.draggingFile.item.filename
-        }
-
-        this.$socket.emit(
-            'server.files.move',
-            {
-                source: this.absolutePath.slice(1) + '/' + this.draggingFile.item.filename,
-                dest: dest,
-            },
-            { action: 'files/getMove' }
-        )
-    }
+    webSocketClient.emit(
+        'server.files.move',
+        {
+            source: absolutePath.value.slice(1) + '/' + draggingFile.value.item.filename,
+            dest: dest,
+        },
+        { action: 'files/getMove' }
+    )
 }
 </script>
