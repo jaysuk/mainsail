@@ -1,52 +1,53 @@
 <template>
     <v-card flat>
         <v-form @submit.prevent="saveCooldown">
-            <v-card-title>{{ $t('Settings.PresetsTab.EditCooldown') }}</v-card-title>
+            <v-card-title>{{ t('Settings.PresetsTab.EditCooldown') }}</v-card-title>
             <v-card-text>
-                <settings-row :title="$t('Settings.PresetsTab.CustomGCode')">
-                    <v-textarea v-model="gcode" outlined hide-details />
+                <settings-row :title="t('Settings.PresetsTab.CustomGCode')">
+                    <v-textarea v-model="gcode" variant="outlined" hide-details />
                 </settings-row>
             </v-card-text>
             <v-card-actions class="d-flex justify-end">
-                <v-btn text @click="closeForm">
-                    {{ $t('Buttons.Cancel') }}
+                <v-btn variant="text" @click="closeForm">
+                    {{ t('Buttons.Cancel') }}
                 </v-btn>
-                <v-btn color="primary" text type="submit">
-                    {{ $t('Settings.PresetsTab.UpdateCooldown') }}
+                <v-btn color="primary" variant="text" type="submit">
+                    {{ t('Settings.PresetsTab.UpdateCooldown') }}
                 </v-btn>
             </v-card-actions>
         </v-form>
     </v-card>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import SettingsRow from '@/components/settings/SettingsRow.vue'
-import { mdiDelete, mdiPencil } from '@mdi/js'
+import { useGuiPresetsStore } from '@/store/gui/presets'
 
-@Component({
-    components: { SettingsRow },
+const props = defineProps<{
+    inputGcode: string
+}>()
+
+const emit = defineEmits<{
+    close: []
+}>()
+
+const { t } = useI18n()
+const guiPresetsStore = useGuiPresetsStore()
+
+const gcode = ref('')
+
+onMounted(() => {
+    gcode.value = props.inputGcode
 })
-export default class PresetsFormCooldown extends Mixins(BaseMixin) {
-    mdiPencil = mdiPencil
-    mdiDelete = mdiDelete
 
-    @Prop({ required: true }) readonly inputGcode!: string
+function closeForm() {
+    emit('close')
+}
 
-    gcode = ''
-
-    mounted() {
-        this.gcode = this.inputGcode
-    }
-
-    closeForm() {
-        this.$emit('close')
-    }
-
-    saveCooldown() {
-        this.$store.dispatch('gui/presets/saveSetting', { name: 'cooldownGcode', value: this.gcode })
-        this.closeForm()
-    }
+function saveCooldown() {
+    guiPresetsStore.updateCooldownGcode(gcode.value)
+    closeForm()
 }
 </script>

@@ -1,38 +1,28 @@
 <template>
     <div>
-        <v-btn color="error" small @click="openDialog">
-            {{ $t('Settings.GeneralTab.FactoryReset') }}
+        <v-btn color="error" size="small" @click="openDialog">
+            {{ t('Settings.GeneralTab.FactoryReset') }}
         </v-btn>
         <v-dialog v-model="showDialog" persistent :width="360">
-            <panel
-                :title="$t('Settings.GeneralTab.FactoryReset')"
-                card-class="mainsail-reset-dialog"
-                :margin-bottom="false"
-                :icon="mdiHelpCircle">
+            <panel :title="t('Settings.GeneralTab.FactoryReset')" card-class="mainsail-reset-dialog" :margin-bottom="false" :icon="mdiHelpCircle">
                 <template #buttons>
-                    <v-btn icon tile @click="closeDialog">
+                    <v-btn icon="" variant="text" @click="closeDialog">
                         <v-icon>{{ mdiCloseThick }}</v-icon>
                     </v-btn>
                 </template>
                 <v-card-text>
                     <v-row>
                         <v-col>
-                            <p class="mb-0">{{ $t('Settings.GeneralTab.FactoryDialog') }}</p>
+                            <p class="mb-0">{{ t('Settings.GeneralTab.FactoryDialog') }}</p>
                         </v-col>
                     </v-row>
                     <v-row>
-                        <checkbox-list
-                            :options="resetableNamespaces"
-                            select-all
-                            @update:selectedCheckboxes="onSelectResetCheckboxes" />
+                        <checkbox-list :options="resetableNamespaces" select-all @update:selectedCheckboxes="onSelectResetCheckboxes" />
                     </v-row>
                     <v-row>
                         <v-col class="text-center">
-                            <v-btn
-                                color="red"
-                                :loading="loadings.includes('resetMainsail')"
-                                @click="resetMainsailAction">
-                                {{ $t('Settings.GeneralTab.Reset') }}
+                            <v-btn color="red" :loading="loadings.includes('resetMainsail')" @click="resetMainsailAction">
+                                {{ t('Settings.GeneralTab.Reset') }}
                             </v-btn>
                         </v-col>
                     </v-row>
@@ -42,65 +32,62 @@
     </div>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import SettingsRow from '@/components/settings/SettingsRow.vue'
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Panel from '@/components/ui/Panel.vue'
 import { mdiCloseThick, mdiHelpCircle } from '@mdi/js'
 import CheckboxList from '@/components/inputs/CheckboxList.vue'
-import { TranslateResult } from 'vue-i18n'
-import SettingsGeneralDatabase from '@/components/mixins/settingsGeneralDatabase'
+import { useBase } from '@/composables/useBase'
+import { useSettingsGeneralDatabase } from '@/composables/useSettingsGeneralDatabase'
+import { useSocketStore } from '@/store/socket'
+import { useGuiStore } from '@/store/gui'
 
-@Component({
-    components: { Panel, SettingsRow, CheckboxList },
-})
-export default class SettingsGeneralTabResetDatabase extends Mixins(BaseMixin, SettingsGeneralDatabase) {
-    mdiHelpCircle = mdiHelpCircle
-    mdiCloseThick = mdiCloseThick
+const { t } = useI18n()
+const { loadings, moonrakerComponents } = useBase()
+const { loadBackupableNamespaces } = useSettingsGeneralDatabase()
+const guiStore = useGuiStore()
 
-    showDialog = false
-    resetableNamespaces: { value: string; label: string | TranslateResult }[] = []
-    resetCheckboxes: string[] = []
+const showDialog = ref(false)
+const resetableNamespaces = ref<{ value: string; label: string }[]>([])
+const resetCheckboxes = ref<string[]>([])
 
-    async mounted() {
-        await this.loadResetableNamespaces()
-    }
-
-    onSelectResetCheckboxes(resetCheckboxes: string[]) {
-        this.resetCheckboxes = resetCheckboxes
-    }
-
-    resetMainsailAction() {
-        this.$store.dispatch('socket/addLoading', 'resetMainsail')
-        this.$store.dispatch('gui/resetMoonrakerDB', this.resetCheckboxes)
-    }
-
-    async openDialog() {
-        await this.loadResetableNamespaces()
-        this.showDialog = true
-    }
-
-    async loadResetableNamespaces() {
-        this.resetableNamespaces = await this.loadBackupableNamespaces()
-
-        // stop if history is not enabled
-        if (!this.moonrakerComponents.includes('history')) return
-
-        this.resetableNamespaces.push({
-            value: 'history_jobs',
-            label: this.$t('Settings.GeneralTab.DbHistoryJobs'),
-        })
-
-        this.resetableNamespaces.push({
-            value: 'history_totals',
-            label: this.$t('Settings.GeneralTab.DbHistoryTotals'),
-        })
-    }
-
-    closeDialog() {
-        this.showDialog = false
-    }
+function onSelectResetCheckboxes(checkboxes: string[]) {
+    resetCheckboxes.value = checkboxes
 }
+
+function resetMainsailAction() {
+    useSocketStore().addLoading('resetMainsail')
+    guiStore.resetMoonrakerDB(resetCheckboxes.value)
+}
+
+async function loadResetableNamespaces() {
+    resetableNamespaces.value = await loadBackupableNamespaces()
+
+    // stop if history is not enabled
+    if (!moonrakerComponents.value.includes('history')) return
+
+    resetableNamespaces.value.push({
+        value: 'history_jobs',
+        label: t('Settings.GeneralTab.DbHistoryJobs'),
+    })
+
+    resetableNamespaces.value.push({
+        value: 'history_totals',
+        label: t('Settings.GeneralTab.DbHistoryTotals'),
+    })
+}
+
+async function openDialog() {
+    await loadResetableNamespaces()
+    showDialog.value = true
+}
+
+function closeDialog() {
+    showDialog.value = false
+}
+
+onMounted(async () => {
+    await loadResetableNamespaces()
+})
 </script>

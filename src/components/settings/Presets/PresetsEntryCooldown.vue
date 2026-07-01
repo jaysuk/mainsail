@@ -1,26 +1,24 @@
 <template>
-    <settings-row :title="$t('Settings.PresetsTab.Cooldown')">
-        <v-btn small outlined class="ml-3" @click="editCooldown">
-            <v-icon left small>{{ mdiPencil }}</v-icon>
-            {{ $t('Settings.Edit') }}
+    <settings-row :title="t('Settings.PresetsTab.Cooldown')">
+        <v-btn size="small" variant="outlined" class="ml-3" @click="editCooldown">
+            <v-icon start size="small">{{ mdiPencil }}</v-icon>
+            {{ t('Settings.Edit') }}
         </v-btn>
     </settings-row>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import SettingsRow from '@/components/settings/SettingsRow.vue'
 import { mdiPencil } from '@mdi/js'
 
-@Component({
-    components: { SettingsRow },
-})
-export default class PresetsEntryCooldown extends Mixins(BaseMixin) {
-    mdiPencil = mdiPencil
+const emit = defineEmits<{
+    edit: []
+}>()
 
-    editCooldown() {
-        this.$emit('edit')
-    }
+const { t } = useI18n()
+
+function editCooldown() {
+    emit('edit')
 }
 </script>

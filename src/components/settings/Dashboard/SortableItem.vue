@@ -9,55 +9,43 @@
                 {{ panelname }}
             </v-col>
             <v-col class="col-auto pl-2">
-                <v-icon
-                    :color="checkboxColor"
-                    @click.stop="$emit('change-visible', name, !visible)"
-                    v-html="checkboxIcon" />
+                <v-icon :color="checkboxColor" @click.stop="emit('change-visible', name, !visible)">{{ checkboxIcon }}</v-icon>
             </v-col>
         </v-row>
     </v-list-item>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import draggable from 'vuedraggable'
-import { mdiCheckboxBlankOutline, mdiCheckboxMarked, mdiDragVertical, mdiInformation } from '@mdi/js'
-import DashboardMixin from '@/components/mixins/dashboard'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { mdiCheckboxBlankOutline, mdiCheckboxMarked, mdiDragVertical } from '@mdi/js'
+import { useDashboard } from '@/composables/useDashboard'
 
-@Component({
-    components: { draggable },
+const props = defineProps<{
+    name: string
+    visible: boolean
+}>()
+
+const emit = defineEmits<{
+    'change-visible': [name: string, visible: boolean]
+}>()
+
+const { getPanelName, convertPanelnameToIcon } = useDashboard()
+
+const panelname = computed(() => getPanelName(props.name))
+
+const icon = computed(() => convertPanelnameToIcon(props.name))
+
+const checkboxColor = computed(() => {
+    if (props.visible) return 'primary'
+
+    return 'grey-lighten-1'
 })
-export default class SettingsDashboardSortableItem extends Mixins(DashboardMixin) {
-    /**
-     * Icons
-     */
-    mdiInformation = mdiInformation
-    mdiDragVertical = mdiDragVertical
 
-    @Prop({ type: String, required: true }) declare readonly name: string
-    @Prop({ type: Boolean, required: true }) declare readonly visible: boolean
+const checkboxIcon = computed(() => {
+    if (props.visible) return mdiCheckboxMarked
 
-    get panelname() {
-        return this.getPanelName(this.name)
-    }
-
-    get icon() {
-        return this.convertPanelnameToIcon(this.name)
-    }
-
-    get checkboxColor() {
-        if (this.visible) return 'primary'
-
-        return 'grey lighten-1'
-    }
-
-    get checkboxIcon() {
-        if (this.visible) return mdiCheckboxMarked
-
-        return mdiCheckboxBlankOutline
-    }
-}
+    return mdiCheckboxBlankOutline
+})
 </script>
 
 <style scoped>

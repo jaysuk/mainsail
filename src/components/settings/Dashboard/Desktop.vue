@@ -1,5 +1,5 @@
 <template>
-    <v-card flat>
+    <v-card variant="flat">
         <v-card-text>
             <v-row>
                 <v-col class="col-12 col-md-6">
@@ -11,30 +11,23 @@
             </v-row>
             <v-row>
                 <v-col class="text-center">
-                    <v-btn color="error" @click="resetLayout">{{ $t('Settings.DashboardTab.ResetLayout') }}</v-btn>
+                    <v-btn color="error" @click="resetLayout">{{ t('Settings.DashboardTab.ResetLayout') }}</v-btn>
                 </v-col>
             </v-row>
         </v-card-text>
     </v-card>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins } from 'vue-property-decorator'
-import DashboardMixin from '@/components/mixins/dashboard'
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import SettingsDashboardSortable from '@/components/settings/Dashboard/Sortable.vue'
+import { useGuiStore } from '@/store/gui'
 
-@Component({
-    components: {
-        SettingsDashboardSortable,
-    },
-})
-export default class SettingsDashboardTabDesktop extends Mixins(DashboardMixin) {
-    resetLayout() {
-        this.$store.dispatch('gui/resetLayout', 'desktopLayout1')
-        this.$store.dispatch('gui/resetLayout', 'desktopLayout2')
-    }
+const { t } = useI18n()
+const guiStore = useGuiStore()
+
+function resetLayout() {
+    guiStore.resetLayout('desktopLayout1')
+    guiStore.resetLayout('desktopLayout2')
 }
 </script>
-
-<style scoped></style>

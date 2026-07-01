@@ -1,62 +1,56 @@
 <template>
     <v-card-text>
-        <h3 class="text-h5 mb-3">{{ $t('Settings.MiscellaneousTab.Miscellaneous') }}</h3>
+        <h3 class="text-h5 mb-3">{{ t('Settings.MiscellaneousTab.Miscellaneous') }}</h3>
         <template v-if="filteredLights.length">
-            <template v-for="(light, index) in filteredLights">
-                <v-divider v-if="index" :key="'divider_' + index" class="my-2" />
-                <settings-miscellaneous-tab-list-light
-                    :key="index"
-                    :type="light.type"
-                    :name="light.name"
-                    @open-page="openPage" />
+            <template v-for="(light, index) in filteredLights" :key="index">
+                <v-divider v-if="index" class="my-2" />
+                <settings-miscellaneous-tab-list-light :type="light.type" :name="light.name" @open-page="openPage" />
             </template>
         </template>
-        <p v-else class="mb-0 text-center font-italic">{{ $t('Settings.MiscellaneousTab.NoDevicesFound') }}</p>
+        <p v-else class="mb-0 text-center font-italic">{{ t('Settings.MiscellaneousTab.NoDevicesFound') }}</p>
     </v-card-text>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '../../mixins/base'
-import MiscellaneousMixin from '@/components/mixins/miscellaneous'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import SettingsMiscellaneousTabListLight from '@/components/settings/Miscellaneous/SettingsMiscellaneousTabListLight.vue'
+import { useMiscellaneous } from '@/composables/useMiscellaneous'
+import { usePrinterStore } from '@/store/printer'
 
-@Component({
-    components: { SettingsMiscellaneousTabListLight },
-})
-export default class SettingsMiscellaneousTabList extends Mixins(BaseMixin, MiscellaneousMixin) {
-    get settings() {
-        return this.$store.state.printer.configfile?.settings ?? {}
-    }
+const emit = defineEmits<{
+    'open-page': [payload: { page: string; type: string; name: string }]
+}>()
 
-    get lightsWithSettings() {
-        return this.lights.map((light: { type: string; name: string }) => {
-            const key = `${light.type.toLowerCase()} ${light.name.toLowerCase()}`
-            const config = this.settings[key] ?? {}
-            let colorOrder = config?.color_order ?? ''
+const { t } = useI18n()
+const { lights } = useMiscellaneous()
+const printerStore = usePrinterStore()
 
-            if (light.type.toLowerCase() === 'led') {
-                if ('red_pin' in config) colorOrder += 'R'
-                if ('green_pin' in config) colorOrder += 'G'
-                if ('blue_pin' in config) colorOrder += 'B'
-                if ('white_pin' in config) colorOrder += 'W'
-            }
+const settings = computed(() => printerStore.configfile?.settings ?? {})
 
-            return {
-                ...light,
-                colorOrder: colorOrder,
-            }
-        })
-    }
+const lightsWithSettings = computed(() =>
+    lights.value.map((light: { type: string; name: string }) => {
+        const key = `${light.type.toLowerCase()} ${light.name.toLowerCase()}`
+        const config = settings.value[key] ?? {}
+        let colorOrder = config?.color_order ?? ''
 
-    get filteredLights() {
-        return this.lightsWithSettings.filter(
-            (light: { type: string; name: string; colorOrder: string }) => light.colorOrder.length > 0
-        )
-    }
+        if (light.type.toLowerCase() === 'led') {
+            if ('red_pin' in config) colorOrder += 'R'
+            if ('green_pin' in config) colorOrder += 'G'
+            if ('blue_pin' in config) colorOrder += 'B'
+            if ('white_pin' in config) colorOrder += 'W'
+        }
 
-    openPage(payload: { page: string; type: string; name: string }) {
-        this.$emit('open-page', payload)
-    }
+        return {
+            ...light,
+            colorOrder: colorOrder,
+        }
+    })
+)
+
+const filteredLights = computed(() => lightsWithSettings.value.filter((light: { type: string; name: string; colorOrder: string }) => light.colorOrder.length > 0))
+
+function openPage(payload: { page: string; type: string; name: string }) {
+    emit('open-page', payload)
 }
 </script>

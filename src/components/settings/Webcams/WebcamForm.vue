@@ -1,5 +1,5 @@
 <template>
-    <v-form ref="webcamForm" v-model="valid" v-observe-visibility="visibilityChanged" @submit.prevent="submit">
+    <v-form ref="webcamFormEl" v-model="valid" @submit.prevent="submit">
         <v-card-title>{{ title }}</v-card-title>
         <v-card-text>
             <v-row>
@@ -7,57 +7,45 @@
                     <v-row>
                         <v-col class="d-flex">
                             <v-item-group>
-                                <v-menu v-model="selectIcon" :offset-y="true" title="Icon">
-                                    <template #activator="{ on, attrs }">
-                                        <v-btn
-                                            class="px-2 mr-2 _transition _menu-button"
-                                            color="transparent"
-                                            v-bind="attrs"
-                                            elevation="0"
-                                            :ripple="false"
-                                            v-on="on">
+                                <v-menu v-model="selectIcon" title="Icon">
+                                    <template #activator="{ props: activatorProps }">
+                                        <v-btn class="px-2 mr-2 _transition _menu-button" color="transparent" v-bind="activatorProps" elevation="0" :ripple="false">
                                             <v-icon>{{ convertWebcamIcon(webcam.icon) }}</v-icon>
                                             <v-icon :class="classIconButtonArrow" class="pl-1 mr-n2">
                                                 {{ mdiMenuDown }}
                                             </v-icon>
                                         </v-btn>
                                     </template>
-                                    <v-list dense class="py-0">
-                                        <v-list-item
-                                            v-for="icon of iconItems"
-                                            :key="icon.value"
-                                            link
-                                            @click="webcam.icon = icon.value">
-                                            <v-list-item-icon class="mr-2">
-                                                <v-icon small class="mt-1">
+                                    <v-list density="compact" class="py-0">
+                                        <v-list-item v-for="icon of iconItems" :key="icon.value" @click="webcam.icon = icon.value">
+                                            <template #prepend>
+                                                <v-icon size="small" class="mt-1 mr-2">
                                                     {{ convertWebcamIcon(icon.value) }}
                                                 </v-icon>
-                                            </v-list-item-icon>
-                                            <v-list-item-content>
-                                                <v-list-item-title v-text="icon.text" />
-                                            </v-list-item-content>
+                                            </template>
+                                            <v-list-item-title>{{ icon.text }}</v-list-item-title>
                                         </v-list-item>
                                     </v-list>
                                 </v-menu>
                             </v-item-group>
                             <v-text-field
                                 v-model="webcam.name"
-                                :label="$t('Settings.WebcamsTab.Name')"
+                                :label="t('Settings.WebcamsTab.Name')"
                                 hide-details="auto"
-                                outlined
+                                variant="outlined"
                                 :rules="[rules.required, rules.unique]"
                                 class="_webcam-settings-name-field"
-                                dense />
+                                density="compact" />
                         </v-col>
                     </v-row>
                     <v-row>
                         <v-col class="py-2">
                             <v-text-field
                                 v-model="webcam.stream_url"
-                                :label="$t('Settings.WebcamsTab.UrlStream')"
+                                :label="t('Settings.WebcamsTab.UrlStream')"
                                 hide-details="auto"
-                                outlined
-                                dense
+                                variant="outlined"
+                                density="compact"
                                 :rules="rulesStreamUrl" />
                         </v-col>
                     </v-row>
@@ -65,141 +53,85 @@
                         <v-col class="py-2">
                             <v-text-field
                                 v-model="webcam.snapshot_url"
-                                :label="$t('Settings.WebcamsTab.UrlSnapshot')"
+                                :label="t('Settings.WebcamsTab.UrlSnapshot')"
                                 hide-details="auto"
-                                outlined
-                                dense
+                                variant="outlined"
+                                density="compact"
                                 :rules="rulesSnapshotUrl" />
                         </v-col>
                     </v-row>
                     <v-row>
                         <v-col class="py-2">
-                            <v-select
-                                v-model="webcam.service"
-                                :items="serviceItems"
-                                hide-details
-                                outlined
-                                dense
-                                :label="$t('Settings.WebcamsTab.Service')" />
+                            <v-select v-model="webcam.service" :items="serviceItems" hide-details variant="outlined" density="compact" :label="t('Settings.WebcamsTab.Service')" />
                         </v-col>
                     </v-row>
                     <v-row v-if="hasTargetFps || hasRotate">
                         <v-col v-if="hasAspectRatio" class="py-2">
                             <v-text-field
                                 v-model="webcam.aspect_ratio"
-                                :label="$t('Settings.WebcamsTab.AspectRatio')"
+                                :label="t('Settings.WebcamsTab.AspectRatio')"
                                 hide-details="auto"
-                                outlined
-                                dense
+                                variant="outlined"
+                                density="compact"
                                 :rules="[rules.required, rules.aspect]" />
                         </v-col>
                         <v-col v-if="hasTargetFps" class="py-2 col-6">
-                            <v-text-field
-                                v-model="webcam.target_fps"
-                                outlined
-                                dense
-                                hide-details
-                                :label="$t('Settings.WebcamsTab.TargetFPS')" />
+                            <v-text-field v-model="webcam.target_fps" variant="outlined" density="compact" hide-details :label="t('Settings.WebcamsTab.TargetFPS')" />
                         </v-col>
                         <v-col v-if="hasRotate" class="py-2 col-6">
-                            <v-select
-                                v-model="webcam.rotation"
-                                :items="rotationItems"
-                                outlined
-                                dense
-                                hide-details
-                                :label="$t('Settings.WebcamsTab.Rotate')" />
+                            <v-select v-model="webcam.rotation" :items="rotationItems" variant="outlined" density="compact" hide-details :label="t('Settings.WebcamsTab.Rotate')" />
                         </v-col>
                     </v-row>
                     <v-row v-if="hasFpsCounter">
                         <v-col class="pt-1 pb-3">
-                            <v-checkbox
-                                v-model="hideFps"
-                                class="mt-1"
-                                hide-details
-                                :label="$t('Settings.WebcamsTab.HideFps')" />
+                            <v-checkbox v-model="hideFps" class="mt-1" hide-details :label="t('Settings.WebcamsTab.HideFps')" />
                         </v-col>
                     </v-row>
                     <v-row v-if="hasAudioOption">
                         <v-col class="pt-1 pb-3">
-                            <v-checkbox
-                                v-model="enableAudio"
-                                class="mt-1"
-                                hide-details
-                                :label="$t('Settings.WebcamsTab.EnableAudio')" />
+                            <v-checkbox v-model="enableAudio" class="mt-1" hide-details :label="t('Settings.WebcamsTab.EnableAudio')" />
                         </v-col>
                     </v-row>
                     <v-row>
                         <v-col class="pt-1 pb-3">
                             <div class="v-label v-label--active text-subtitle-1">
-                                {{ $t('Settings.WebcamsTab.FlipWebcam') }}
+                                {{ t('Settings.WebcamsTab.FlipWebcam') }}
                             </div>
                         </v-col>
                     </v-row>
                     <v-row class="mt-0">
                         <v-col class="py-0">
-                            <v-checkbox
-                                v-model="webcam.flip_horizontal"
-                                class="mt-1"
-                                hide-details
-                                :label="$t('Settings.WebcamsTab.Horizontally')" />
+                            <v-checkbox v-model="webcam.flip_horizontal" class="mt-1" hide-details :label="t('Settings.WebcamsTab.Horizontally')" />
                         </v-col>
                         <v-col class="py-0">
-                            <v-checkbox
-                                v-model="webcam.flip_vertical"
-                                class="mt-1"
-                                hide-details
-                                :label="$t('Settings.WebcamsTab.Vertically')" />
+                            <v-checkbox v-model="webcam.flip_vertical" class="mt-1" hide-details :label="t('Settings.WebcamsTab.Vertically')" />
                         </v-col>
                     </v-row>
                     <template v-if="nozzleCrosshairAvialable">
                         <v-row>
                             <v-col class="pt-3 pb-3">
-                                <div class="v-label v-label--active text-subtitle-1">
-                                    {{ $t('Settings.WebcamsTab.NozzleCrosshair') }}:
-                                </div>
+                                <div class="v-label v-label--active text-subtitle-1">{{ t('Settings.WebcamsTab.NozzleCrosshair') }}:</div>
                             </v-col>
                         </v-row>
                         <v-row class="mt-0">
                             <v-col class="py-0">
-                                <v-checkbox
-                                    v-model="nozzleCrosshair"
-                                    class="mt-1"
-                                    hide-details
-                                    :label="$t('Settings.WebcamsTab.Enable')" />
+                                <v-checkbox v-model="nozzleCrosshair" class="mt-1" hide-details :label="t('Settings.WebcamsTab.Enable')" />
                             </v-col>
                             <v-col v-if="nozzleCrosshair" class="py-0">
-                                <v-menu bottom left offset-y :close-on-content-click="false">
-                                    <template #activator="{ on, attrs }">
-                                        <v-btn
-                                            v-bind="attrs"
-                                            :color="nozzleCrosshairColor"
-                                            class="minwidth-0 px-5"
-                                            small
-                                            v-on="on" />
+                                <v-menu location="bottom start" :close-on-content-click="false">
+                                    <template #activator="{ props: activatorProps }">
+                                        <v-btn v-bind="activatorProps" :color="nozzleCrosshairColor" class="minwidth-0 px-5" size="small" />
                                     </template>
-                                    <v-color-picker
-                                        :value="nozzleCrosshairColor"
-                                        hide-mode-switch
-                                        mode="rgba"
-                                        @update:color="updateLogoColor" />
+                                    <v-color-picker :model-value="nozzleCrosshairColor" hide-mode-switch mode="rgba" @update:model-value="updateLogoColor" />
                                 </v-menu>
                                 <div class="v-label v-label--active text-subtitle-1 d-inline-block ml-2 mt-2">
-                                    {{ $t('Settings.WebcamsTab.Color') }}
+                                    {{ t('Settings.WebcamsTab.Color') }}
                                 </div>
                             </v-col>
                         </v-row>
                         <v-row v-if="nozzleCrosshair">
                             <v-col>
-                                <v-slider
-                                    v-model="nozzleCrosshairSize"
-                                    :max="1"
-                                    :min="0.01"
-                                    :step="0.01"
-                                    thumb-label
-                                    thumb-size="24"
-                                    hide-details
-                                    :label="$t('Settings.WebcamsTab.Size')" />
+                                <v-slider v-model="nozzleCrosshairSize" :max="1" :min="0.01" :step="0.01" thumb-label thumb-size="24" hide-details :label="t('Settings.WebcamsTab.Size')" />
                             </v-col>
                         </v-row>
                     </template>
@@ -210,320 +142,291 @@
             </v-row>
         </v-card-text>
         <v-card-actions class="d-flex justify-end">
-            <v-btn text @click="closeForm">{{ $t('Buttons.Cancel') }}</v-btn>
-            <v-btn color="primary" text type="submit" :disabled="!valid">{{ actionButtonText }}</v-btn>
+            <v-btn variant="text" @click="closeForm">{{ t('Buttons.Cancel') }}</v-btn>
+            <v-btn color="primary" variant="text" type="submit" :disabled="!valid">{{ actionButtonText }}</v-btn>
         </v-card-actions>
     </v-form>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop, Watch } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import SettingsRow from '@/components/settings/SettingsRow.vue'
-import { mdiDelete, mdiPencil, mdiMenuDown } from '@mdi/js'
-import WebcamMixin from '@/components/mixins/webcam'
-import { GuiWebcamStateWebcam } from '@/store/gui/webcams/types'
+<script setup lang="ts">
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { VForm } from 'vuetify/components'
+import { mdiMenuDown } from '@mdi/js'
+import WebcamWrapper from '@/components/webcams/WebcamWrapper.vue'
+import { useWebcam } from '@/composables/useWebcam'
+import { useGuiWebcamsStore } from '@/store/gui/webcams'
+import type { GuiWebcamStateWebcam } from '@/store/gui/webcams/types'
 
-@Component({
-    components: {
-        SettingsRow,
+const props = withDefaults(
+    defineProps<{
+        webcam: GuiWebcamStateWebcam
+        type?: 'create' | 'edit'
+    }>(),
+    { type: 'create' }
+)
+
+const emit = defineEmits<{
+    close: []
+}>()
+
+const { t } = useI18n()
+const { convertWebcamIcon } = useWebcam()
+const guiWebcamsStore = useGuiWebcamsStore()
+
+const webcamFormEl = ref<InstanceType<typeof VForm> | null>(null)
+
+const selectIcon = ref(false)
+const valid = ref(false)
+const oldWebcamName = ref('')
+
+const showPreviewWebcam = ref(false)
+const previewWebcam = ref<GuiWebcamStateWebcam>({} as GuiWebcamStateWebcam)
+let previewDebounce: ReturnType<typeof setTimeout> | null = null
+let observer: IntersectionObserver | null = null
+
+const rules = {
+    required: (value: string) => value !== '' || t('Settings.WebcamsTab.Required'),
+    unique: (value: string) => !existsWebcamName(value) || t('Settings.WebcamsTab.NameAlreadyExists'),
+    aspect: (value: string) => {
+        const match = value.toString().match(/^(\d+)\s*[:/]\s*(\d+)$/)
+        if (!match) return t('Settings.WebcamsTab.InvalidAspectRatio')
+
+        const width = parseInt(match[1])
+        const height = parseInt(match[2])
+
+        if (width < 1 || height < 1) return t('Settings.WebcamsTab.InvalidAspectRatio')
+
+        return true
+    },
+}
+
+const webcams = computed(() => guiWebcamsStore.webcams ?? [])
+
+const title = computed(() => (props.type === 'create' ? t('Settings.WebcamsTab.CreateWebcam') : t('Settings.WebcamsTab.EditWebcam')))
+
+const actionButtonText = computed(() => (props.type === 'create' ? t('Settings.WebcamsTab.SaveWebcam') : t('Settings.WebcamsTab.UpdateWebcam')))
+
+const rotationItems = computed(() => {
+    const options = [0, 90, 180, 270]
+
+    return options.map((value) => ({ value, text: `${value}°` }))
+})
+
+const rulesStreamUrl = computed(() => {
+    const rulesArray = []
+
+    if (props.webcam.service !== 'mjpegstreamer-adaptive') {
+        rulesArray.push(rules.required)
+    }
+
+    return rulesArray
+})
+
+const rulesSnapshotUrl = computed(() => {
+    const rulesArray = []
+
+    if (props.webcam.service === 'mjpegstreamer-adaptive') {
+        rulesArray.push(rules.required)
+    }
+
+    return rulesArray
+})
+
+const serviceItems = computed(() => [
+    { value: 'mjpegstreamer', text: t('Settings.WebcamsTab.Mjpegstreamer') },
+    { value: 'mjpegstreamer-adaptive', text: t('Settings.WebcamsTab.MjpegstreamerAdaptive') },
+    { value: 'uv4l-mjpeg', text: t('Settings.WebcamsTab.Uv4lMjpeg') },
+    { value: 'html-video', text: t('Settings.WebcamsTab.HtmlVideo') },
+    { value: 'iframe', text: t('Settings.WebcamsTab.HtmlIframe') },
+    { value: 'webrtc-camerastreamer', text: t('Settings.WebcamsTab.WebrtcCameraStreamer') },
+    { value: 'webrtc-go2rtc', text: t('Settings.WebcamsTab.WebrtcGo2rtc') },
+    { value: 'webrtc-mediamtx', text: t('Settings.WebcamsTab.WebrtcMediaMTX') },
+    { value: 'hlsstream', text: t('Settings.WebcamsTab.Hlsstream') },
+    { value: 'jmuxer-stream', text: t('Settings.WebcamsTab.JMuxerStream') },
+    { value: 'webrtc-janus', text: t('Settings.WebcamsTab.WebrtcJanus') },
+])
+
+const iconItems = computed(() => [
+    { value: 'mdiPrinter3d', text: t('Settings.WebcamsTab.IconPrinter') },
+    { value: 'mdiPrinter3dNozzle', text: t('Settings.WebcamsTab.IconNozzle') },
+    { value: 'mdiRadiatorDisabled', text: t('Settings.WebcamsTab.IconBed') },
+    { value: 'mdiWebcam', text: t('Settings.WebcamsTab.IconCam') },
+    { value: 'mdiAlbum', text: t('Settings.WebcamsTab.IconFilament') },
+    { value: 'mdiDoor', text: t('Settings.WebcamsTab.IconDoor') },
+    { value: 'mdiRaspberryPi', text: t('Settings.WebcamsTab.IconMcu') },
+    { value: 'mdiCampfire', text: t('Settings.WebcamsTab.IconHot') },
+])
+
+const classIconButtonArrow = computed(() => {
+    const classes = ['_transition']
+
+    if (selectIcon.value) classes.push('_rotate-180')
+
+    return classes
+})
+
+const hasTargetFps = computed(() => ['mjpegstreamer-adaptive', 'jmuxer-stream'].includes(props.webcam.service))
+
+const hasRotate = computed(() =>
+    [
+        'hlsstream',
+        'html-video',
+        'iframe',
+        'jmuxer-stream',
+        'mjpegstreamer',
+        'mjpegstreamer-adaptive',
+        'uv4l-mjpeg',
+        'webrtc-camerastreamer',
+        'webrtc-go2rtc',
+        'webrtc-janus',
+        'webrtc-mediamtx',
+    ].includes(props.webcam.service)
+)
+
+const hasFpsCounter = computed(() => ['mjpegstreamer', 'mjpegstreamer-adaptive'].includes(props.webcam.service))
+
+const hasAspectRatio = computed(() => ['iframe'].includes(props.webcam.service))
+
+const hasAudioOption = computed(() => ['webrtc-go2rtc'].includes(props.webcam.service))
+
+const hideFps = computed<boolean>({
+    get: () => props.webcam.extra_data?.hideFps ?? false,
+    set: (newVal) => {
+        if (!('extra_data' in props.webcam)) {
+            props.webcam.extra_data = { hideFps: newVal }
+            return
+        }
+
+        props.webcam.extra_data!.hideFps = newVal
     },
 })
-export default class WebcamForm extends Mixins(BaseMixin, WebcamMixin) {
-    mdiPencil = mdiPencil
-    mdiDelete = mdiDelete
-    mdiMenuDown = mdiMenuDown
 
-    @Prop({ type: Object, required: true }) private webcam!: GuiWebcamStateWebcam
-    @Prop({ type: String, default: 'create' }) readonly type!: 'create' | 'edit'
-
-    selectIcon = false
-    valid = false
-    oldWebcamName = ''
-
-    showPreviewWebcam = false
-    previewWebcam: GuiWebcamStateWebcam = {} as GuiWebcamStateWebcam
-    previewDebounce: ReturnType<typeof setTimeout> | null = null
-
-    rules = {
-        required: (value: string) => value !== '' || this.$t('Settings.WebcamsTab.Required'),
-        unique: (value: string) => !this.existsWebcamName(value) || this.$t('Settings.WebcamsTab.NameAlreadyExists'),
-        aspect: (value: string) => {
-            const match = value.toString().match(/^(\d+)\s*[:/]\s*(\d+)$/)
-            if (!match) return this.$t('Settings.WebcamsTab.InvalidAspectRatio')
-
-            const width = parseInt(match[1])
-            const height = parseInt(match[2])
-
-            if (width < 1 || height < 1) return this.$t('Settings.WebcamsTab.InvalidAspectRatio')
-
-            return true
-        },
-    }
-
-    get webcams() {
-        return this.$store.state.gui.webcams?.webcams ?? []
-    }
-
-    get title() {
-        if (this.type === 'create') return this.$t('Settings.WebcamsTab.CreateWebcam')
-
-        return this.$t('Settings.WebcamsTab.EditWebcam')
-    }
-
-    get actionButtonText() {
-        if (this.type === 'create') return this.$t('Settings.WebcamsTab.SaveWebcam')
-
-        return this.$t('Settings.WebcamsTab.UpdateWebcam')
-    }
-
-    get rotationItems() {
-        const options = [0, 90, 180, 270]
-        const output: { value: number; text: string }[] = []
-
-        options.forEach((value: number) => {
-            output.push({ value, text: `${value}°` })
-        })
-
-        return output
-    }
-
-    get rulesStreamUrl() {
-        const rules = []
-
-        if (this.webcam.service !== 'mjpegstreamer-adaptive') {
-            rules.push(this.rules.required)
-        }
-
-        return rules
-    }
-
-    get rulesSnapshotUrl() {
-        const rules = []
-
-        if (this.webcam.service === 'mjpegstreamer-adaptive') {
-            rules.push(this.rules.required)
-        }
-
-        return rules
-    }
-
-    get serviceItems() {
-        return [
-            { value: 'mjpegstreamer', text: this.$t('Settings.WebcamsTab.Mjpegstreamer') },
-            { value: 'mjpegstreamer-adaptive', text: this.$t('Settings.WebcamsTab.MjpegstreamerAdaptive') },
-            { value: 'uv4l-mjpeg', text: this.$t('Settings.WebcamsTab.Uv4lMjpeg') },
-            { value: 'html-video', text: this.$t('Settings.WebcamsTab.HtmlVideo') },
-            { value: 'iframe', text: this.$t('Settings.WebcamsTab.HtmlIframe') },
-            { value: 'webrtc-camerastreamer', text: this.$t('Settings.WebcamsTab.WebrtcCameraStreamer') },
-            { value: 'webrtc-go2rtc', text: this.$t('Settings.WebcamsTab.WebrtcGo2rtc') },
-            { value: 'webrtc-mediamtx', text: this.$t('Settings.WebcamsTab.WebrtcMediaMTX') },
-            { value: 'hlsstream', text: this.$t('Settings.WebcamsTab.Hlsstream') },
-            { value: 'jmuxer-stream', text: this.$t('Settings.WebcamsTab.JMuxerStream') },
-            { value: 'webrtc-janus', text: this.$t('Settings.WebcamsTab.WebrtcJanus') },
-        ]
-    }
-
-    get iconItems() {
-        return [
-            { value: 'mdiPrinter3d', text: this.$t('Settings.WebcamsTab.IconPrinter') },
-            { value: 'mdiPrinter3dNozzle', text: this.$t('Settings.WebcamsTab.IconNozzle') },
-            { value: 'mdiRadiatorDisabled', text: this.$t('Settings.WebcamsTab.IconBed') },
-            { value: 'mdiWebcam', text: this.$t('Settings.WebcamsTab.IconCam') },
-            { value: 'mdiAlbum', text: this.$t('Settings.WebcamsTab.IconFilament') },
-            { value: 'mdiDoor', text: this.$t('Settings.WebcamsTab.IconDoor') },
-            { value: 'mdiRaspberryPi', text: this.$t('Settings.WebcamsTab.IconMcu') },
-            { value: 'mdiCampfire', text: this.$t('Settings.WebcamsTab.IconHot') },
-        ]
-    }
-
-    get classIconButtonArrow() {
-        const classes = ['_transition']
-
-        if (this.selectIcon) classes.push('_rotate-180')
-
-        return classes
-    }
-
-    get hasTargetFps() {
-        return ['mjpegstreamer-adaptive', 'jmuxer-stream'].includes(this.webcam.service)
-    }
-
-    get hasRotate() {
-        return [
-            'hlsstream',
-            'html-video',
-            'iframe',
-            'jmuxer-stream',
-            'mjpegstreamer',
-            'mjpegstreamer-adaptive',
-            'uv4l-mjpeg',
-            'webrtc-camerastreamer',
-            'webrtc-go2rtc',
-            'webrtc-janus',
-            'webrtc-mediamtx',
-        ].includes(this.webcam.service)
-    }
-
-    get hasFpsCounter() {
-        return ['mjpegstreamer', 'mjpegstreamer-adaptive'].includes(this.webcam.service)
-    }
-
-    get hasAspectRatio() {
-        return ['iframe'].includes(this.webcam.service)
-    }
-
-    get hasAudioOption() {
-        return ['webrtc-go2rtc'].includes(this.webcam.service)
-    }
-
-    get hideFps() {
-        return this.webcam.extra_data?.hideFps ?? false
-    }
-
-    set hideFps(newVal) {
-        if (!('extra_data' in this.webcam)) {
-            this.webcam.extra_data = {
-                hideFps: newVal,
-            }
-
+const enableAudio = computed<boolean>({
+    get: () => props.webcam.extra_data?.enableAudio ?? false,
+    set: (newVal) => {
+        if (!('extra_data' in props.webcam)) {
+            props.webcam.extra_data = { enableAudio: newVal }
             return
         }
 
-        this.webcam.extra_data!.hideFps = newVal
-    }
+        props.webcam.extra_data!.enableAudio = newVal
+    },
+})
 
-    get enableAudio() {
-        return this.webcam.extra_data?.enableAudio ?? false
-    }
+const nozzleCrosshairAvialable = computed(() => ['mjpegstreamer', 'mjpegstreamer-adaptive', 'webrtc-camerastreamer'].includes(props.webcam.service))
 
-    set enableAudio(newVal) {
-        if (!('extra_data' in this.webcam)) {
-            this.webcam.extra_data = {
-                enableAudio: newVal,
-            }
-
-            return
-        }
-
-        this.webcam.extra_data!.enableAudio = newVal
-    }
-
-    get nozzleCrosshairAvialable() {
-        return ['mjpegstreamer', 'mjpegstreamer-adaptive', 'webrtc-camerastreamer'].includes(this.webcam.service)
-    }
-
-    get nozzleCrosshair() {
-        return this.webcam.extra_data?.nozzleCrosshair ?? false
-    }
-
-    set nozzleCrosshair(newVal) {
-        const extraData = { ...(this.webcam.extra_data ?? {}) }
+const nozzleCrosshair = computed<boolean>({
+    get: () => props.webcam.extra_data?.nozzleCrosshair ?? false,
+    set: (newVal) => {
+        const extraData = { ...(props.webcam.extra_data ?? {}) }
         extraData.nozzleCrosshair = newVal
 
-        this.webcam.extra_data = extraData
-    }
+        props.webcam.extra_data = extraData
+    },
+})
 
-    get nozzleCrosshairColor() {
-        return this.webcam.extra_data?.nozzleCrosshairColor ?? '#ff0000'
-    }
-
-    set nozzleCrosshairColor(newVal: string) {
-        const extraData = { ...(this.webcam.extra_data ?? {}) }
+const nozzleCrosshairColor = computed<string>({
+    get: () => props.webcam.extra_data?.nozzleCrosshairColor ?? '#ff0000',
+    set: (newVal) => {
+        const extraData = { ...(props.webcam.extra_data ?? {}) }
         extraData.nozzleCrosshairColor = newVal
 
-        this.webcam.extra_data = extraData
+        props.webcam.extra_data = extraData
+    },
+})
+
+function updateLogoColor(color: string | { hex: string }) {
+    if (typeof color === 'object') {
+        nozzleCrosshairColor.value = color.hex
+        return
     }
 
-    updateLogoColor(color: string | { hex: string }) {
-        if (typeof color === 'object') {
-            this.nozzleCrosshairColor = color.hex
-            return
-        }
+    nozzleCrosshairColor.value = color
+}
 
-        this.nozzleCrosshairColor = color
-    }
-
-    get nozzleCrosshairSize() {
-        return this.webcam.extra_data?.nozzleCrosshairSize ?? 0.1
-    }
-
-    set nozzleCrosshairSize(newVal: number) {
-        const extraData = { ...(this.webcam.extra_data ?? {}) }
+const nozzleCrosshairSize = computed<number>({
+    get: () => props.webcam.extra_data?.nozzleCrosshairSize ?? 0.1,
+    set: (newVal) => {
+        const extraData = { ...(props.webcam.extra_data ?? {}) }
         extraData.nozzleCrosshairSize = newVal
 
-        this.webcam.extra_data = extraData
-    }
+        props.webcam.extra_data = extraData
+    },
+})
 
-    mounted() {
-        this.oldWebcamName = this.webcam.name
-        this.previewWebcam = this.cloneWebcam(this.webcam)
-    }
-
-    beforeDestroy() {
-        if (this.previewDebounce) clearTimeout(this.previewDebounce)
-    }
-
-    cloneWebcam(webcam: GuiWebcamStateWebcam): GuiWebcamStateWebcam {
-        return JSON.parse(JSON.stringify(webcam))
-    }
-
-    @Watch('webcam', { deep: true })
-    onWebcamChanged() {
-        if (this.previewDebounce) clearTimeout(this.previewDebounce)
-
-        this.previewDebounce = setTimeout(() => {
-            this.previewWebcam = this.cloneWebcam(this.webcam)
-        }, 500)
-    }
-
-    existsWebcamName(name: string) {
-        name = name.toLowerCase().trim()
-
-        const count =
-            this.webcams.find((webcam: GuiWebcamStateWebcam) => webcam.name.toLowerCase().trim() === name)?.length ?? 0
-
-        // If we are creating a new webcam, we only want to check if the name already exists
-        if (this.type === 'create') return count !== 0
-
-        // If we are editing a webcam, we want to check if the name only exists once (the one we are editing)
-        return count >= 1
-    }
-
-    visibilityChanged(newVal: boolean) {
-        this.showPreviewWebcam = newVal
-    }
-
-    submit() {
-        if (this.type === 'create') {
-            this.save()
-            return
-        }
-
-        this.update()
-    }
-
-    async save() {
-        await this.$store.dispatch('gui/webcams/store', this.webcam)
-        this.$emit('close')
-    }
-
-    async update() {
-        await this.$store.dispatch('gui/webcams/update', { webcam: this.webcam, oldWebcamName: this.oldWebcamName })
-        this.$emit('close')
-    }
-
-    closeForm() {
-        this.$emit('close')
-    }
+function cloneWebcam(webcam: GuiWebcamStateWebcam): GuiWebcamStateWebcam {
+    return JSON.parse(JSON.stringify(webcam))
 }
+
+watch(
+    () => props.webcam,
+    () => {
+        if (previewDebounce) clearTimeout(previewDebounce)
+
+        previewDebounce = setTimeout(() => {
+            previewWebcam.value = cloneWebcam(props.webcam)
+        }, 500)
+    },
+    { deep: true }
+)
+
+function existsWebcamName(name: string) {
+    name = name.toLowerCase().trim()
+
+    const count = webcams.value.filter((webcam: GuiWebcamStateWebcam) => webcam.name.toLowerCase().trim() === name).length ?? 0
+
+    // If we are creating a new webcam, we only want to check if the name already exists
+    if (props.type === 'create') return count !== 0
+
+    // If we are editing a webcam, we want to check if the name only exists once (the one we are editing)
+    return count >= 1
+}
+
+function submit() {
+    if (props.type === 'create') {
+        save()
+        return
+    }
+
+    update()
+}
+
+function save() {
+    guiWebcamsStore.store(props.webcam)
+    emit('close')
+}
+
+function update() {
+    guiWebcamsStore.update({ webcam: props.webcam, oldWebcamName: oldWebcamName.value })
+    emit('close')
+}
+
+function closeForm() {
+    emit('close')
+}
+
+onMounted(() => {
+    oldWebcamName.value = props.webcam.name
+    previewWebcam.value = cloneWebcam(props.webcam)
+
+    observer = new IntersectionObserver((entries) => {
+        showPreviewWebcam.value = entries[0]?.isIntersecting ?? false
+    })
+    if (webcamFormEl.value?.$el) observer.observe(webcamFormEl.value.$el)
+})
+
+onBeforeUnmount(() => {
+    observer?.disconnect()
+    if (previewDebounce) clearTimeout(previewDebounce)
+})
 </script>
 
 <style scoped>
-::v-deep ._transition svg {
+:deep(._transition svg) {
     transition: transform 500ms;
 }
-::v-deep ._rotate-180 svg {
+:deep(._rotate-180 svg) {
     transform: rotate(180deg);
 }
 
@@ -545,7 +448,7 @@ export default class WebcamForm extends Mixins(BaseMixin, WebcamMixin) {
     }
 }
 
-._webcam-settings-name-field ::v-deep .v-text-field__details {
+._webcam-settings-name-field :deep(.v-text-field__details) {
     margin-bottom: -12px !important;
 }
 </style>

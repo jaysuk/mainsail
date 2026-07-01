@@ -1,57 +1,52 @@
 <template>
     <settings-row :title="outputName" :dynamic-slot-width="true">
-        <v-btn v-if="chainCount > 1" small outlined class="ml-3" @click="openGroups">
-            <v-icon left small>{{ mdiPencil }}</v-icon>
-            {{ $t('Settings.MiscellaneousTab.Groups') }}
+        <v-btn v-if="chainCount > 1" size="small" variant="outlined" class="ml-3" @click="openGroups">
+            <v-icon start size="small">{{ mdiPencil }}</v-icon>
+            {{ t('Settings.MiscellaneousTab.Groups') }}
         </v-btn>
-        <v-btn small outlined class="ml-3" @click="openPresets">
-            <v-icon left small>{{ mdiPalette }}</v-icon>
-            {{ $t('Settings.MiscellaneousTab.Presets') }}
+        <v-btn size="small" variant="outlined" class="ml-3" @click="openPresets">
+            <v-icon start size="small">{{ mdiPalette }}</v-icon>
+            {{ t('Settings.MiscellaneousTab.Presets') }}
         </v-btn>
     </settings-row>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '../../mixins/base'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import SettingsRow from '@/components/settings/SettingsRow.vue'
 import { mdiPalette, mdiPencil } from '@mdi/js'
 import { convertName } from '@/plugins/helpers'
-import MiscellaneousMixin from '@/components/mixins/miscellaneous'
+import { usePrinterStore } from '@/store/printer'
 
-@Component({
-    components: { SettingsRow },
+const props = defineProps<{
+    type: string
+    name: string
+}>()
+
+const emit = defineEmits<{
+    'open-page': [payload: { page: string; type: string; name: string }]
+}>()
+
+const { t } = useI18n()
+const printerStore = usePrinterStore()
+
+const outputName = computed(() => convertName(props.name))
+
+const settings = computed(() => {
+    const key = `${props.type.toLowerCase()} ${props.name.toLowerCase()}`
+    const settings = printerStore.configfile?.settings ?? {}
+
+    return settings[key] ?? {}
 })
-export default class SettingsMiscellaneousTabListLight extends Mixins(BaseMixin, MiscellaneousMixin) {
-    mdiPalette = mdiPalette
-    mdiPencil = mdiPencil
 
-    convertName = convertName
+const chainCount = computed(() => settings.value.chain_count ?? 1)
 
-    @Prop({ type: String, required: true }) readonly type!: string
-    @Prop({ type: String, required: true }) readonly name!: string
+function openGroups() {
+    emit('open-page', { page: 'groups', type: props.type, name: props.name })
+}
 
-    get outputName() {
-        return this.convertName(this.name)
-    }
-
-    get settings() {
-        const key = `${this.type.toLowerCase()} ${this.name.toLowerCase()}`
-        const settings = this.$store.state.printer.configfile?.settings ?? {}
-
-        return settings[key] ?? {}
-    }
-
-    get chainCount() {
-        return this.settings.chain_count ?? 1
-    }
-
-    openGroups() {
-        this.$emit('open-page', { page: 'groups', type: this.type, name: this.name })
-    }
-
-    openPresets() {
-        this.$emit('open-page', { page: 'presets', type: this.type, name: this.name })
-    }
+function openPresets() {
+    emit('open-page', { page: 'presets', type: props.type, name: props.name })
 }
 </script>
