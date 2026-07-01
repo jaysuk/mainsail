@@ -15,53 +15,25 @@
                             'col-4': el.is.xsmall || el.is.medium,
                             'col-3': el.is.large,
                         }"
-                        class="v-subheader text--secondary mr-2">
-                        <v-icon small class="mr-1">{{ mdiCrosshairsGps }}</v-icon>
-                        <span v-if="!el.is.xsmall" class="text-no-wrap">
-                            {{ $t('Panels.ToolheadControlPanel.Position') }}:&nbsp;
-                        </span>
+                        class="v-subheader text-medium-emphasis mr-2">
+                        <v-icon size="small" class="mr-1">{{ mdiCrosshairsGps }}</v-icon>
+                        <span v-if="!el.is.xsmall" class="text-no-wrap"> {{ t('Panels.ToolheadControlPanel.Position') }}:&nbsp; </span>
                         <span class="text-no-wrap">{{ displayPositionAbsolute }}</span>
                     </v-col>
-                    <v-col
-                        v-if="currentProfileName"
-                        class="v-subheader text--secondary pl-2 justify-end text-no-wrap text-truncate">
-                        <v-icon small class="mr-1">{{ mdiGrid }}</v-icon>
+                    <v-col v-if="currentProfileName" class="v-subheader text-medium-emphasis pl-2 justify-end text-no-wrap text-truncate">
+                        <v-icon size="small" class="mr-1">{{ mdiGrid }}</v-icon>
                         <span class="text-no-wrap text-truncate">{{ currentProfileName }}</span>
                     </v-col>
                 </v-row>
                 <v-row v-if="showCoordinates" dense>
                     <v-col :class="el.is.xsmall ? 'col-12' : 'col-4'">
-                        <move-to-input
-                            v-model="input.x.pos"
-                            :label="livePositions.x"
-                            :suffix="'X'"
-                            :step="0.01"
-                            :current-pos="gcodePositions.x"
-                            :readonly="['printing'].includes(printer_state)"
-                            :disabled="!xAxisHomed"
-                            @submit="sendCmd" />
+                        <move-to-input v-model="input.x.pos" :label="livePositions.x" :suffix="'X'" :step="0.01" :current-pos="gcodePositions.x" :readonly="['printing'].includes(printer_state)" :disabled="!xAxisHomed" @submit="sendCmd" />
                     </v-col>
                     <v-col :class="el.is.xsmall ? 'col-12' : 'col-4'">
-                        <move-to-input
-                            v-model="input.y.pos"
-                            :label="livePositions.y"
-                            :suffix="'Y'"
-                            :step="0.01"
-                            :current-pos="gcodePositions.y"
-                            :readonly="['printing'].includes(printer_state)"
-                            :disabled="!yAxisHomed"
-                            @submit="sendCmd" />
+                        <move-to-input v-model="input.y.pos" :label="livePositions.y" :suffix="'Y'" :step="0.01" :current-pos="gcodePositions.y" :readonly="['printing'].includes(printer_state)" :disabled="!yAxisHomed" @submit="sendCmd" />
                     </v-col>
                     <v-col :class="el.is.xsmall ? 'col-12' : 'col-4'">
-                        <move-to-input
-                            v-model="input.z.pos"
-                            :label="livePositions.z"
-                            :suffix="'Z'"
-                            :step="0.001"
-                            :current-pos="gcodePositions.z"
-                            :readonly="['printing'].includes(printer_state)"
-                            :disabled="!zAxisHomed"
-                            @submit="sendCmd" />
+                        <move-to-input v-model="input.z.pos" :label="livePositions.z" :suffix="'Z'" :step="0.001" :current-pos="gcodePositions.z" :readonly="['printing'].includes(printer_state)" :disabled="!zAxisHomed" @submit="sendCmd" />
                     </v-col>
                 </v-row>
             </template>
@@ -69,153 +41,136 @@
     </v-container>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Watch } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import ControlMixin from '@/components/mixins/control'
+<script setup lang="ts">
+import { reactive, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import MoveToInput from '@/components/inputs/MoveToInput.vue'
 import Responsive from '@/components/ui/Responsive.vue'
 import { mdiCrosshairsGps, mdiGrid } from '@mdi/js'
+import { useBase } from '@/composables/useBase'
+import { useControl } from '@/composables/useControl'
+import { usePrinterStore } from '@/store/printer'
+import { useGuiStore } from '@/store/gui'
+import { useServerStore } from '@/store/server'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
 interface MoveToAxisInput {
     pos: string
     valid: boolean
 }
 
-interface MoveToInputs {
-    x: MoveToAxisInput
-    y: MoveToAxisInput
-    z: MoveToAxisInput
-}
+const { t } = useI18n()
+const { printer_state } = useBase()
+const { xAxisHomed, yAxisHomed, zAxisHomed, existsClientLinearMoveMacro, feedrateXY, feedrateZ } = useControl()
+const printerStore = usePrinterStore()
+const guiStore = useGuiStore()
 
-@Component({
-    components: { MoveToInput, Responsive },
+const input = reactive<{ x: MoveToAxisInput; y: MoveToAxisInput; z: MoveToAxisInput }>({
+    x: { pos: '', valid: true },
+    y: { pos: '', valid: true },
+    z: { pos: '', valid: true },
 })
-export default class MoveToControl extends Mixins(BaseMixin, ControlMixin) {
-    mdiCrosshairsGps = mdiCrosshairsGps
-    mdiGrid = mdiGrid
 
-    input: MoveToInputs = {
-        x: { pos: '', valid: true },
-        y: { pos: '', valid: true },
-        z: { pos: '', valid: true },
+/**
+ * Axes positions and positioning mode (G90 / G91)
+ */
+const positionAbsolute = computed(() => printerStore.gcode_move?.absolute_coordinates ?? true)
+
+const displayPositionAbsolute = computed(() => (positionAbsolute.value ? t('Panels.ToolheadControlPanel.Absolute') : t('Panels.ToolheadControlPanel.Relative')))
+
+const livePositions = computed(() => {
+    const pos = printerStore.motion_report?.live_position ?? [0, 0, 0]
+    return {
+        x: pos[0]?.toFixed(2) ?? '--',
+        y: pos[1]?.toFixed(2) ?? '--',
+        z: pos[2]?.toFixed(3) ?? '--',
+    }
+})
+
+const gcodePositions = computed(() => {
+    const pos = printerStore.gcode_move?.gcode_position ?? [0, 0, 0]
+    return {
+        x: pos[0]?.toFixed(2) ?? '--',
+        y: pos[1]?.toFixed(2) ?? '--',
+        z: pos[2]?.toFixed(3) ?? '--',
+    }
+})
+
+/**
+ * Get currently loaded bed mesh profile name
+ */
+const bed_mesh = computed(() => printerStore.bed_mesh ?? null)
+
+const currentProfileName = computed(() => bed_mesh.value?.profile_name ?? '')
+
+const showPosition = computed(() => guiStore.view.toolhead.showPosition ?? true)
+const showCoordinates = computed(() => guiStore.view.toolhead.showCoordinates ?? true)
+const showControl = computed(() => guiStore.view.toolhead.showControl ?? true)
+
+const containerClass = computed(() => (showControl.value ? 'pb-0' : ''))
+
+function sendCmd(): void {
+    const gcode: string[] = []
+    if (!existsClientLinearMoveMacro.value) {
+        gcode.push('SAVE_GCODE_STATE NAME=_ui_movement')
+        gcode.push('G90')
     }
 
-    @Watch('gcodePositions.x', { immediate: true })
-    updatePositionX(newVal: string): void {
-        this.input.x.pos = newVal
+    if (input.z.pos !== gcodePositions.value.z) {
+        if (existsClientLinearMoveMacro.value) gcode.push(`_CLIENT_LINEAR_MOVE Z=${input.z.pos} F=${feedrateZ.value * 60} ABSOLUTE=1`)
+        else gcode.push(`G1 Z${input.z.pos} F${feedrateZ.value * 60}`)
     }
 
-    @Watch('gcodePositions.y', { immediate: true })
-    updatePositionY(newVal: string): void {
-        this.input.y.pos = newVal
-    }
+    if (input.x.pos !== gcodePositions.value.x || input.y.pos !== gcodePositions.value.y) {
+        let xPos = ''
+        let yPos = ''
 
-    @Watch('gcodePositions.z', { immediate: true })
-    updatePositionZ(newVal: string): void {
-        this.input.z.pos = newVal
-    }
+        if (existsClientLinearMoveMacro.value) {
+            if (input.x.pos !== gcodePositions.value.x) xPos = ` X=${input.x.pos}`
+            if (input.y.pos !== gcodePositions.value.y) yPos = ` Y=${input.y.pos}`
 
-    /**
-     * Axes positions and positioning mode (G90 / G91)
-     */
-    get displayPositionAbsolute() {
-        return this.positionAbsolute
-            ? this.$t('Panels.ToolheadControlPanel.Absolute')
-            : this.$t('Panels.ToolheadControlPanel.Relative')
-    }
+            gcode.push(`_CLIENT_LINEAR_MOVE${xPos}${yPos} F=${feedrateXY.value * 60} ABSOLUTE=1`)
+        } else {
+            if (input.x.pos !== gcodePositions.value.x) xPos = ` X${input.x.pos}`
+            if (input.y.pos !== gcodePositions.value.y) yPos = ` Y${input.y.pos}`
 
-    get positionAbsolute() {
-        return this.$store.state.printer.gcode_move?.absolute_coordinates ?? true
-    }
-
-    get livePositions() {
-        const pos = this.$store.state.printer.motion_report?.live_position ?? [0, 0, 0]
-        return {
-            x: pos[0]?.toFixed(2) ?? '--',
-            y: pos[1]?.toFixed(2) ?? '--',
-            z: pos[2]?.toFixed(3) ?? '--',
+            gcode.push(`G1${xPos}${yPos} F${feedrateXY.value * 60}`)
         }
     }
 
-    get gcodePositions() {
-        const pos = this.$store.state.printer.gcode_move?.gcode_position ?? [0, 0, 0]
-        return {
-            x: pos[0]?.toFixed(2) ?? '--',
-            y: pos[1]?.toFixed(2) ?? '--',
-            z: pos[2]?.toFixed(3) ?? '--',
-        }
+    if (!existsClientLinearMoveMacro.value) {
+        gcode.push('RESTORE_GCODE_STATE NAME=_ui_movement')
     }
 
-    /**
-     * Get currently loaded bed mesh profile name
-     */
-    get bed_mesh() {
-        return this.$store.state.printer.bed_mesh ?? null
-    }
+    const gcodeStr = gcode.join('\n')
 
-    get currentProfileName() {
-        return this.bed_mesh?.profile_name ?? ''
-    }
-
-    get showPosition() {
-        return this.$store.state.gui.view.toolhead.showPosition ?? true
-    }
-
-    get showCoordinates() {
-        return this.$store.state.gui.view.toolhead.showCoordinates ?? true
-    }
-
-    get showControl() {
-        return this.$store.state.gui.view.toolhead.showControl ?? true
-    }
-
-    get containerClass() {
-        return this.showControl ? 'pb-0' : ''
-    }
-
-    sendCmd(): void {
-        const gcode: string[] = []
-        if (!this.existsClientLinearMoveMacro) {
-            gcode.push('SAVE_GCODE_STATE NAME=_ui_movement')
-            gcode.push('G90')
-        }
-
-        if (this.input.z.pos !== this.gcodePositions.z) {
-            if (this.existsClientLinearMoveMacro)
-                gcode.push(`_CLIENT_LINEAR_MOVE Z=${this.input.z.pos} F=${this.feedrateZ * 60} ABSOLUTE=1`)
-            else gcode.push(`G1 Z${this.input.z.pos} F${this.feedrateZ * 60}`)
-        }
-
-        if (this.input.x.pos !== this.gcodePositions.x || this.input.y.pos !== this.gcodePositions.y) {
-            let xPos = ''
-            let yPos = ''
-
-            if (this.existsClientLinearMoveMacro) {
-                if (this.input.x.pos !== this.gcodePositions.x) xPos = ` X=${this.input.x.pos}`
-                if (this.input.y.pos !== this.gcodePositions.y) yPos = ` Y=${this.input.y.pos}`
-
-                gcode.push(`_CLIENT_LINEAR_MOVE${xPos}${yPos} F=${this.feedrateXY * 60} ABSOLUTE=1`)
-            } else {
-                if (this.input.x.pos !== this.gcodePositions.x) xPos = ` X${this.input.x.pos}`
-                if (this.input.y.pos !== this.gcodePositions.y) yPos = ` Y${this.input.y.pos}`
-
-                gcode.push(`G1${xPos}${yPos} F${this.feedrateXY * 60}`)
-            }
-        }
-
-        if (!this.existsClientLinearMoveMacro) {
-            gcode.push('RESTORE_GCODE_STATE NAME=_ui_movement')
-        }
-
-        const gcodeStr = gcode.join('\n')
-
-        if (this.input.x.valid && this.input.y.valid && this.input.z.valid) {
-            this.$store.dispatch('server/addEvent', { message: gcodeStr, type: 'command' })
-            this.$socket.emit('printer.gcode.script', { script: gcodeStr })
-        }
-
-        return
+    if (input.x.valid && input.y.valid && input.z.valid) {
+        useServerStore().addEvent({ message: gcodeStr, type: 'command' })
+        webSocketClient.emit('printer.gcode.script', { script: gcodeStr })
     }
 }
+
+watch(
+    () => gcodePositions.value.x,
+    (newVal) => {
+        input.x.pos = newVal
+    },
+    { immediate: true }
+)
+
+watch(
+    () => gcodePositions.value.y,
+    (newVal) => {
+        input.y.pos = newVal
+    },
+    { immediate: true }
+)
+
+watch(
+    () => gcodePositions.value.z,
+    (newVal) => {
+        input.z.pos = newVal
+    },
+    { immediate: true }
+)
 </script>

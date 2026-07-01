@@ -3,52 +3,21 @@
         <!-- HOME ALL / ACTION BUTTON -->
         <v-row no-gutters>
             <v-col class="col-12 pb-0 text-center">
-                <v-btn
-                    small
-                    :disabled="['printing'].includes(printer_state)"
-                    :loading="loadings.includes('homeAll')"
-                    :color="homedAxes.includes('xyz') ? 'primary' : 'warning'"
-                    @click="doHome">
+                <v-btn size="small" :disabled="['printing'].includes(printer_state)" :loading="loadings.includes('homeAll')" :color="homedAxes.includes('xyz') ? 'primary' : 'warning'" @click="doHome">
                     <v-icon class="mr-1">{{ mdiHome }}</v-icon>
-                    {{ $t('Panels.ToolheadControlPanel.ALL') }}
+                    {{ t('Panels.ToolheadControlPanel.ALL') }}
                 </v-btn>
-                <v-btn
-                    v-if="enableXYHoming"
-                    :disabled="['printing'].includes(printer_state)"
-                    :loading="loadings.includes('homeAll')"
-                    :color="homedAxes.includes('xy') ? 'primary' : 'warning'"
-                    small
-                    class="ml-2"
-                    @click="doHomeXY">
+                <v-btn v-if="enableXYHoming" :disabled="['printing'].includes(printer_state)" :loading="loadings.includes('homeAll')" :color="homedAxes.includes('xy') ? 'primary' : 'warning'" size="small" class="ml-2" @click="doHomeXY">
                     <v-icon class="mr-1">{{ mdiHome }}</v-icon>
                     XY
                 </v-btn>
-                <v-btn
-                    v-if="existsQGL"
-                    :disabled="['printing'].includes(printer_state)"
-                    small
-                    :loading="loadings.includes('qgl')"
-                    :color="colorQuadGantryLevel"
-                    class="ml-2"
-                    @click="doQGL">
-                    {{ $t('Panels.ToolheadControlPanel.QGL') }}
+                <v-btn v-if="existsQGL" :disabled="['printing'].includes(printer_state)" size="small" :loading="loadings.includes('qgl')" :color="colorQuadGantryLevel" class="ml-2" @click="doQGL">
+                    {{ t('Panels.ToolheadControlPanel.QGL') }}
                 </v-btn>
-                <v-btn
-                    v-if="existsZtilt"
-                    :disabled="['printing'].includes(printer_state)"
-                    small
-                    :loading="loadings.includes('zTilt')"
-                    :color="colorZTilt"
-                    class="ml-2"
-                    @click="doZtilt">
-                    {{ $t('Panels.ToolheadControlPanel.ZTilt') }}
+                <v-btn v-if="existsZtilt" :disabled="['printing'].includes(printer_state)" size="small" :loading="loadings.includes('zTilt')" :color="colorZTilt" class="ml-2" @click="doZtilt">
+                    {{ t('Panels.ToolheadControlPanel.ZTilt') }}
                 </v-btn>
-                <v-btn
-                    small
-                    :disabled="['printing'].includes(printer_state)"
-                    :color="homedAxes !== '' ? 'primary' : 'warning'"
-                    class="ml-2"
-                    @click="doSend('M84')">
+                <v-btn size="small" :disabled="['printing'].includes(printer_state)" :color="homedAxes !== '' ? 'primary' : 'warning'" class="ml-2" @click="doSend('M84')">
                     <v-icon>{{ mdiEngineOff }}</v-icon>
                 </v-btn>
             </v-col>
@@ -57,28 +26,13 @@
         <v-row dense>
             <v-col class="text-center">
                 <v-item-group class="_btn-group row no-gutters">
-                    <v-btn
-                        v-for="steps of stepsXYsorted"
-                        :key="'x-' + steps"
-                        :disabled="['printing'].includes(printer_state)"
-                        class="btnMinWidthAuto col btnGroup"
-                        @click="doSendMove('X-' + steps, feedrateXY)">
+                    <v-btn v-for="steps of stepsXYsorted" :key="'x-' + steps" :disabled="['printing'].includes(printer_state)" class="btnMinWidthAuto col btnGroup" @click="doSendMove('X-' + steps, feedrateXY)">
                         <span class="body-2">–{{ steps }}</span>
                     </v-btn>
-                    <v-btn
-                        :disabled="['printing'].includes(printer_state)"
-                        :color="homedAxes.includes('x') ? 'primary' : 'warning'"
-                        :loading="loadings.includes('homeX')"
-                        class="font-weight-bold btnHomeAxis btnGroup"
-                        @click="doHomeX">
+                    <v-btn :disabled="['printing'].includes(printer_state)" :color="homedAxes.includes('x') ? 'primary' : 'warning'" :loading="loadings.includes('homeX')" class="font-weight-bold btnHomeAxis btnGroup" @click="doHomeX">
                         X
                     </v-btn>
-                    <v-btn
-                        v-for="steps of stepsXYsortedReverse"
-                        :key="'x+' + steps"
-                        :disabled="['printing'].includes(printer_state)"
-                        class="btnMinWidthAuto col btnGroup"
-                        @click="doSendMove('X+' + steps, feedrateXY)">
+                    <v-btn v-for="steps of stepsXYsortedReverse" :key="'x+' + steps" :disabled="['printing'].includes(printer_state)" class="btnMinWidthAuto col btnGroup" @click="doSendMove('X+' + steps, feedrateXY)">
                         <span class="body-2">+{{ steps }}</span>
                     </v-btn>
                 </v-item-group>
@@ -88,28 +42,13 @@
         <v-row dense>
             <v-col class="text-center">
                 <v-item-group class="_btn-group row no-gutters">
-                    <v-btn
-                        v-for="steps of stepsXYsorted"
-                        :key="'y-' + steps"
-                        :disabled="['printing'].includes(printer_state)"
-                        class="btnMinWidthAuto col btnGroup"
-                        @click="doSendMove('Y-' + steps, feedrateXY)">
+                    <v-btn v-for="steps of stepsXYsorted" :key="'y-' + steps" :disabled="['printing'].includes(printer_state)" class="btnMinWidthAuto col btnGroup" @click="doSendMove('Y-' + steps, feedrateXY)">
                         <span class="body-2">–{{ steps }}</span>
                     </v-btn>
-                    <v-btn
-                        :disabled="['printing'].includes(printer_state)"
-                        :color="homedAxes.includes('y') ? 'primary' : 'warning'"
-                        :loading="loadings.includes('homeY')"
-                        class="font-weight-bold btnHomeAxis btnGroup"
-                        @click="doHomeY">
+                    <v-btn :disabled="['printing'].includes(printer_state)" :color="homedAxes.includes('y') ? 'primary' : 'warning'" :loading="loadings.includes('homeY')" class="font-weight-bold btnHomeAxis btnGroup" @click="doHomeY">
                         Y
                     </v-btn>
-                    <v-btn
-                        v-for="steps of stepsXYsortedReverse"
-                        :key="'y+' + steps"
-                        :disabled="['printing'].includes(printer_state)"
-                        class="btnMinWidthAuto col btnGroup"
-                        @click="doSendMove('Y+' + steps, feedrateXY)">
+                    <v-btn v-for="steps of stepsXYsortedReverse" :key="'y+' + steps" :disabled="['printing'].includes(printer_state)" class="btnMinWidthAuto col btnGroup" @click="doSendMove('Y+' + steps, feedrateXY)">
                         <span class="body-2">+{{ steps }}</span>
                     </v-btn>
                 </v-item-group>
@@ -119,28 +58,13 @@
         <v-row dense>
             <v-col class="text-center">
                 <v-item-group class="_btn-group row no-gutters">
-                    <v-btn
-                        v-for="steps of stepsZsorted"
-                        :key="'z-' + steps"
-                        :disabled="['printing'].includes(printer_state)"
-                        class="btnMinWidthAuto col btnGroup"
-                        @click="doSendMove('Z-' + steps, feedrateZ)">
+                    <v-btn v-for="steps of stepsZsorted" :key="'z-' + steps" :disabled="['printing'].includes(printer_state)" class="btnMinWidthAuto col btnGroup" @click="doSendMove('Z-' + steps, feedrateZ)">
                         <span class="body-2">–{{ steps }}</span>
                     </v-btn>
-                    <v-btn
-                        :disabled="['printing'].includes(printer_state)"
-                        :color="homedAxes.includes('z') ? 'primary' : 'warning'"
-                        :loading="loadings.includes('homeZ')"
-                        class="font-weight-bold btnHomeAxis btnGroup"
-                        @click="doHomeZ">
+                    <v-btn :disabled="['printing'].includes(printer_state)" :color="homedAxes.includes('z') ? 'primary' : 'warning'" :loading="loadings.includes('homeZ')" class="font-weight-bold btnHomeAxis btnGroup" @click="doHomeZ">
                         Z
                     </v-btn>
-                    <v-btn
-                        v-for="steps of stepsZsortedReverse"
-                        :key="'z+' + steps"
-                        :disabled="['printing'].includes(printer_state)"
-                        class="btnMinWidthAuto col btnGroup"
-                        @click="doSendMove('Z+' + steps, feedrateZ)">
+                    <v-btn v-for="steps of stepsZsortedReverse" :key="'z+' + steps" :disabled="['printing'].includes(printer_state)" class="btnMinWidthAuto col btnGroup" @click="doSendMove('Z+' + steps, feedrateZ)">
                         <span class="body-2">+{{ steps }}</span>
                     </v-btn>
                 </v-item-group>
@@ -149,45 +73,24 @@
     </div>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import ControlMixin from '@/components/mixins/control'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { mdiEngineOff, mdiHome } from '@mdi/js'
+import { useBase } from '@/composables/useBase'
+import { useControl } from '@/composables/useControl'
+import { useGuiStore } from '@/store/gui'
 
-@Component
-export default class BarsControl extends Mixins(BaseMixin, ControlMixin) {
-    mdiEngineOff = mdiEngineOff
-    mdiHome = mdiHome
+const { t } = useI18n()
+const { printer_state, loadings } = useBase()
+const { homedAxes, enableXYHoming, feedrateXY, feedrateZ, existsQGL, existsZtilt, colorQuadGantryLevel, colorZTilt, doHome, doHomeX, doHomeY, doHomeZ, doHomeXY, doQGL, doZtilt, doSend, doSendMove } =
+    useControl()
+const guiStore = useGuiStore()
 
-    get enableXYHoming(): boolean {
-        return this.$store.state.gui.control.enableXYHoming
-    }
-
-    get stepsXYsorted() {
-        return [...this.$store.state.gui.control.stepsXY].sort(function (a, b) {
-            return b - a
-        })
-    }
-
-    get stepsXYsortedReverse() {
-        return [...this.$store.state.gui.control.stepsXY].sort(function (a, b) {
-            return a - b
-        })
-    }
-
-    get stepsZsorted() {
-        return [...this.$store.state.gui.control.stepsZ].sort(function (a, b) {
-            return b - a
-        })
-    }
-
-    get stepsZsortedReverse() {
-        return [...this.$store.state.gui.control.stepsZ].sort(function (a, b) {
-            return a - b
-        })
-    }
-}
+const stepsXYsorted = computed(() => [...guiStore.control.stepsXY].sort((a, b) => b - a))
+const stepsXYsortedReverse = computed(() => [...guiStore.control.stepsXY].sort((a, b) => a - b))
+const stepsZsorted = computed(() => [...guiStore.control.stepsZ].sort((a, b) => b - a))
+const stepsZsortedReverse = computed(() => [...guiStore.control.stepsZ].sort((a, b) => a - b))
 </script>
 
 <style scoped>
