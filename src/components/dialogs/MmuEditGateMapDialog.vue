@@ -1,34 +1,22 @@
 <template>
     <v-dialog v-model="showDialog" width="800" persistent :fullscreen="isMobile">
-        <panel
-            :title="$t('Panels.MmuPanel.EditGateMapTitle')"
-            :icon="mdiDatabaseEdit"
-            card-class="mmu-edit-ttg-map-dialog"
-            :margin-bottom="false">
+        <panel :title="t('Panels.MmuPanel.EditGateMapTitle')" :icon="mdiDatabaseEdit" card-class="mmu-edit-ttg-map-dialog" :margin-bottom="false">
             <template #buttons>
-                <v-btn text tile @click="showResetConfirmationDialog = true">
-                    {{ $t('Panels.MmuPanel.GateMapDialog.Reset') }}
+                <v-btn variant="text" @click="showResetConfirmationDialog = true">
+                    {{ t('Panels.MmuPanel.GateMapDialog.Reset') }}
                 </v-btn>
-                <v-btn icon tile @click="close">
+                <v-btn icon="" variant="text" @click="close">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
                 </v-btn>
             </template>
 
             <v-card-text>
-                <v-card-subtitle class="pt-0 px-1 text--secondary">
-                    {{ $t('Panels.MmuPanel.GateMapDialog.SelectGate') }}
+                <v-card-subtitle class="pt-0 px-1 text-medium-emphasis">
+                    {{ t('Panels.MmuPanel.GateMapDialog.SelectGate') }}
                 </v-card-subtitle>
                 <v-row>
                     <v-col class="pb-0">
-                        <mmu-unit
-                            v-for="i in mmuNumUnits"
-                            :key="i"
-                            :selected-gate="selectedGate"
-                            :unit-index="i - 1"
-                            :hide-bypass="true"
-                            :show-context-menu="false"
-                            :unhighlight-spools="true"
-                            @select-gate="selectGate" />
+                        <mmu-unit v-for="i in mmuNumUnits" :key="i" :selected-gate="selectedGate" :unit-index="i - 1" :hide-bypass="true" :show-context-menu="false" :unhighlight-spools="true" @select-gate="selectGate" />
                     </v-col>
                 </v-row>
             </v-card-text>
@@ -38,7 +26,7 @@
             <v-card-text class="min-height-420 position-relative">
                 <transition name="fade">
                     <div v-if="selectedGate === TOOL_GATE_UNKNOWN" class="overlay-text">
-                        {{ $t('Panels.MmuPanel.GateMapDialog.SelectGate') }}
+                        {{ t('Panels.MmuPanel.GateMapDialog.SelectGate') }}
                     </div>
                     <mmu-edit-gate-map-dialog-gate-details v-else :selected-gate="selectedGate" />
                 </transition>
@@ -48,76 +36,81 @@
         <!-- CONFIRMATION FOR RESET ACTION -->
         <confirmation-dialog
             v-model="showResetConfirmationDialog"
-            :title="$t('Panels.MmuPanel.Dialog.AreYouSure')"
-            :text="$t('Panels.MmuPanel.GateMapDialog.ResetConfirmation')"
-            :action-button-text="$t('Panels.MmuPanel.GateMapDialog.Reset')"
+            :title="t('Panels.MmuPanel.Dialog.AreYouSure')"
+            :text="t('Panels.MmuPanel.GateMapDialog.ResetConfirmation')"
+            :action-button-text="t('Panels.MmuPanel.GateMapDialog.Reset')"
             @action="executeResetGateMap" />
     </v-dialog>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, VModel, Prop, Watch } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, { TOOL_GATE_UNKNOWN } from '@/components/mixins/mmu'
+<script setup lang="ts">
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useMmu, TOOL_GATE_UNKNOWN } from '@/composables/useMmu'
+import { useBase } from '@/composables/useBase'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
+import MmuUnit from '@/components/panels/Mmu/MmuUnit.vue'
+import MmuEditGateMapDialogGateDetails from '@/components/dialogs/MmuEditGateMapDialogGateDetails.vue'
 import { mdiCloseThick, mdiDatabaseEdit } from '@mdi/js'
 
-@Component({
-    components: { ConfirmationDialog },
-})
-export default class MmuEditGateMapDialog extends Mixins(BaseMixin, MmuMixin) {
-    TOOL_GATE_UNKNOWN = TOOL_GATE_UNKNOWN
-
-    mdiCloseThick = mdiCloseThick
-    mdiDatabaseEdit = mdiDatabaseEdit
-
-    @VModel({ type: Boolean }) showDialog!: boolean
-
-    @Prop({ required: false, default: null })
-    readonly initialGate!: number | null
-
-    showResetConfirmationDialog = false
-    selectedGate = TOOL_GATE_UNKNOWN
-
-    @Watch('showDialog')
-    onShowDialogChanged(val: boolean) {
-        if (!val) return
-
-        if (this.initialGate !== null && this.initialGate !== undefined) {
-            this.selectedGate = this.initialGate
-        } else {
-            this.selectedGate = TOOL_GATE_UNKNOWN
-        }
+const props = withDefaults(
+    defineProps<{
+        initialGate?: number | null
+    }>(),
+    {
+        initialGate: null,
     }
+)
 
-    selectGate(gate: number) {
-        this.selectedGate = gate
-    }
+const showDialog = defineModel<boolean>({ required: true })
 
-    handleEscapePress(event: KeyboardEvent) {
-        if (event.key === 'Escape' || event.code === 'Escape') {
-            this.selectedGate = TOOL_GATE_UNKNOWN
-        }
-    }
+const emit = defineEmits<{
+    close: []
+}>()
 
-    mounted() {
-        document.addEventListener('keydown', this.handleEscapePress)
-    }
+const { t } = useI18n()
+const { isMobile } = useBase()
+const { mmuNumUnits, doSend } = useMmu()
 
-    beforeDestroy() {
-        document.removeEventListener('keydown', this.handleEscapePress)
-    }
+const showResetConfirmationDialog = ref(false)
+const selectedGate = ref(TOOL_GATE_UNKNOWN)
 
-    executeResetGateMap() {
-        this.doSend('MMU_GATE_MAP RESET=1')
-    }
+function selectGate(gate: number) {
+    selectedGate.value = gate
+}
 
-    close() {
-        this.$emit('close')
-        this.showDialog = false
+function handleEscapePress(event: KeyboardEvent) {
+    if (event.key === 'Escape' || event.code === 'Escape') {
+        selectedGate.value = TOOL_GATE_UNKNOWN
     }
 }
+
+function executeResetGateMap() {
+    doSend('MMU_GATE_MAP RESET=1')
+}
+
+function close() {
+    emit('close')
+    showDialog.value = false
+}
+
+watch(showDialog, (val) => {
+    if (!val) return
+
+    if (props.initialGate !== null && props.initialGate !== undefined) {
+        selectedGate.value = props.initialGate
+    } else {
+        selectedGate.value = TOOL_GATE_UNKNOWN
+    }
+})
+
+onMounted(() => {
+    document.addEventListener('keydown', handleEscapePress)
+})
+
+onBeforeUnmount(() => {
+    document.removeEventListener('keydown', handleEscapePress)
+})
 </script>
 
 <style scoped>

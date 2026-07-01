@@ -6,17 +6,13 @@
     </v-row>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import { ServerStateEventPromptContent } from '@/store/server/types'
+<script setup lang="ts">
+import { computed } from 'vue'
+import type { ServerStateEventPrompt } from '@/store/server/types'
 
-@Component({})
-export default class MacroPromptText extends Mixins(BaseMixin) {
-    @Prop({ type: Object, required: true }) readonly event!: ServerStateEventPromptContent
+const props = defineProps<{
+    event: ServerStateEventPrompt
+}>()
 
-    get text() {
-        return this.event.message
-    }
-}
+const text = computed(() => props.event.message)
 </script>

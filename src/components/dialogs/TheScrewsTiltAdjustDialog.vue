@@ -1,109 +1,85 @@
 <template>
-    <v-dialog :value="showDialog" width="400" persistent :fullscreen="isMobile">
-        <panel
-            :title="$t('ScrewsTiltAdjust.Headline')"
-            :icon="mdiArrowCollapseDown"
-            card-class="manual_probe-dialog"
-            :margin-bottom="false"
-            style="overflow: hidden"
-            :height="isMobile ? 0 : 548">
+    <v-dialog :model-value="showDialog" width="400" persistent :fullscreen="isMobile">
+        <panel :title="t('ScrewsTiltAdjust.Headline')" :icon="mdiArrowCollapseDown" card-class="manual_probe-dialog" :margin-bottom="false" style="overflow: hidden" :height="isMobile ? 0 : 548">
             <template #buttons>
-                <v-btn icon tile @click="clearScrewsTiltAdjust">
+                <v-btn icon="" variant="text" @click="clearScrewsTiltAdjust">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
                 </v-btn>
             </template>
             <v-card-text v-if="error">
                 <v-row>
                     <v-col>
-                        <v-alert border="left" text type="error">{{ $t('ScrewsTiltAdjust.ErrorText') }}</v-alert>
+                        <v-alert border="start" variant="text" type="error">{{ t('ScrewsTiltAdjust.ErrorText') }}</v-alert>
                     </v-col>
                 </v-row>
             </v-card-text>
             <v-card-text v-if="Object.keys(results).length">
-                <template v-for="(result, name, index) of results">
-                    <v-divider v-if="index" :key="`result-divider-${name}`" class="my-1" />
-                    <the-screws-tilt-adjust-dialog-entry
-                        :key="`result-${name}-${name}`"
-                        :name="name.toString()"
-                        :result="result" />
+                <template v-for="(result, name, index) of results" :key="`result-${name}`">
+                    <v-divider v-if="index" class="my-1" />
+                    <the-screws-tilt-adjust-dialog-entry :name="name.toString()" :result="result" />
                 </template>
             </v-card-text>
             <v-card-actions>
                 <v-spacer />
-                <v-btn text @click="retryScrewsTiltAdjust">
-                    {{ $t('ScrewsTiltAdjust.Retry') }}
+                <v-btn variant="text" @click="retryScrewsTiltAdjust">
+                    {{ t('ScrewsTiltAdjust.Retry') }}
                 </v-btn>
-                <v-btn color="primary" text @click="clearScrewsTiltAdjust">
-                    {{ $t('ScrewsTiltAdjust.Accept') }}
+                <v-btn color="primary" variant="text" @click="clearScrewsTiltAdjust">
+                    {{ t('ScrewsTiltAdjust.Accept') }}
                 </v-btn>
             </v-card-actions>
         </panel>
     </v-dialog>
 </template>
 
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Panel from '@/components/ui/Panel.vue'
-import Responsive from '@/components/ui/Responsive.vue'
-import SettingsRow from '@/components/settings/SettingsRow.vue'
 import { mdiArrowCollapseDown, mdiCloseThick } from '@mdi/js'
-import ControlMixin from '@/components/mixins/control'
 import TheScrewsTiltAdjustDialogEntry from '@/components/dialogs/TheScrewsTiltAdjustDialogEntry.vue'
-import { ServerStateEvent } from '@/store/server/types'
-@Component({
-    components: { TheScrewsTiltAdjustDialogEntry, Panel, Responsive, SettingsRow },
+import type { ServerStateEvent } from '@/store/server/types'
+import { useBase } from '@/composables/useBase'
+import { useControl } from '@/composables/useControl'
+import { usePrinterStore } from '@/store/printer'
+import { useGuiStore } from '@/store/gui'
+import { useServerStore } from '@/store/server'
+
+const { t } = useI18n()
+const { isMobile } = useBase()
+const { doSend } = useControl()
+const printerStore = usePrinterStore()
+const guiStore = useGuiStore()
+const serverStore = useServerStore()
+
+const error = computed(() => printerStore.screws_tilt_adjust?.error ?? false)
+
+const max_deviation = computed(() => printerStore.screws_tilt_adjust?.max_deviation ?? null)
+
+const results = computed(() => printerStore.screws_tilt_adjust?.results ?? {})
+
+const boolScrewsTiltAdjustDialog = computed(() => guiStore.uiSettings.boolScrewsTiltAdjustDialog ?? true)
+
+const showDialog = computed(() => {
+    // don't display the dialog, if the user disabled it in the UI settings
+    if (!boolScrewsTiltAdjustDialog.value) return false
+
+    // don't display the dialog, if the user add the MAX_DEVIATION attribute to the SCREWS_TILT_CALCULATE command
+    if (max_deviation.value !== null) return false
+
+    return error.value || Object.keys(results.value).length
 })
-export default class TheScrewsTiltAdjustDialog extends Mixins(BaseMixin, ControlMixin) {
-    mdiArrowCollapseDown = mdiArrowCollapseDown
-    mdiCloseThick = mdiCloseThick
 
-    get state() {
-        return this.$store.state.printer.screws_tilt_adjust ?? {}
-    }
+function clearScrewsTiltAdjust() {
+    printerStore.clearScrewsTiltAdjust()
+}
 
-    get error() {
-        return this.$store.state.printer.screws_tilt_adjust?.error ?? false
-    }
+async function retryScrewsTiltAdjust() {
+    const entries = [...(serverStore.events ?? [])]
+    const lastCommand = entries.reverse().find((entry: ServerStateEvent) => entry.type === 'command' && entry.message.startsWith('SCREWS_TILT_CALCULATE'))
 
-    get max_deviation() {
-        return this.$store.state.printer.screws_tilt_adjust?.max_deviation ?? null
-    }
+    printerStore.clearScrewsTiltAdjust()
 
-    get results() {
-        return this.$store.state.printer.screws_tilt_adjust?.results ?? {}
-    }
-
-    get showDialog() {
-        // don't display the dialog, if the user disabled it in the UI settings
-        if (!this.boolScrewsTiltAdjustDialog) return false
-
-        // don't display the dialog, if the user add the MAX_DEVIATION attribute to the SCREWS_TILT_CALCULATE command
-        if (this.max_deviation !== null) return false
-
-        return this.error || Object.keys(this.results).length
-    }
-
-    get boolScrewsTiltAdjustDialog() {
-        return this.$store.state.gui.uiSettings.boolScrewsTiltAdjustDialog ?? true
-    }
-
-    clearScrewsTiltAdjust() {
-        this.$store.dispatch('printer/clearScrewsTiltAdjust')
-    }
-
-    async retryScrewsTiltAdjust() {
-        const entries = [...(this.$store.state.server.events ?? [])]
-        const lastCommand = entries
-            .reverse()
-            .find(
-                (entry: ServerStateEvent) =>
-                    entry.type === 'command' && entry.message.startsWith('SCREWS_TILT_CALCULATE')
-            )
-
-        await this.$store.dispatch('printer/clearScrewsTiltAdjust')
-
-        this.doSend(lastCommand?.message ?? 'SCREWS_TILT_CALCULATE')
-    }
+    doSend(lastCommand?.message ?? 'SCREWS_TILT_CALCULATE')
 }
 </script>

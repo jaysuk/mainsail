@@ -1,32 +1,21 @@
 <template>
     <v-dialog v-model="showDialog" :max-width="400" @click:outside="closeDialog" @keydown.esc="closeDialog">
-        <panel
-            :title="$t('Files.AddToQueue')"
-            card-class="gcode-files-add-to-queue-dialog"
-            :icon="mdiPlaylistPlus"
-            :margin-bottom="false">
+        <panel :title="t('Files.AddToQueue')" card-class="gcode-files-add-to-queue-dialog" :icon="mdiPlaylistPlus" :margin-bottom="false">
             <template #buttons>
-                <v-btn icon tile @click="closeDialog">
+                <v-btn icon="" variant="text" @click="closeDialog">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
                 </v-btn>
             </template>
 
             <v-form v-model="isValid" @submit.prevent="addBatchToQueueAction">
                 <v-card-text>
-                    <v-text-field
-                        ref="inputField"
-                        v-model="input"
-                        :label="$t('Files.Count')"
-                        required
-                        hide-spin-buttons
-                        type="number"
-                        :rules="rules.count">
-                        <template #append-outer>
+                    <v-text-field ref="inputField" v-model="input" :label="t('Files.Count')" required hide-spin-buttons type="number" :rules="rules.count">
+                        <template #append-inner>
                             <div class="_spin_button_group">
-                                <v-btn class="mt-n3" icon plain small @click="input++">
+                                <v-btn class="mt-n3" icon="" variant="plain" size="small" @click="increment">
                                     <v-icon>{{ mdiChevronUp }}</v-icon>
                                 </v-btn>
-                                <v-btn :disabled="input <= 1" class="mb-n3" icon plain small @click="input--">
+                                <v-btn :disabled="Number(input) <= 1" class="mb-n3" icon="" variant="plain" size="small" @click="decrement">
                                     <v-icon>{{ mdiChevronDown }}</v-icon>
                                 </v-btn>
                             </div>
@@ -35,9 +24,9 @@
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer />
-                    <v-btn text @click="closeDialog">{{ $t('Buttons.Cancel') }}</v-btn>
-                    <v-btn color="primary" text type="submit" :disabled="!isValid">
-                        {{ $t('Files.AddToQueue') }}
+                    <v-btn variant="text" @click="closeDialog">{{ t('Buttons.Cancel') }}</v-btn>
+                    <v-btn color="primary" variant="text" type="submit" :disabled="!isValid">
+                        {{ t('Files.AddToQueue') }}
                     </v-btn>
                 </v-card-actions>
             </v-form>
@@ -45,66 +34,74 @@
     </v-dialog>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop, Ref, VModel, Watch } from 'vue-property-decorator'
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useToast } from 'vue-toast-notification'
 import type { FocusableRef } from '@/types/vuetify'
-import BaseMixin from '@/components/mixins/base'
 import { mdiChevronDown, mdiChevronUp, mdiPlaylistPlus, mdiCloseThick } from '@mdi/js'
+import { useServerJobQueueStore } from '@/store/server/jobQueue'
 
-@Component
-export default class AddBatchToQueueDialog extends Mixins(BaseMixin) {
-    mdiChevronDown = mdiChevronDown
-    mdiChevronUp = mdiChevronUp
-    mdiPlaylistPlus = mdiPlaylistPlus
-    mdiCloseThick = mdiCloseThick
-
-    @VModel({ type: Boolean }) showDialog!: boolean
-    @Prop({ type: Boolean, default: false }) readonly showToast!: boolean
-    @Prop({ type: String, required: true }) readonly filename!: string
-    @Ref() readonly inputField!: FocusableRef
-
-    isValid = false
-    // because of the text field, the input is always a string
-    input: string = '1'
-
-    rules = {
-        count: [
-            (value: string) => !!value || this.$t('JobQueue.InvalidCountEmpty'),
-            (value: string) => parseInt(value, 10) > 0 || this.$t('JobQueue.InvalidCountGreaterZero'),
-        ],
+const props = withDefaults(
+    defineProps<{
+        showToast?: boolean
+        filename: string
+    }>(),
+    {
+        showToast: false,
     }
+)
 
-    async addBatchToQueueAction() {
-        let filename = this.filename
-        if (filename.startsWith('/')) filename = filename.slice(1)
-        const array = Array(parseInt(this.input)).fill(filename)
+const showDialog = defineModel<boolean>({ required: true })
 
-        await this.$store.dispatch('server/jobQueue/addToQueue', array)
+const { t } = useI18n()
 
-        if (this.showToast) this.$toast.info(this.$t('History.AddToQueueSuccessful', { filename }).toString())
+const inputField = ref<FocusableRef | null>(null)
 
-        this.closeDialog()
-    }
+const isValid = ref(false)
+// because of the text field, the input is always a string
+const input = ref('1')
 
-    closeDialog() {
-        this.showDialog = false
-    }
-
-    resetFormState() {
-        this.input = '1'
-    }
-
-    @Watch('showDialog')
-    onShowDialogChanged(newVal: boolean) {
-        if (!newVal) return
-
-        this.resetFormState()
-        setTimeout(() => {
-            this.inputField?.focus()
-        })
-    }
+const rules = {
+    count: [(value: string) => !!value || t('JobQueue.InvalidCountEmpty'), (value: string) => parseInt(value, 10) > 0 || t('JobQueue.InvalidCountGreaterZero')],
 }
+
+function increment() {
+    input.value = String(Number(input.value) + 1)
+}
+
+function decrement() {
+    input.value = String(Number(input.value) - 1)
+}
+
+async function addBatchToQueueAction() {
+    let filename = props.filename
+    if (filename.startsWith('/')) filename = filename.slice(1)
+    const array = Array(parseInt(input.value)).fill(filename)
+
+    useServerJobQueueStore().addToQueue(array)
+
+    if (props.showToast) useToast().info(t('History.AddToQueueSuccessful', { filename }))
+
+    closeDialog()
+}
+
+function closeDialog() {
+    showDialog.value = false
+}
+
+function resetFormState() {
+    input.value = '1'
+}
+
+watch(showDialog, (newVal) => {
+    if (!newVal) return
+
+    resetFormState()
+    setTimeout(() => {
+        inputField.value?.focus()
+    })
+})
 </script>
 
 <style scoped>

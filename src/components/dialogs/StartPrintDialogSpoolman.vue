@@ -1,15 +1,11 @@
 <template>
     <v-card-text class="py-3 px-2 bt-1">
-        <spoolman-panel-active-spool
-            v-if="activeSpoolId !== null"
-            :small="true"
-            class="my-0"
-            @change-spool="showChangeSpoolDialog = true" />
-        <v-alert v-for="alert in alerts" :key="alert.text" text :color="alert.color" class="mx-3">
+        <spoolman-panel-active-spool v-if="activeSpoolId !== null" :small="true" class="my-0" @change-spool="showChangeSpoolDialog = true" />
+        <v-alert v-for="alert in alerts" :key="alert.text" variant="text" :color="alert.color" class="mx-3">
             {{ alert.text }}
         </v-alert>
         <div class="text-center">
-            <v-btn color="primary" small class="mx-auto" @click="showChangeSpoolDialog = true">
+            <v-btn color="primary" size="small" class="mx-auto" @click="showChangeSpoolDialog = true">
                 {{ buttonText }}
             </v-btn>
         </div>
@@ -17,86 +13,75 @@
     </v-card-text>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import SpoolmanPanelActiveSpool from '@/components/panels/Spoolman/SpoolmanPanelActiveSpool.vue'
-import { FileStateGcodefile } from '@/store/files/types'
+import SpoolmanChangeSpoolDialog from '@/components/dialogs/SpoolmanChangeSpoolDialog.vue'
+import type { FileStateGcodefile } from '@/store/files/types'
 import { convertStringToArray } from '@/plugins/helpers'
+import { useServerSpoolmanStore } from '@/store/server/spoolman'
 
-@Component({
-    components: { SpoolmanPanelActiveSpool },
+const props = defineProps<{
+    file: FileStateGcodefile
+}>()
+
+const { t } = useI18n()
+const spoolmanStore = useServerSpoolmanStore()
+
+const showChangeSpoolDialog = ref(false)
+
+const activeSpoolId = computed(() => {
+    let spoolId = spoolmanStore.active_spool_id ?? null
+    if (spoolId === 0) spoolId = null
+
+    return spoolId
 })
-export default class StartPrintDialogSpoolman extends Mixins(BaseMixin) {
-    @Prop({ required: true }) readonly file!: FileStateGcodefile
 
-    showChangeSpoolDialog = false
+const activeSpool = computed(() => spoolmanStore.active_spool ?? null)
 
-    get activeSpoolId() {
-        let spoolId = this.$store.state.server.spoolman?.active_spool_id ?? null
-        if (spoolId === 0) spoolId = null
+const buttonText = computed(() => {
+    if (activeSpoolId.value === null) return t('Panels.SpoolmanPanel.SelectSpool')
 
-        return spoolId
-    }
+    return t('Panels.SpoolmanPanel.ChangeSpool')
+})
 
-    get activeSpool() {
-        return this.$store.state.server.spoolman?.active_spool ?? null
-    }
+const alerts = computed(() => {
+    const alerts = []
 
-    get classSecondDivider() {
-        const classes = ['mt-4']
+    if (activeSpoolId.value === null) {
+        alerts.push({
+            text: t('Panels.SpoolmanPanel.NoSpoolSelected'),
+            color: 'orange',
+        })
 
-        classes.push(this.moonrakerComponents.includes('timelapse') ? 'mb-2' : 'mb-0')
-
-        return classes
-    }
-
-    get buttonText() {
-        if (this.activeSpoolId === null) return this.$t('Panels.SpoolmanPanel.SelectSpool') as string
-
-        return this.$t('Panels.SpoolmanPanel.ChangeSpool') as string
-    }
-
-    get alerts() {
-        const alerts = []
-
-        if (this.activeSpoolId === null) {
-            alerts.push({
-                text: this.$t('Panels.SpoolmanPanel.NoSpoolSelected'),
-                color: 'orange',
-            })
-
-            // No need to check for filament type mismatch if no spool is selected
-            return alerts
-        }
-
-        const gcodeFilamentType = convertStringToArray(this.file.filament_type ?? '')[0] ?? ''
-        if (
-            gcodeFilamentType !== '' &&
-            this.activeSpool?.filament?.material?.toLowerCase() !== gcodeFilamentType.toLowerCase()
-        ) {
-            alerts.push({
-                text: this.$t('Panels.SpoolmanPanel.FilamentTypeMismatch', {
-                    fileType: gcodeFilamentType,
-                    spoolType: this.activeSpool?.filament?.material,
-                }),
-                color: 'warning',
-            })
-        }
-
-        const fileWeight = Math.round(this.file.filament_weight_total ?? 0)
-        const spoolWeight = Math.round(this.activeSpool?.remaining_weight ?? 0)
-        if (spoolWeight < fileWeight) {
-            alerts.push({
-                text: this.$t('Panels.SpoolmanPanel.TooLessFilament', {
-                    fileWeight,
-                    spoolWeight,
-                }),
-                color: 'warning',
-            })
-        }
-
+        // No need to check for filament type mismatch if no spool is selected
         return alerts
     }
-}
+
+    const gcodeFilamentType = convertStringToArray(props.file.filament_type ?? '')[0] ?? ''
+    if (gcodeFilamentType !== '' && activeSpool.value?.filament?.material?.toLowerCase() !== gcodeFilamentType.toLowerCase()) {
+        alerts.push({
+            text: t('Panels.SpoolmanPanel.FilamentTypeMismatch', {
+                fileType: gcodeFilamentType,
+                spoolType: activeSpool.value?.filament?.material,
+            }),
+            color: 'warning',
+        })
+    }
+
+    const fileWeight = Math.round(props.file.filament_weight_total ?? 0)
+    const spoolWeight = Math.round(activeSpool.value?.remaining_weight ?? 0)
+    if (spoolWeight < fileWeight) {
+        alerts.push({
+            text: t('Panels.SpoolmanPanel.TooLessFilament', {
+                fileWeight,
+                spoolWeight,
+            }),
+            color: 'warning',
+        })
+    }
+
+    return alerts
+})
 </script>

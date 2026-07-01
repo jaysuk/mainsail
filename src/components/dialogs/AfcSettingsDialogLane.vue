@@ -2,9 +2,7 @@
     <div>
         <h3 class="text-h5 mb-3 mt-5">{{ title }}</h3>
 
-        <settings-row
-            :title="$t('Panels.AfcPanel.SettingsDialog.DistHub')"
-            :sub-title="$t('Panels.AfcPanel.SettingsDialog.DistHubDescription')">
+        <settings-row :title="t('Panels.AfcPanel.SettingsDialog.DistHub')" :sub-title="t('Panels.AfcPanel.SettingsDialog.DistHubDescription')">
             <number-input
                 label="dist_hub"
                 param="LENGTH"
@@ -22,73 +20,61 @@
                 @submit="setHubDist" />
         </settings-row>
         <v-divider class="my-3" />
-        <settings-row
-            :title="$t('Panels.AfcPanel.SettingsDialog.SaveHubDist')"
-            :sub-title="$t('Panels.AfcPanel.SettingsDialog.SaveHubDistDescription')">
+        <settings-row :title="t('Panels.AfcPanel.SettingsDialog.SaveHubDist')" :sub-title="t('Panels.AfcPanel.SettingsDialog.SaveHubDistDescription')">
             <v-btn :disabled="!enableSaveButton" color="primary" @click="saveHubDist">
-                {{ $t('Panels.AfcPanel.SettingsDialog.WriteToFile') }}
+                {{ t('Panels.AfcPanel.SettingsDialog.WriteToFile') }}
             </v-btn>
         </settings-row>
     </div>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import Panel from '@/components/ui/Panel.vue'
-import AfcMixin from '@/components/mixins/afc'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import SettingsRow from '@/components/settings/SettingsRow.vue'
+import NumberInput from '@/components/inputs/NumberInput.vue'
 import { convertName } from '@/plugins/helpers'
+import { useAfc } from '@/composables/useAfc'
+import { useControl } from '@/composables/useControl'
 
-@Component({
-    components: { Panel },
+const props = defineProps<{
+    name: string
+}>()
+
+const { t } = useI18n()
+const { getAfcLaneSettings, getAfcLaneObject } = useAfc()
+const { doSend } = useControl()
+
+const changedValue = ref(false)
+
+const title = computed(() => {
+    const name = convertName(props.name)
+
+    return t('Panels.AfcPanel.SettingsDialog.SettingsForTitle', { name })
 })
-export default class AfcSettingsDialogLane extends Mixins(BaseMixin, AfcMixin) {
-    @Prop({ type: String, required: true }) readonly name!: string
 
-    changedValue = false
+const afcSettingsLane = computed(() => getAfcLaneSettings(props.name) as Record<string, any>)
 
-    get title() {
-        const name = convertName(this.name)
+const afcLane = computed(() => getAfcLaneObject(props.name) as Record<string, any>)
 
-        return this.$t('Panels.AfcPanel.SettingsDialog.SettingsForTitle', { name })
-    }
+const settingsDistHub = computed(() => afcSettingsLane.value.dist_hub || 0)
 
-    get afcSettingsLane() {
-        return this.getAfcLaneSettings(this.name)
-    }
+const currentDistHub = computed(() => afcLane.value.dist_hub || 0)
 
-    get afcLane() {
-        return this.getAfcLaneObject(this.name)
-    }
+const enableSaveButton = computed(() => {
+    if (!changedValue.value) return false
 
-    get settingsDistHub() {
-        return this.afcSettingsLane.dist_hub || 0
-    }
+    return currentDistHub.value !== settingsDistHub.value
+})
 
-    get currentDistHub() {
-        return this.afcLane.dist_hub || 0
-    }
+function setHubDist(args: { name: string; value: number }) {
+    changedValue.value = true
+    doSend(`SET_HUB_DIST LANE=${props.name} ${args.name}=${args.value}`)
+}
 
-    get enableSaveButton() {
-        if (!this.changedValue) return false
-
-        return this.currentDistHub !== this.settingsDistHub
-    }
-
-    setHubDist(args: { name: string; value: number }) {
-        this.changedValue = true
-        this.doSend(`SET_HUB_DIST LANE=${this.name} ${args.name}=${args.value}`)
-    }
-
-    saveHubDist() {
-        this.changedValue = false
-        const gcode = `SAVE_HUB_DIST LANE=${this.name}`
-        this.doSend(gcode)
-    }
-
-    doSend(gcode: string) {
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode })
-    }
+function saveHubDist() {
+    changedValue.value = false
+    const gcode = `SAVE_HUB_DIST LANE=${props.name}`
+    doSend(gcode)
 }
 </script>

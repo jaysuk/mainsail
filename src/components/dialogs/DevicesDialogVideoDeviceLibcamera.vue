@@ -1,24 +1,22 @@
 <template>
-    <v-card outlined class="mt-3 w-100">
-        <v-list-item three-line>
-            <v-list-item-content>
-                <div class="text-overline mb-2 d-flex flex-row">Libcamera</div>
-                <v-list-item-title class="text-h5 mb-0">{{ device.model }}</v-list-item-title>
-            </v-list-item-content>
+    <v-card variant="outlined" class="mt-3 w-100">
+        <v-list-item lines="three">
+            <div class="text-overline mb-2 d-flex flex-row">Libcamera</div>
+            <v-list-item-title class="text-h5 mb-0">{{ device.model }}</v-list-item-title>
         </v-list-item>
         <v-card-text>
             <v-row class="mb-1">
                 <v-col>
-                    <textfield-with-copy :label="$t('DevicesDialog.LibcameraId')" :value="device.libcamera_id" />
+                    <textfield-with-copy :label="t('DevicesDialog.LibcameraId')" :value="device.libcamera_id" />
                 </v-col>
             </v-row>
             <template v-if="identicalResolutions">
                 <v-row class="mt-0">
-                    <v-col class="py-2" cols="4">{{ $t('DevicesDialog.Formats') }}</v-col>
+                    <v-col class="py-2" cols="4">{{ t('DevicesDialog.Formats') }}</v-col>
                     <v-col class="py-2">{{ formats }}</v-col>
                 </v-row>
                 <v-row class="mt-0">
-                    <v-col class="py-2" cols="4">{{ $t('DevicesDialog.Resolutions') }}</v-col>
+                    <v-col class="py-2" cols="4">{{ t('DevicesDialog.Resolutions') }}</v-col>
                     <v-col class="py-2">{{ resolutions }}</v-col>
                 </v-row>
             </template>
@@ -32,30 +30,25 @@
     </v-card>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { sortResolutions } from '@/plugins/helpers'
 import TextfieldWithCopy from '@/components/inputs/TextfieldWithCopy.vue'
 import type { LibcameraDevice } from '@/types/moonraker/MachineRPC'
 
-@Component({
-    components: { TextfieldWithCopy },
+const props = defineProps<{
+    device: LibcameraDevice
+}>()
+
+const { t } = useI18n()
+
+const identicalResolutions = computed(() => {
+    const resolutions = props.device.modes.map((mode) => mode.resolutions.sort(sortResolutions).join(','))
+    return resolutions.every((resolution) => resolution === resolutions[0])
 })
-export default class DevicesDialogVideoDeviceLibcamera extends Mixins(BaseMixin) {
-    @Prop({ type: Object, required: true }) device!: LibcameraDevice
 
-    get identicalResolutions() {
-        const resolutions = this.device.modes.map((mode) => mode.resolutions.sort(sortResolutions).join(','))
-        return resolutions.every((resolution) => resolution === resolutions[0])
-    }
+const resolutions = computed(() => props.device.modes[0].resolutions.join(', '))
 
-    get resolutions() {
-        return this.device.modes[0].resolutions.join(', ')
-    }
-
-    get formats() {
-        return this.device.modes.map((mode) => mode.format).join(', ')
-    }
-}
+const formats = computed(() => props.device.modes.map((mode) => mode.format).join(', '))
 </script>

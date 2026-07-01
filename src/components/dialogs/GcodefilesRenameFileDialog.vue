@@ -1,86 +1,75 @@
 <template>
     <v-dialog v-model="showDialog" width="400">
-        <panel :title="$t('Files.RenameFile')" card-class="gcodefiles-rename-file-dialog" :margin-bottom="false">
+        <panel :title="t('Files.RenameFile')" card-class="gcodefiles-rename-file-dialog" :margin-bottom="false">
             <template #buttons>
-                <v-btn icon tile @click="showDialog = false">
+                <v-btn icon="" variant="text" @click="showDialog = false">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
                 </v-btn>
             </template>
             <v-card-text>
-                <v-text-field
-                    ref="inputFieldRenameFile"
-                    v-model="name"
-                    :label="$t('Files.Name')"
-                    required
-                    :rules="nameInputRules"
-                    @update:error="updateIsInvalidName"
-                    @keydown.enter="renameFileAction" />
+                <v-text-field ref="inputFieldRenameFile" v-model="name" :label="t('Files.Name')" required :rules="nameInputRules" @update:error="updateIsInvalidName" @keydown.enter="renameFileAction" />
             </v-card-text>
             <v-card-actions>
                 <v-spacer />
-                <v-btn text @click="showDialog = false">{{ $t('Buttons.Cancel') }}</v-btn>
-                <v-btn :disabled="isInvalidName || name.length === 0" color="primary" text @click="renameFileAction">
-                    {{ $t('Files.Rename') }}
+                <v-btn variant="text" @click="showDialog = false">{{ t('Buttons.Cancel') }}</v-btn>
+                <v-btn :disabled="isInvalidName || name.length === 0" color="primary" variant="text" @click="renameFileAction">
+                    {{ t('Files.Rename') }}
                 </v-btn>
             </v-card-actions>
         </panel>
     </v-dialog>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop, Ref, VModel, Watch } from 'vue-property-decorator'
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { FocusableRef } from '@/types/vuetify'
-import BaseMixin from '@/components/mixins/base'
 import Panel from '@/components/ui/Panel.vue'
 import { mdiCloseThick } from '@mdi/js'
-import GcodefilesMixin from '@/components/mixins/gcodefiles'
-import { FileStateGcodefile } from '@/store/files/types'
+import type { FileStateGcodefile } from '@/store/files/types'
+import { useGcodefiles } from '@/composables/useGcodefiles'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
-@Component({
-    components: { Panel },
-})
-export default class GcodefilesRenameFileDialog extends Mixins(BaseMixin, GcodefilesMixin) {
-    mdiCloseThick = mdiCloseThick
+const props = defineProps<{
+    item: FileStateGcodefile
+}>()
 
-    name = ''
-    isInvalidName = true
+const showDialog = defineModel<boolean>({ required: true })
 
-    @VModel({ type: Boolean }) showDialog!: boolean
-    @Prop({ type: Object, required: true }) item!: FileStateGcodefile
-    @Ref('inputFieldRenameFile') readonly inputFieldRenameFile!: FocusableRef
+const { t } = useI18n()
+const { currentPath, existsFilename } = useGcodefiles()
 
-    nameInputRules = [
-        (value: string) => !!value || this.$t('Files.InvalidNameEmpty'),
-        (value: string) => !this.existsFilename(value) || this.$t('Files.InvalidNameAlreadyExists'),
-    ]
+const name = ref('')
+const isInvalidName = ref(true)
+const inputFieldRenameFile = ref<FocusableRef | null>(null)
 
-    updateIsInvalidName(value: boolean) {
-        this.isInvalidName = value
-    }
+const nameInputRules = [(value: string) => !!value || t('Files.InvalidNameEmpty'), (value: string) => !existsFilename(value) || t('Files.InvalidNameAlreadyExists')]
 
-    renameFileAction() {
-        this.$socket.emit(
-            'server.files.move',
-            {
-                source: 'gcodes' + this.currentPath + '/' + this.item.filename,
-                dest: 'gcodes' + this.currentPath + '/' + this.name,
-            },
-            { action: 'files/getMove' }
-        )
-
-        this.showDialog = false
-    }
-
-    @Watch('showDialog')
-    onShowDialogChanged(newVal: boolean) {
-        if (!newVal) return
-
-        this.name = this.item.filename
-        this.isInvalidName = true
-
-        setTimeout(() => {
-            this.inputFieldRenameFile.focus()
-        }, 200)
-    }
+function updateIsInvalidName(value: boolean) {
+    isInvalidName.value = value
 }
+
+function renameFileAction() {
+    webSocketClient.emit(
+        'server.files.move',
+        {
+            source: 'gcodes' + currentPath.value + '/' + props.item.filename,
+            dest: 'gcodes' + currentPath.value + '/' + name.value,
+        },
+        { action: 'files/getMove' }
+    )
+
+    showDialog.value = false
+}
+
+watch(showDialog, (newVal) => {
+    if (!newVal) return
+
+    name.value = props.item.filename
+    isInvalidName.value = true
+
+    setTimeout(() => {
+        inputFieldRenameFile.value?.focus()
+    }, 200)
+})
 </script>

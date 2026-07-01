@@ -1,18 +1,14 @@
 <template>
     <v-dialog v-model="showDialog" width="600" persistent :fullscreen="isMobile">
-        <panel
-            :title="$t('Panels.MmuPanel.MmuMaintenanceTitle')"
-            :icon="mdiWrenchCog"
-            card-class="mmu-edit-ttg-map-dialog"
-            :margin-bottom="false">
+        <panel :title="t('Panels.MmuPanel.MmuMaintenanceTitle')" :icon="mdiWrenchCog" card-class="mmu-edit-ttg-map-dialog" :margin-bottom="false">
             <template #buttons>
-                <v-btn icon tile @click="showDialog = false">
+                <v-btn icon="" variant="text" @click="showDialog = false">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
                 </v-btn>
             </template>
 
             <v-card-subtitle>
-                {{ $t('Panels.MmuPanel.MmuMaintenanceDialog.Intro') }}
+                {{ t('Panels.MmuPanel.MmuMaintenanceDialog.Intro') }}
             </v-card-subtitle>
 
             <v-card-text>
@@ -25,26 +21,28 @@
     </v-dialog>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, VModel } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin from '@/components/mixins/mmu'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useMmu } from '@/composables/useMmu'
+import { useBase } from '@/composables/useBase'
 import { mdiCloseThick, mdiWrenchCog } from '@mdi/js'
+import MmuMaintenanceDialogActions from '@/components/dialogs/MmuMaintenanceDialogActions.vue'
+import MmuMaintenanceDialogUnit from '@/components/dialogs/MmuMaintenanceDialogUnit.vue'
+import MmuMaintenanceDialogLeds from '@/components/dialogs/MmuMaintenanceDialogLeds.vue'
+import MmuMaintenanceDialogConfig from '@/components/dialogs/MmuMaintenanceDialogConfig.vue'
+import { usePrinterStore } from '@/store/printer'
 
-@Component
-export default class MmuMaintenanceStateDialog extends Mixins(BaseMixin, MmuMixin) {
-    mdiCloseThick = mdiCloseThick
-    mdiWrenchCog = mdiWrenchCog
+const showDialog = defineModel<boolean>({ required: true })
 
-    @VModel({ type: Boolean }) showDialog!: boolean
+const { t } = useI18n()
+const { isMobile } = useBase()
+const { mmuNumUnits } = useMmu()
+const printerStore = usePrinterStore()
 
-    get mmuLedUnits() {
-        return Object.keys(this.$store.state.printer)
-            .filter((key) => key.toLowerCase().startsWith('mmu_leds '))
-            .map((key) => {
-                return key.slice(9)
-            })
-    }
-}
+const mmuLedUnits = computed(() =>
+    Object.keys(printerStore)
+        .filter((key) => key.toLowerCase().startsWith('mmu_leds '))
+        .map((key) => key.slice(9))
+)
 </script>

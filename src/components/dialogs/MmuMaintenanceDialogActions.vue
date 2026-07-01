@@ -1,69 +1,49 @@
 <template>
     <div>
-        <settings-row :title="$t('Panels.MmuPanel.MmuMaintenanceDialog.MotorSync')" dense>
+        <settings-row :title="t('Panels.MmuPanel.MmuMaintenanceDialog.MotorSync')" dense>
             <v-row dense>
                 <v-col class="col-6">
-                    <v-btn
-                        block
-                        small
-                        :disabled="!canSend || mmuSyncDrive"
-                        color="secondary"
-                        @click="doSend('MMU_SYNC_GEAR_MOTOR SYNC=1')">
-                        <v-icon left>{{ mdiSync }}</v-icon>
-                        {{ $t('Panels.MmuPanel.MmuMaintenanceDialog.Sync') }}
+                    <v-btn block size="small" :disabled="!canSend || mmuSyncDrive" color="secondary" @click="doSend('MMU_SYNC_GEAR_MOTOR SYNC=1')">
+                        <v-icon start>{{ mdiSync }}</v-icon>
+                        {{ t('Panels.MmuPanel.MmuMaintenanceDialog.Sync') }}
                     </v-btn>
                 </v-col>
                 <v-col class="col-6">
-                    <v-btn
-                        block
-                        small
-                        :disabled="!canSend || !mmuSyncDrive"
-                        color="secondary"
-                        @click="doSend('MMU_SYNC_GEAR_MOTOR SYNC=0')">
-                        <v-icon left>{{ mdiSyncOff }}</v-icon>
-                        {{ $t('Panels.MmuPanel.MmuMaintenanceDialog.Unsync') }}
+                    <v-btn block size="small" :disabled="!canSend || !mmuSyncDrive" color="secondary" @click="doSend('MMU_SYNC_GEAR_MOTOR SYNC=0')">
+                        <v-icon start>{{ mdiSyncOff }}</v-icon>
+                        {{ t('Panels.MmuPanel.MmuMaintenanceDialog.Unsync') }}
                     </v-btn>
                 </v-col>
             </v-row>
         </settings-row>
-        <settings-row :title="$t('Panels.MmuPanel.MmuMaintenanceDialog.ExtruderOnly')" dense>
+        <settings-row :title="t('Panels.MmuPanel.MmuMaintenanceDialog.ExtruderOnly')" dense>
             <v-row dense>
                 <v-col class="col-6">
-                    <v-btn
-                        block
-                        small
-                        :disabled="!canSend"
-                        color="secondary"
-                        @click="doSend('MMU_LOAD EXTRUDER_ONLY=1')">
-                        <v-icon left>{{ mdiDownloadOutline }}</v-icon>
-                        {{ $t('Panels.MmuPanel.MmuMaintenanceDialog.Load') }}
+                    <v-btn block size="small" :disabled="!canSend" color="secondary" @click="doSend('MMU_LOAD EXTRUDER_ONLY=1')">
+                        <v-icon start>{{ mdiDownloadOutline }}</v-icon>
+                        {{ t('Panels.MmuPanel.MmuMaintenanceDialog.Load') }}
                     </v-btn>
                 </v-col>
                 <v-col class="col-6">
-                    <v-btn
-                        block
-                        small
-                        :disabled="!canSend"
-                        color="secondary"
-                        @click="doSend('MMU_UNLOAD EXTRUDER_ONLY=1')">
-                        <v-icon left>{{ mdiUploadOutline }}</v-icon>
-                        {{ $t('Panels.MmuPanel.MmuMaintenanceDialog.Unload') }}
+                    <v-btn block size="small" :disabled="!canSend" color="secondary" @click="doSend('MMU_UNLOAD EXTRUDER_ONLY=1')">
+                        <v-icon start>{{ mdiUploadOutline }}</v-icon>
+                        {{ t('Panels.MmuPanel.MmuMaintenanceDialog.Unload') }}
                     </v-btn>
                 </v-col>
             </v-row>
         </settings-row>
-        <settings-row :title="$t('Panels.MmuPanel.MmuMaintenanceDialog.MmuMotors')" dense>
+        <settings-row :title="t('Panels.MmuPanel.MmuMaintenanceDialog.MmuMotors')" dense>
             <v-row dense>
                 <v-col class="col-6">
-                    <v-btn block small :disabled="!canSend" color="secondary" @click="doSend('MMU_MOTORS_ON')">
-                        <v-icon left>{{ mdiEngineOutline }}</v-icon>
-                        {{ $t('Panels.MmuPanel.MmuMaintenanceDialog.On') }}
+                    <v-btn block size="small" :disabled="!canSend" color="secondary" @click="doSend('MMU_MOTORS_ON')">
+                        <v-icon start>{{ mdiEngineOutline }}</v-icon>
+                        {{ t('Panels.MmuPanel.MmuMaintenanceDialog.On') }}
                     </v-btn>
                 </v-col>
                 <v-col class="col-6">
-                    <v-btn block small :disabled="!canSend" color="secondary" @click="doSend('MMU_MOTORS_OFF')">
-                        <v-icon left>{{ mdiEngineOffOutline }}</v-icon>
-                        {{ $t('Panels.MmuPanel.MmuMaintenanceDialog.Off') }}
+                    <v-btn block size="small" :disabled="!canSend" color="secondary" @click="doSend('MMU_MOTORS_OFF')">
+                        <v-icon start>{{ mdiEngineOffOutline }}</v-icon>
+                        {{ t('Panels.MmuPanel.MmuMaintenanceDialog.Off') }}
                     </v-btn>
                 </v-col>
             </v-row>
@@ -73,27 +53,12 @@
     </div>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin from '@/components/mixins/mmu'
-import {
-    mdiSync,
-    mdiSyncOff,
-    mdiDownloadOutline,
-    mdiUploadOutline,
-    mdiEngineOutline,
-    mdiEngineOffOutline,
-} from '@mdi/js'
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+import SettingsRow from '@/components/settings/SettingsRow.vue'
+import { useMmu } from '@/composables/useMmu'
+import { mdiSync, mdiSyncOff, mdiDownloadOutline, mdiUploadOutline, mdiEngineOutline, mdiEngineOffOutline } from '@mdi/js'
 
-@Component
-export default class MmuMaintenanceStateDialogActions extends Mixins(BaseMixin, MmuMixin) {
-    mdiSync = mdiSync
-    mdiSyncOff = mdiSyncOff
-    mdiDownloadOutline = mdiDownloadOutline
-    mdiUploadOutline = mdiUploadOutline
-    mdiEngineOutline = mdiEngineOutline
-    mdiEngineOffOutline = mdiEngineOffOutline
-}
+const { t } = useI18n()
+const { canSend, mmuSyncDrive, doSend } = useMmu()
 </script>

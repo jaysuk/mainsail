@@ -2,61 +2,65 @@
     <v-card-text>
         <v-row>
             <v-col class="text-center">
-                <v-btn :loading="loading" color="primary" @click="refresh">{{ $t('DevicesDialog.Refresh') }}</v-btn>
+                <v-btn :loading="loading" color="primary" @click="refresh">{{ t('DevicesDialog.Refresh') }}</v-btn>
             </v-col>
         </v-row>
         <v-row v-if="filteredDevices.length" class="mt-0">
             <v-col>
-                <devices-dialog-usb-device
-                    v-for="device in filteredDevices"
-                    :key="device.usb_location"
-                    :device="device" />
+                <devices-dialog-usb-device v-for="device in filteredDevices" :key="device.usb_location" :device="device" />
             </v-col>
         </v-row>
         <v-row v-else-if="loaded" class="mt-0">
             <v-col class="col-8 mx-auto">
-                <p class="text-center text--disabled mb-0">{{ $t('DevicesDialog.NoDeviceFound') }}</p>
+                <p class="text-center text-disabled mb-0">{{ t('DevicesDialog.NoDeviceFound') }}</p>
             </v-col>
         </v-row>
         <v-row v-else class="mt-0">
             <v-col class="col-8 mx-auto">
-                <p class="text-center text--disabled mb-0">{{ $t('DevicesDialog.ClickRefresh') }}</p>
+                <p class="text-center text-disabled mb-0">{{ t('DevicesDialog.ClickRefresh') }}</p>
             </v-col>
         </v-row>
     </v-card-text>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import DevicesDialogUsbDevice from '@/components/dialogs/DevicesDialogUsbDevice.vue'
 import type { RPCResult } from '@/types/moonraker'
 import type { UsbDevice } from '@/types/moonraker/MachineRPC'
+import { useBase } from '@/composables/useBase'
 
-@Component
-export default class DevicesDialogUsb extends Mixins(BaseMixin) {
-    devices: UsbDevice[] = []
-    loading = false
-    loaded = false
-
-    @Prop({ type: Boolean, default: false }) hideSystemEntries!: boolean
-
-    get filteredDevices() {
-        if (!this.hideSystemEntries) return this.devices
-
-        return this.devices.filter((device) => device.class !== 'Hub')
+const props = withDefaults(
+    defineProps<{
+        hideSystemEntries?: boolean
+    }>(),
+    {
+        hideSystemEntries: false,
     }
+)
 
-    async refresh() {
-        this.loading = true
+const { t } = useI18n()
+const { apiUrl } = useBase()
 
-        this.devices = await fetch(this.apiUrl + '/machine/peripherals/usb')
-            .then((res) => res.json())
-            .then((res: { result?: RPCResult<'machine.peripherals.usb'> }) => res.result?.usb_devices ?? [])
+const devices = ref<UsbDevice[]>([])
+const loading = ref(false)
+const loaded = ref(false)
 
-        this.loading = false
-        this.loaded = true
-    }
+const filteredDevices = computed(() => {
+    if (!props.hideSystemEntries) return devices.value
+
+    return devices.value.filter((device) => device.class !== 'Hub')
+})
+
+async function refresh() {
+    loading.value = true
+
+    devices.value = await fetch(apiUrl.value + '/machine/peripherals/usb')
+        .then((res) => res.json())
+        .then((res: { result?: RPCResult<'machine.peripherals.usb'> }) => res.result?.usb_devices ?? [])
+
+    loading.value = false
+    loaded.value = true
 }
 </script>
-
-<style scoped></style>

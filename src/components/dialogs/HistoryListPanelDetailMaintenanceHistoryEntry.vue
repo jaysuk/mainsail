@@ -1,176 +1,165 @@
 <template>
     <div>
-        <v-timeline-item class="pb-2" small hide-dot>
+        <v-timeline-item class="pb-2" size="small" hide-dot>
             <div>
                 <span v-if="restFilamentText" :class="restFilamentClass">
-                    <v-icon small>{{ mdiAdjust }}</v-icon>
+                    <v-icon size="small">{{ mdiAdjust }}</v-icon>
                     {{ restFilamentText }}
                 </span>
                 <span v-if="restPrinttimeText" :class="restPrinttimeClass">
-                    <v-icon small>{{ mdiAlarm }}</v-icon>
+                    <v-icon size="small">{{ mdiAlarm }}</v-icon>
                     {{ restPrinttimeText }}
                 </span>
                 <span v-if="restDaysText" :class="restDaysClass">
-                    <v-icon small>{{ mdiCalendar }}</v-icon>
+                    <v-icon size="small">{{ mdiCalendar }}</v-icon>
                     {{ restDaysText }}
                 </span>
             </div>
             <p v-if="note" class="mt-2 mb-0" v-html="note" />
         </v-timeline-item>
-        <v-timeline-item :class="classDateItem" small>
+        <v-timeline-item :class="classDateItem" size="small">
             <strong>{{ dateText }}</strong>
         </v-timeline-item>
     </div>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import Panel from '@/components/ui/Panel.vue'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { mdiAdjust, mdiAlarm, mdiCalendar, mdiCloseThick } from '@mdi/js'
-import { GuiMaintenanceStateEntry } from '@/store/gui/maintenance/types'
+import type { GuiMaintenanceStateEntry } from '@/store/gui/maintenance/types'
+import { useBase } from '@/composables/useBase'
+import { useServerHistoryStore } from '@/store/server/history'
 
-@Component({
-    components: { Panel },
+const props = withDefaults(
+    defineProps<{
+        item: GuiMaintenanceStateEntry
+        current?: boolean
+        last?: boolean
+    }>(),
+    {
+        current: false,
+        last: false,
+    }
+)
+
+const { t } = useI18n()
+const { formatDateTime } = useBase()
+const historyStore = useServerHistoryStore()
+
+const date = computed(() => formatDateTime(props.item.start_time * 1000, false))
+
+const dateText = computed(() => {
+    if (props.last) return t('History.EntryCreatedAt', { date: date.value })
+
+    return t('History.EntryPerformedAt', { date: date.value })
 })
-export default class HistoryListPanelDetailMaintenanceHistoryEntry extends Mixins(BaseMixin) {
-    mdiAdjust = mdiAdjust
-    mdiAlarm = mdiAlarm
-    mdiCalendar = mdiCalendar
-    mdiCloseThick = mdiCloseThick
 
-    @Prop({ type: Object, default: false }) readonly item!: GuiMaintenanceStateEntry
-    @Prop({ type: Boolean, default: false }) readonly current!: boolean
-    @Prop({ type: Boolean, default: false }) readonly last!: boolean
+const showGoals = computed(() => {
+    if (props.item.reminder.type === null) return false
 
-    get date() {
-        return this.formatDateTime(this.item.start_time * 1000, false)
-    }
+    return props.current && props.item.end_time === null
+})
 
-    get dateText() {
-        if (this.last) return this.$t('History.EntryCreatedAt', { date: this.date })
+const restFilament = computed(() => {
+    const start = props.item?.start_filament ?? 0
+    const end = props.item.end_filament ?? 0
+    const current = historyStore.job_totals?.total_filament_used ?? 0
 
-        return this.$t('History.EntryPerformedAt', { date: this.date })
-    }
+    let used = current - start
+    if (end) used = end - start
 
-    get showGoals() {
-        if (this.item.reminder.type === null) return false
+    used /= 1000
 
-        return this.current && this.item.end_time === null
-    }
+    return used
+})
 
-    get restFilament() {
-        const start = this.item?.start_filament ?? 0
-        const end = this.item.end_filament ?? 0
-        const current = this.$store.state.server.history.job_totals?.total_filament_used ?? 0
+const restFilamentText = computed(() => {
+    const value = props.item.reminder.filament?.value ?? 0
+    if (!showGoals.value) return `${restFilament.value.toFixed(0)} m`
 
-        // calc filament since start
-        // if end is not null, calc used filament until end
-        let used = current - start
-        if (end) used = end - start
+    if (!props.item.reminder.filament.bool) return false
 
-        // convert to m
-        used /= 1000
+    return `${restFilament.value.toFixed(0)} / ${value} m`
+})
 
-        return used
-    }
+const restFilamentClass = computed(() => {
+    const output = ['mr-3']
+    if (!showGoals.value || !props.item.reminder.filament.bool) return output
 
-    get restFilamentText() {
-        const value = this.item.reminder.filament?.value ?? 0
-        if (!this.showGoals) return `${this.restFilament.toFixed(0)} m`
+    const value = props.item.reminder.filament?.value ?? 0
+    if (restFilament.value > value) return [...output, 'text-error', 'font-weight-bold']
 
-        if (!this.item.reminder.filament.bool) return false
+    return output
+})
 
-        return `${this.restFilament.toFixed(0)} / ${value} m`
-    }
+const restPrinttime = computed(() => {
+    const start = props.item.start_printtime ?? 0
+    const end = props.item.end_printtime ?? 0
+    const current = historyStore.job_totals?.total_print_time ?? 0
 
-    get restFilamentClass() {
-        const output = ['mr-3']
-        if (!this.showGoals || !this.item.reminder.filament.bool) return output
+    let used = current - start
+    if (end) used = end - start
 
-        const value = this.item.reminder.filament?.value ?? 0
-        if (this.restFilament > value) return [...output, 'error--text', 'font-weight-bold']
+    used /= 3600
 
-        return output
-    }
+    return used
+})
 
-    get restPrinttime() {
-        const start = this.item.start_printtime ?? 0
-        const end = this.item.end_printtime ?? 0
-        const current = this.$store.state.server.history.job_totals?.total_print_time ?? 0
+const restPrinttimeText = computed(() => {
+    const value = props.item.reminder.printtime?.value ?? 0
+    if (!showGoals.value) return `${restPrinttime.value.toFixed(1)} h`
 
-        // calc filament since start
-        // if end is not null, calc used filament until end
-        let used = current - start
-        if (end) used = end - start
+    if (!props.item.reminder.printtime.bool) return false
 
-        // convert to h
-        used /= 3600
+    return `${restPrinttime.value.toFixed(1)} / ${value} h`
+})
 
-        return used
-    }
+const restPrinttimeClass = computed(() => {
+    const output = ['mr-3']
+    if (!showGoals.value || !props.item.reminder.printtime.bool) return output
 
-    get restPrinttimeText() {
-        const value = this.item.reminder.printtime?.value ?? 0
-        if (!this.showGoals) return `${this.restPrinttime.toFixed(1)} h`
+    const value = props.item.reminder.printtime?.value ?? 0
+    if (restPrinttime.value > value) return [...output, 'text-error', 'font-weight-bold']
 
-        if (!this.item.reminder.printtime.bool) return false
+    return output
+})
 
-        return `${this.restPrinttime.toFixed(1)} / ${value} h`
-    }
+const restDays = computed(() => {
+    const start = props.item.start_time ?? 0
+    const end = props.item.end_time ?? 0
+    const current = new Date().getTime() / 1000
 
-    get restPrinttimeClass() {
-        const output = ['mr-3']
-        if (!this.showGoals || !this.item.reminder.printtime.bool) return output
+    let used = current - start
+    if (end) used = end - start
 
-        const value = this.item.reminder.printtime?.value ?? 0
-        if (this.restPrinttime > value) return [...output, 'error--text', 'font-weight-bold']
+    return used / (60 * 60 * 24)
+})
 
-        return output
-    }
+const restDaysText = computed(() => {
+    const value = props.item.reminder.date?.value ?? 0
 
-    get restDays() {
-        const start = this.item.start_time ?? 0
-        const end = this.item.end_time ?? 0
-        const current = new Date().getTime() / 1000
+    if (!showGoals.value) return `${restDays.value.toFixed(0)} days`
 
-        // calc days since start
-        // if end is not null, calc used days until end
-        let used = current - start
-        if (end) used = end - start
+    if (!props.item.reminder.date.bool) return false
 
-        return used / (60 * 60 * 24)
-    }
+    return `${restDays.value.toFixed(0)} / ${value} days`
+})
 
-    get restDaysText() {
-        const value = this.item.reminder.date?.value ?? 0
+const restDaysClass = computed(() => {
+    const output = ['mr-3']
+    if (!showGoals.value || !props.item.reminder.date.bool) return output
 
-        if (!this.showGoals) return `${this.restDays.toFixed(0)} days`
+    const value = props.item.reminder.date?.value ?? 0
+    if (restDays.value > value) return [...output, 'text-error', 'font-weight-bold']
 
-        if (!this.item.reminder.date.bool) return false
+    return output
+})
 
-        return `${this.restDays.toFixed(0)} / ${value} days`
-    }
+const classDateItem = computed(() => ({
+    'pb-2': !props.last,
+    'pb-5': props.last,
+}))
 
-    get restDaysClass() {
-        const output = ['mr-3']
-        if (!this.showGoals || !this.item.reminder.date.bool) return output
-
-        const value = this.item.reminder.date?.value ?? 0
-        if (this.restDays > value) return [...output, 'error--text', 'font-weight-bold']
-
-        return output
-    }
-
-    get classDateItem() {
-        return {
-            'pb-2': !this.last,
-            'pb-5': this.last,
-        }
-    }
-
-    get note() {
-        return this.item.perform_note?.replaceAll('\n', '<br>')
-    }
-}
+const note = computed(() => props.item.perform_note?.replaceAll('\n', '<br>'))
 </script>

@@ -29,6 +29,9 @@ export interface ServerState {
         network: {
             [key: string]: ServerStateNetwork
         }
+        canbus?: {
+            [key: string]: unknown
+        }
         system_uptime: number | null
         instance_ids: {
             moonraker: string

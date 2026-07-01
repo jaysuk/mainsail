@@ -1,36 +1,29 @@
 <template>
     <tr class="cursor-pointer" @click="setSpoolRow">
         <td style="width: 50px" class="pr-0 py-2">
-            <spool-icon
-                :color="color"
-                :multi-color-hexes="multi_color_hexes"
-                :multi-color-direction="multi_color_direction"
-                style="width: 50px; float: left"
-                class="mr-3" />
+            <spool-icon :color="color" :multi-color-hexes="multi_color_hexes" :multi-color-direction="multi_color_direction" style="width: 50px; float: left" class="mr-3" />
         </td>
 
         <td class="py-2" style="min-width: 300px">
-            <v-list-item two-line>
-                <v-list-item-content class="no--padding">
-                    <div class="text--disabled mb-1">#{{ id }} | {{ vendor }}</div>
-                    <v-list-item-title class="mb-1">
-                        <span class="text--filament">{{ name }}</span>
-                        <template v-if="location">
-                            <br />
-                            <small>{{ $t('Panels.SpoolmanPanel.Location') }}: {{ location }}</small>
-                        </template>
-                        <template v-if="spool.comment">
-                            <br />
-                            <small class="comment">{{ spool.comment }}</small>
-                        </template>
-                        <template v-if="spoolLoaded">
-                            <br />
-                            <v-chip color="primary" small class="mt-2">
-                                {{ $t('Panels.AfcPanel.LoadedInLane', { lane: spoolLoaded.lane.toUpperCase() }) }}
-                            </v-chip>
-                        </template>
-                    </v-list-item-title>
-                </v-list-item-content>
+            <v-list-item lines="two">
+                <div class="text-disabled mb-1">#{{ id }} | {{ vendor }}</div>
+                <v-list-item-title class="mb-1">
+                    <span class="text--filament">{{ name }}</span>
+                    <template v-if="location">
+                        <br />
+                        <small>{{ t('Panels.SpoolmanPanel.Location') }}: {{ location }}</small>
+                    </template>
+                    <template v-if="spool.comment">
+                        <br />
+                        <small class="comment">{{ spool.comment }}</small>
+                    </template>
+                    <template v-if="spoolLoaded">
+                        <br />
+                        <v-chip color="primary" size="small" class="mt-2">
+                            {{ t('Panels.AfcPanel.LoadedInLane', { lane: spoolLoaded.lane.toUpperCase() }) }}
+                        </v-chip>
+                    </template>
+                </v-list-item-title>
             </v-list-item>
         </td>
         <td class="text-center text-no-wrap">{{ material }}</td>
@@ -42,121 +35,106 @@
     </tr>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import { ServerSpoolmanStateSpool } from '@/store/server/spoolman/types'
-import AfcMixin from '@/components/mixins/afc'
-@Component({})
-export default class SpoolmanChangeSpoolDialogRow extends Mixins(BaseMixin, AfcMixin) {
-    @Prop({ required: true }) declare readonly spool: ServerSpoolmanStateSpool
-    @Prop({ required: false }) declare readonly max_id_digits: number
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import type { ServerSpoolmanStateSpool } from '@/store/server/spoolman/types'
+import SpoolIcon from '@/components/ui/SpoolIcon.vue'
+import { useAfc } from '@/composables/useAfc'
 
-    get color() {
-        const color = this.spool.filament?.color_hex ?? '000'
+const props = defineProps<{
+    spool: ServerSpoolmanStateSpool
+    max_id_digits?: number
+}>()
 
-        return `#${color}`
+const emit = defineEmits<{
+    'set-spool': [spool: ServerSpoolmanStateSpool]
+}>()
+
+const { t } = useI18n()
+const { afcLoadedSpools } = useAfc()
+
+const color = computed(() => {
+    const color = props.spool.filament?.color_hex ?? '000'
+
+    return `#${color}`
+})
+
+const multi_color_hexes = computed(() => props.spool.filament?.multi_color_hexes)
+
+const multi_color_direction = computed(() => props.spool.filament?.multi_color_direction)
+
+const id = computed(() => {
+    // add leading zeros depending on max_id digit count
+    let id: string = props.spool.id.toString()
+
+    while (id.length < (props.max_id_digits ?? 0)) {
+        id = '0' + id
     }
 
-    get multi_color_hexes() {
-        return this.spool.filament?.multi_color_hexes
+    return id
+})
+
+const vendor = computed(() => props.spool.filament?.vendor?.name ?? 'Unknown')
+
+const name = computed(() => props.spool.filament?.name ?? 'Unknown')
+
+const location = computed(() => props.spool.location)
+
+const material = computed(() => props.spool.filament?.material ?? '--')
+
+const remaining_weight = computed(() => props.spool.remaining_weight ?? 0)
+
+const total_weight = computed(() => props.spool.filament?.weight ?? 0)
+
+const remaining_weight_format = computed(() => `${remaining_weight.value.toFixed(0)}g`)
+
+const total_weight_format = computed(() => {
+    if (total_weight.value < 1000) {
+        return `${total_weight.value.toFixed(0)}g`
     }
 
-    get multi_color_direction() {
-        return this.spool.filament?.multi_color_direction
+    let totalRound = Math.round(total_weight.value / 1000)
+    if (totalRound !== total_weight.value / 1000) {
+        totalRound = Math.round(total_weight.value / 100) / 10
     }
 
-    get id() {
-        // add leading zeros depending on max_id digit count
-        let id: string = this.spool.id.toString()
+    return `${totalRound}kg`
+})
 
-        while (id.length < this.max_id_digits) {
-            id = '0' + id
-        }
+const last_used = computed(() => {
+    const last_used = props.spool.last_used ?? null
+    if (!last_used) return t('Panels.SpoolmanPanel.Never')
 
-        return id
+    const date = new Date(props.spool.last_used)
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+
+    if (diff <= 1000 * 60 * 60 * 24) return t('Panels.SpoolmanPanel.Today')
+    if (diff <= 1000 * 60 * 60 * 24 * 2) return t('Panels.SpoolmanPanel.Yesterday')
+    if (diff <= 1000 * 60 * 60 * 24 * 14) {
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+
+        return t('Panels.SpoolmanPanel.DaysAgo', { days })
     }
 
-    get vendor() {
-        return this.spool.filament?.vendor?.name ?? 'Unknown'
-    }
+    return date.toLocaleDateString()
+})
 
-    get name() {
-        return this.spool.filament?.name ?? 'Unknown'
-    }
+const spoolLoaded = computed(() => {
+    const spools = afcLoadedSpools.value ?? []
+    if (!spools.length) return false
 
-    get location() {
-        return this.spool.location
-    }
+    return spools.find((s) => s.spoolId === props.spool.id)
+})
 
-    get material() {
-        return this.spool.filament?.material ?? '--'
-    }
-
-    get remaining_weight() {
-        return this.spool.remaining_weight ?? 0
-    }
-
-    get total_weight() {
-        return this.spool.filament?.weight ?? 0
-    }
-
-    get remaining_weight_format() {
-        return `${this.remaining_weight.toFixed(0)}g`
-    }
-
-    get total_weight_format() {
-        if (this.total_weight < 1000) {
-            return `${this.total_weight.toFixed(0)}g`
-        }
-
-        let totalRound = Math.round(this.total_weight / 1000)
-        if (totalRound !== this.total_weight / 1000) {
-            totalRound = Math.round(this.total_weight / 100) / 10
-        }
-
-        return `${totalRound}kg`
-    }
-
-    get last_used() {
-        const last_used = this.spool.last_used ?? null
-        if (!last_used) return this.$t('Panels.SpoolmanPanel.Never')
-
-        const date = new Date(this.spool.last_used)
-        const now = new Date()
-        const diff = now.getTime() - date.getTime()
-
-        if (diff <= 1000 * 60 * 60 * 24) return this.$t('Panels.SpoolmanPanel.Today')
-        if (diff <= 1000 * 60 * 60 * 24 * 2) return this.$t('Panels.SpoolmanPanel.Yesterday')
-        if (diff <= 1000 * 60 * 60 * 24 * 14) {
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-
-            return this.$t('Panels.SpoolmanPanel.DaysAgo', { days })
-        }
-
-        return date.toLocaleDateString()
-    }
-
-    get spoolLoaded() {
-        const spools = this.afcLoadedSpools ?? []
-        if (!spools.length) return false
-
-        return spools.find((s) => s.spoolId === this.spool.id)
-    }
-
-    setSpoolRow() {
-        this.$emit('set-spool', this.spool)
-    }
+function setSpoolRow() {
+    emit('set-spool', props.spool)
 }
 </script>
 <style scoped>
 .text--filament {
     font-size: 1.1rem;
-}
-
-.no--padding {
-    padding: 0;
 }
 
 .comment {

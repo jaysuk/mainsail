@@ -1,9 +1,9 @@
 <template>
     <v-row :class="{ 'bt-1': borderTop }" class="px-6">
         <v-col class="d-flex align-center shrink pr-0">
-            <v-tooltip v-if="warnings.length" top>
-                <template #activator="{ on, attrs }">
-                    <v-icon color="warning" v-bind="attrs" v-on="on">{{ mdiAlert }}</v-icon>
+            <v-tooltip v-if="warnings.length" location="top">
+                <template #activator="{ props: activatorProps }">
+                    <v-icon color="warning" v-bind="activatorProps">{{ mdiAlert }}</v-icon>
                 </template>
                 <span>{{ warnings.join('\n') }}</span>
             </v-tooltip>
@@ -16,21 +16,16 @@
         <v-col class="d-flex align-center pr-0">
             <span class="mr-3 text-subtitle-1 font-weight-bold text-uppercase">{{ laneName }}</span>
             <gcodefiles-panel-table-row-file-metadata-filaments-badge :filament="laneFilament" />
-            <v-menu offset-y left>
-                <template #activator="{ on, attrs }">
-                    <v-btn v-bind="attrs" icon text ripple class="pr-0" v-on="on">
+            <v-menu location="bottom end">
+                <template #activator="{ props: activatorProps }">
+                    <v-btn v-bind="activatorProps" icon="" variant="text" class="pr-0">
                         <v-icon>{{ mdiChevronDown }}</v-icon>
                     </v-btn>
                 </template>
                 <v-list>
-                    <v-list-item
-                        v-for="lane in afcLanes"
-                        :key="lane"
-                        :disabled="lane === laneName"
-                        @click="changeToolMapping(lane)">
+                    <v-list-item v-for="lane in afcLanes" :key="lane" :disabled="lane === laneName" @click="changeToolMapping(lane)">
                         <span class="mr-3 text-subtitle-1 font-weight-bold text-uppercase">{{ lane }}</span>
-                        <gcodefiles-panel-table-row-file-metadata-filaments-badge
-                            :filament="getAfcLaneFilament(lane)" />
+                        <gcodefiles-panel-table-row-file-metadata-filaments-badge :filament="getAfcLaneFilament(lane)" />
                     </v-list-item>
                 </v-list>
             </v-menu>
@@ -38,95 +33,93 @@
     </v-row>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import { FileStateGcodefile } from '@/store/files/types'
-import AfcMixin from '@/components/mixins/afc'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import type { FileStateGcodefile } from '@/store/files/types'
 import { mdiAlert, mdiCheckCircle, mdiChevronDown } from '@mdi/js'
 import { convertStringToArray, filamentWeightFormat } from '@/plugins/helpers'
+import GcodefilesPanelTableRowFileMetadataFilamentsBadge from '@/components/panels/Gcodefiles/GcodefilesPanelTableRowFileMetadataFilamentsBadge.vue'
+import { useAfc } from '@/composables/useAfc'
+import { useServerStore } from '@/store/server'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
-@Component
-export default class StartPrintDialogAfc extends Mixins(BaseMixin, AfcMixin) {
-    mdiAlert = mdiAlert
-    mdiCheckCircle = mdiCheckCircle
-    mdiChevronDown = mdiChevronDown
+const props = withDefaults(
+    defineProps<{
+        file: FileStateGcodefile
+        toolIndex: number
+        borderTop?: boolean
+    }>(),
+    {
+        borderTop: false,
+    }
+)
 
-    @Prop({ required: true }) declare readonly file: FileStateGcodefile
-    @Prop({ required: true }) declare readonly toolIndex: number
-    @Prop({ required: false, default: false }) declare readonly borderTop: boolean
+const { t } = useI18n()
+const { afc, afcLanes, getAfcLaneObject, getAfcLaneFilament } = useAfc()
 
-    get toolName() {
-        return `T${this.toolIndex}`
+const toolName = computed(() => `T${props.toolIndex}`)
+
+const fileFilament = computed(() => {
+    const fileColors = props.file.filament_colors ?? []
+    const fileNames = convertStringToArray(props.file.filament_name ?? '')
+    const fileTypes = convertStringToArray(props.file.filament_type ?? '')
+    const fileWeights = props.file.filament_weights ?? []
+
+    return {
+        color: fileColors[props.toolIndex] ?? '#000000',
+        name: fileNames[props.toolIndex] ?? '--',
+        type: fileTypes[props.toolIndex] ?? '--',
+        weight: fileWeights[props.toolIndex],
+    }
+})
+
+const laneName = computed(() => {
+    const lanes = (afc.value?.lanes as string[]) ?? []
+
+    return lanes.find((lane: string) => {
+        const laneObject = getAfcLaneObject(lane) as { map?: string }
+        const mappedTool = laneObject?.map?.toLowerCase()
+
+        return mappedTool === toolName.value.toLowerCase()
+    })
+})
+
+const laneFilament = computed(() => getAfcLaneFilament(laneName.value ?? ''))
+
+const isFilamentTypeValid = computed(() => fileFilament.value?.type?.toLowerCase() === laneFilament.value?.type?.toLowerCase())
+
+const isFilamentWeightValid = computed(() => fileFilament.value.weight < laneFilament.value.weight)
+
+const warnings = computed(() => {
+    const warnings: string[] = []
+
+    if (!isFilamentTypeValid.value) {
+        warnings.push(
+            t('Dialogs.StartPrint.Afc.FilamentTypeMismatch', {
+                file: fileFilament.value?.type ?? '--',
+                lane: laneFilament.value?.type ?? '--',
+            })
+        )
     }
 
-    get fileFilament() {
-        const fileColors = this.file.filament_colors ?? []
-        const fileNames = convertStringToArray(this.file.filament_name ?? '')
-        const fileTypes = convertStringToArray(this.file.filament_type ?? '')
-        const fileWeights = this.file.filament_weights ?? []
-
-        return {
-            color: fileColors[this.toolIndex] ?? '#000000',
-            name: fileNames[this.toolIndex] ?? '--',
-            type: fileTypes[this.toolIndex] ?? '--',
-            weight: fileWeights[this.toolIndex],
-        }
+    if (!isFilamentWeightValid.value) {
+        warnings.push(
+            t('Dialogs.StartPrint.Afc.FilamentWeightNotEnough', {
+                lane: laneName.value ?? '--',
+                required: filamentWeightFormat(fileFilament.value?.weight ?? 0),
+                available: filamentWeightFormat(laneFilament.value?.weight ?? 0),
+            })
+        )
     }
 
-    get laneName() {
-        const lanes = this.afc?.lanes ?? []
+    return warnings
+})
 
-        return lanes.find((lane: string) => {
-            const laneObject = this.getAfcLaneObject(lane)
-            const mappedTool = laneObject?.map?.toLowerCase()
+function changeToolMapping(lane: string) {
+    const gcode = `SET_MAP LANE=${lane} MAP=${toolName.value}`
 
-            return mappedTool === this.toolName.toLowerCase()
-        })
-    }
-
-    get laneFilament() {
-        return this.getAfcLaneFilament(this.laneName ?? '')
-    }
-
-    get isFilamentTypeValid() {
-        return this.fileFilament?.type?.toLowerCase() === this.laneFilament?.type?.toLowerCase()
-    }
-
-    get isFilamentWeightValid() {
-        return this.fileFilament.weight < this.laneFilament.weight
-    }
-
-    get warnings() {
-        const warnings: string[] = []
-
-        if (!this.isFilamentTypeValid) {
-            warnings.push(
-                this.$t('Dialogs.StartPrint.Afc.FilamentTypeMismatch', {
-                    file: this.fileFilament?.type ?? '--',
-                    lane: this.laneFilament?.type ?? '--',
-                }) as string
-            )
-        }
-
-        if (!this.isFilamentWeightValid) {
-            warnings.push(
-                this.$t('Dialogs.StartPrint.Afc.FilamentWeightNotEnough', {
-                    lane: this.laneName ?? '--',
-                    required: filamentWeightFormat(this.fileFilament?.weight ?? 0),
-                    available: filamentWeightFormat(this.laneFilament?.weight ?? 0),
-                }) as string
-            )
-        }
-
-        return warnings
-    }
-
-    changeToolMapping(lane: string) {
-        const gcode = `SET_MAP LANE=${lane} MAP=${this.toolName}`
-
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode })
-    }
+    useServerStore().addEvent({ message: gcode, type: 'command' })
+    webSocketClient.emit('printer.gcode.script', { script: gcode })
 }
 </script>

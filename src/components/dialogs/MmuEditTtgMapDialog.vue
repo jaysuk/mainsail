@@ -1,15 +1,11 @@
 <template>
     <v-dialog v-model="showDialog" width="800" persistent :fullscreen="isMobile">
-        <panel
-            :title="$t('Panels.MmuPanel.EditTtgMapTitle')"
-            :icon="mdiStateMachine"
-            card-class="mmu-edit-ttg-map-dialog"
-            :margin-bottom="false">
+        <panel :title="t('Panels.MmuPanel.EditTtgMapTitle')" :icon="mdiStateMachine" card-class="mmu-edit-ttg-map-dialog" :margin-bottom="false">
             <template #buttons>
-                <v-btn text tile @click="showResetDialog = true">
-                    {{ $t('Panels.MmuPanel.TtgMapDialog.Reset') }}
+                <v-btn variant="text" @click="showResetDialog = true">
+                    {{ t('Panels.MmuPanel.TtgMapDialog.Reset') }}
                 </v-btn>
-                <v-btn icon tile @click="showDialog = false">
+                <v-btn icon="" variant="text" @click="showDialog = false">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
                 </v-btn>
             </template>
@@ -38,15 +34,11 @@
                         <v-row>
                             <v-col class="">
                                 <div class="d-flex align-center justify-end pr-8">
-                                    <span class="mr-4">{{ $t('Panels.MmuPanel.TtgMapDialog.AllTools') }}</span>
-                                    <v-switch
-                                        v-model="allTools"
-                                        :disabled="allToolsDisabled"
-                                        hide-details
-                                        class="mt-0 pt-0" />
+                                    <span class="mr-4">{{ t('Panels.MmuPanel.TtgMapDialog.AllTools') }}</span>
+                                    <v-switch v-model="allTools" :disabled="allToolsDisabled" hide-details class="mt-0 pt-0" />
                                 </div>
                                 <div v-if="showSkipAutomap" class="d-flex align-center justify-end pr-8">
-                                    <span class="mr-4">{{ $t('Panels.MmuPanel.TtgMapDialog.SkipAutomap') }}</span>
+                                    <span class="mr-4">{{ t('Panels.MmuPanel.TtgMapDialog.SkipAutomap') }}</span>
                                     <v-switch v-model="skipAutomap" hide-details class="mt-0 pt-0" />
                                 </div>
                                 <mmu-ttg-map :selected-tool="selectedTool" :selected-gate="selectedGate" />
@@ -61,7 +53,7 @@
             <v-card-text class="min-height-300 position-relative py-3 pr-3">
                 <transition name="fade">
                     <div v-if="selectedTool === -1" class="overlay-text">
-                        {{ $t('Panels.MmuPanel.TtgMapDialog.SelectTool') }}
+                        {{ t('Panels.MmuPanel.TtgMapDialog.SelectTool') }}
                     </div>
                     <mmu-edit-ttg-map-dialog-details v-else :tool="selectedTool" :file="file" />
                 </transition>
@@ -70,130 +62,130 @@
             <!-- CONFIRMATION FOR RESET ACTION -->
             <confirmation-dialog
                 v-model="showResetDialog"
-                :title="$t('Panels.MmuPanel.Dialog.AreYouSure')"
-                :text="$t('Panels.MmuPanel.TtgMapDialog.ResetConfirmation')"
-                :action-button-text="$t('Panels.MmuPanel.TtgMapDialog.Reset')"
+                :title="t('Panels.MmuPanel.Dialog.AreYouSure')"
+                :text="t('Panels.MmuPanel.TtgMapDialog.ResetConfirmation')"
+                :action-button-text="t('Panels.MmuPanel.TtgMapDialog.Reset')"
                 @action="resetTtgMap" />
         </panel>
     </v-dialog>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop, VModel, Watch } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, { TOOL_GATE_UNKNOWN } from '@/components/mixins/mmu'
+<script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useMmu, TOOL_GATE_UNKNOWN } from '@/composables/useMmu'
 import Panel from '@/components/ui/Panel.vue'
 import type { FileStateGcodefile } from '@/store/files/types'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
 import { mdiCloseThick, mdiStateMachine } from '@mdi/js'
 import MmuEditTtgMapDialogDetails from '@/components/dialogs/MmuEditTtgMapDialogDetails.vue'
+import MmuEditTtgMapDialogTool from '@/components/dialogs/MmuEditTtgMapDialogTool.vue'
+import MmuTtgMap from '@/components/panels/Mmu/MmuTtgMap.vue'
+import { useBase } from '@/composables/useBase'
 
-@Component({
-    components: { MmuEditTtgMapDialogDetails, Panel, ConfirmationDialog },
+const props = withDefaults(
+    defineProps<{
+        file?: FileStateGcodefile | null
+    }>(),
+    {
+        file: null,
+    }
+)
+
+const showDialog = defineModel<boolean>({ required: true })
+
+const { t } = useI18n()
+const { isMobile } = useBase()
+const { mmu, mmuSoftwareVars, ttgMap, doSend } = useMmu()
+
+const allTools = ref(true)
+const selectedTool = ref(-1)
+const showResetDialog = ref(false)
+
+const titleHeader = computed(() => {
+    if (allTools.value) return t('Panels.MmuPanel.TtgMapDialog.MapTools')
+
+    return t('Panels.MmuPanel.TtgMapDialog.MapSlicerTools')
 })
-export default class MmuEditTtgMapDialog extends Mixins(BaseMixin, MmuMixin) {
-    mdiCloseThick = mdiCloseThick
-    mdiStateMachine = mdiStateMachine
 
-    @VModel({ type: Boolean }) showDialog!: boolean
-    @Prop({ default: null }) readonly file!: FileStateGcodefile | null
+const allToolsDisabled = computed(() => props.file === null)
 
-    allTools = true
-    selectedTool = -1
-    showResetDialog = false
+const skipAutomap = computed<boolean>({
+    get: () => mmu.value?.slicer_tool_map?.skip_automap ?? false,
+    set: (value) => doSend(`MMU_SLICER_TOOL_MAP SKIP_AUTOMAP=${value ? 1 : 0}`),
+})
 
-    get titleHeader() {
-        if (this.allTools) return this.$t('Panels.MmuPanel.TtgMapDialog.MapTools')
+const showSkipAutomap = computed(() => {
+    const automapStrategy = mmuSoftwareVars.value?.automap_strategy ?? 'none'
 
-        return this.$t('Panels.MmuPanel.TtgMapDialog.MapSlicerTools')
+    return props.file !== null && automapStrategy !== 'none'
+})
+
+const fileTools = computed(() => {
+    const toolsInFile: number[] = []
+    props.file?.filament_weights?.forEach((weight, index) => {
+        if (weight <= 0) return
+
+        toolsInFile.push(index)
+    })
+
+    if (toolsInFile.length === 0) return null
+
+    return toolsInFile
+})
+
+const filteredTtgMap = computed(() => {
+    const ttgMap_: { tool: number; gate: number }[] = []
+
+    ttgMap.value.forEach((gate, tool) => {
+        if (!allTools.value && !fileTools.value?.includes(Number(tool))) return
+
+        ttgMap_.push({ tool: Number(tool), gate })
+    })
+
+    return ttgMap_
+})
+
+const selectedGate = computed(() => {
+    if (selectedTool.value === TOOL_GATE_UNKNOWN) {
+        return TOOL_GATE_UNKNOWN
     }
 
-    get allToolsDisabled() {
-        return this.file === null
+    return ttgMap.value[selectedTool.value]
+})
+
+function selectTool(tool: number) {
+    if (selectedTool.value === tool) {
+        selectedTool.value = TOOL_GATE_UNKNOWN
+        return
     }
 
-    get skipAutomap() {
-        return this.mmu?.slicer_tool_map?.skip_automap ?? false
-    }
+    selectedTool.value = tool
+}
 
-    set skipAutomap(value: boolean) {
-        this.doSend(`MMU_SLICER_TOOL_MAP SKIP_AUTOMAP=${value ? 1 : 0}`)
-    }
+function resetTtgMap() {
+    doSend('MMU_TTG_MAP RESET=1\nMMU_ENDLESS_SPOOL RESET=1')
+}
 
-    get showSkipAutomap() {
-        const automapStrategy = this.mmuSoftwareVars.automap_strategy ?? 'none'
-
-        return this.file !== null && automapStrategy !== 'none'
-    }
-
-    get fileTools() {
-        const toolsInFile: number[] = []
-        this.file?.filament_weights?.forEach((weight, index) => {
-            if (weight <= 0) return
-
-            toolsInFile.push(index)
-        })
-
-        if (toolsInFile.length === 0) return null
-
-        return toolsInFile
-    }
-
-    get filteredTtgMap() {
-        const ttgMap: { tool: number; gate: number }[] = []
-
-        this.ttgMap.forEach((gate, tool) => {
-            if (!this.allTools && !this.fileTools?.includes(Number(tool))) return
-
-            ttgMap.push({ tool: Number(tool), gate })
-        })
-
-        return ttgMap
-    }
-
-    get selectedGate() {
-        if (this.selectedTool === TOOL_GATE_UNKNOWN) {
-            return TOOL_GATE_UNKNOWN
-        }
-
-        return this.ttgMap[this.selectedTool]
-    }
-
-    selectTool(tool: number) {
-        if (this.selectedTool === tool) {
-            this.selectedTool = TOOL_GATE_UNKNOWN
-            return
-        }
-
-        this.selectedTool = tool
-    }
-
-    resetTtgMap() {
-        this.doSend('MMU_TTG_MAP RESET=1\nMMU_ENDLESS_SPOOL RESET=1')
-    }
-
-    handleEscapePress(event: KeyboardEvent) {
-        if (event.key === 'Escape' || event.code === 'Escape') {
-            this.selectedTool = -1
-        }
-    }
-
-    mounted() {
-        document.addEventListener('keydown', this.handleEscapePress)
-    }
-
-    beforeDestroy() {
-        document.removeEventListener('keydown', this.handleEscapePress)
-    }
-
-    @Watch('showDialog')
-    onShowDialogChange(newValue: boolean) {
-        if (!newValue) return
-
-        this.allTools = this.file === null
+function handleEscapePress(event: KeyboardEvent) {
+    if (event.key === 'Escape' || event.code === 'Escape') {
+        selectedTool.value = -1
     }
 }
+
+onMounted(() => {
+    document.addEventListener('keydown', handleEscapePress)
+})
+
+onBeforeUnmount(() => {
+    document.removeEventListener('keydown', handleEscapePress)
+})
+
+watch(showDialog, (newValue) => {
+    if (!newValue) return
+
+    allTools.value = props.file === null
+})
 </script>
 
 <style scoped>

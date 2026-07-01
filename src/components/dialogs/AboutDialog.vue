@@ -1,7 +1,7 @@
 <template>
-    <v-tooltip right color="panel">
-        <template #activator="{ on, attrs }">
-            <v-icon v-bind="attrs" v-on="on">
+    <v-tooltip location="right" color="panel">
+        <template #activator="{ props: activatorProps }">
+            <v-icon v-bind="activatorProps">
                 {{ mdiHelpCircleOutline }}
             </v-icon>
         </template>
@@ -9,7 +9,7 @@
             <div><img height="12" src="/img/logo.svg" alt="mainsail-logo" /></div>
             <div>v{{ mainsailVersion }}</div>
             <div>
-                <v-icon small class="moonraker-logo">{{ mdiMoonWaningCrescent }}</v-icon>
+                <v-icon size="small" class="moonraker-logo">{{ mdiMoonWaningCrescent }}</v-icon>
             </div>
             <div>{{ moonrakerVersion }}</div>
             <div><img height="12" src="/img/klipper.svg" class="klipper-logo" alt="klipper-logo" /></div>
@@ -18,30 +18,22 @@
     </v-tooltip>
 </template>
 
-<script lang="ts">
-import BaseMixin from '../mixins/base'
-import { Mixins } from 'vue-property-decorator'
-import Component from 'vue-class-component'
-import { mdiCloseThick, mdiHelpCircleOutline, mdiMoonWaningCrescent } from '@mdi/js'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { mdiHelpCircleOutline, mdiMoonWaningCrescent } from '@mdi/js'
+import { useRootStore } from '@/store/index'
+import { usePrinterStore } from '@/store/printer'
+import { useServerStore } from '@/store/server'
 
-@Component({})
-export default class AboutDialog extends Mixins(BaseMixin) {
-    mdiHelpCircleOutline = mdiHelpCircleOutline
-    mdiCloseThick = mdiCloseThick
-    mdiMoonWaningCrescent = mdiMoonWaningCrescent
+const rootStore = useRootStore()
+const printerStore = usePrinterStore()
+const serverStore = useServerStore()
 
-    get mainsailVersion(): string {
-        return this.$store.state.packageVersion
-    }
+const mainsailVersion = computed<string>(() => rootStore.getVersion)
 
-    get klipperVersion(): string {
-        return this.$store.state.printer?.software_version ?? ''
-    }
+const klipperVersion = computed<string>(() => printerStore.software_version ?? '')
 
-    get moonrakerVersion(): string {
-        return this.$store.state.server?.moonraker_version ?? ''
-    }
-}
+const moonrakerVersion = computed<string>(() => serverStore.moonraker_version ?? '')
 </script>
 
 <style scoped>

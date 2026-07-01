@@ -1,98 +1,89 @@
 <template>
     <v-dialog v-model="showDialog" persistent :max-width="400" @keydown.esc="closeDialog">
-        <panel
-            :title="$t('Heightmap.RenameBedMeshProfile')"
-            :icon="mdiGrid"
-            card-class="heightmap-rename-dialog"
-            :margin-bottom="false">
+        <panel :title="t('Heightmap.RenameBedMeshProfile')" :icon="mdiGrid" card-class="heightmap-rename-dialog" :margin-bottom="false">
             <template #buttons>
-                <v-btn icon tile @click="closeDialog">
+                <v-btn icon="" variant="text" @click="closeDialog">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
                 </v-btn>
             </template>
             <v-card-text>
-                <v-text-field
-                    ref="input"
-                    v-model="newName"
-                    :label="$t('Heightmap.Name')"
-                    required
-                    :rules="rules"
-                    @update:error="onUpdateError"
-                    @keyup.enter="renameProfile" />
+                <v-text-field ref="input" v-model="newName" :label="t('Heightmap.Name')" required :rules="rules" @update:error="onUpdateError" @keyup.enter="renameProfile" />
             </v-card-text>
             <v-card-actions>
                 <v-spacer />
-                <v-btn text @click="closeDialog">{{ $t('Buttons.Cancel') }}</v-btn>
-                <v-btn :disabled="isInvalidName" color="primary" text @click="renameProfile">
-                    {{ $t('Heightmap.Rename') }}
+                <v-btn variant="text" @click="closeDialog">{{ t('Buttons.Cancel') }}</v-btn>
+                <v-btn :disabled="isInvalidName" color="primary" variant="text" @click="renameProfile">
+                    {{ t('Heightmap.Rename') }}
                 </v-btn>
             </v-card-actions>
         </panel>
     </v-dialog>
 </template>
-<script lang="ts">
-import { Component, Mixins, Prop, Ref, VModel, Watch } from 'vue-property-decorator'
+
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { FocusableRef } from '@/types/vuetify'
-import BaseMixin from '@/components/mixins/base'
+import Panel from '@/components/ui/Panel.vue'
 import { mdiCloseThick, mdiGrid } from '@mdi/js'
+import { usePrinterStore } from '@/store/printer'
+import { useServerStore } from '@/store/server'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
-@Component
-export default class HeightmapRenameProfileDialog extends Mixins(BaseMixin) {
-    mdiCloseThick = mdiCloseThick
-    mdiGrid = mdiGrid
+const props = defineProps<{
+    name: string
+}>()
 
-    @VModel({ type: Boolean }) showDialog!: boolean
-    @Prop({ type: String, required: true }) name!: string
-    @Ref() readonly input!: FocusableRef
+const showDialog = defineModel<boolean>({ required: true })
 
-    isInvalidName = false
-    newName = ''
+const { t } = useI18n()
+const printerStore = usePrinterStore()
 
-    rules = [
-        (value: string) => !!value || this.$t('Heightmap.InvalidNameEmpty'),
-        (value: string) => value !== 'default' || this.$t('Heightmap.InvalidNameReserved'),
-        (value: string) =>
-            !this.profileNames.includes(value) || value === this.name || this.$t('Heightmap.InvalidNameAlreadyExists'),
+const input = ref<FocusableRef | null>(null)
 
-        // eslint-disable-next-line no-control-regex
-        (value: string) => value === value.replace(/[^\x00-\x7F]/g, '') || this.$t('Heightmap.InvalidNameAscii'),
-    ]
+const isInvalidName = ref(false)
+const newName = ref('')
 
-    get profileNames() {
-        return Object.keys(this.$store.state.printer.bed_mesh?.profiles ?? {})
-    }
+const profileNames = computed(() => Object.keys(printerStore.bed_mesh?.profiles ?? {}))
 
-    renameProfile() {
-        if (this.name === this.newName) {
-            this.closeDialog()
-            return
-        }
+const rules = [
+    (value: string) => !!value || t('Heightmap.InvalidNameEmpty'),
+    (value: string) => value !== 'default' || t('Heightmap.InvalidNameReserved'),
+    (value: string) => !profileNames.value.includes(value) || value === props.name || t('Heightmap.InvalidNameAlreadyExists'),
 
-        const gcode = `BED_MESH_PROFILE SAVE="${this.newName}"\nBED_MESH_PROFILE REMOVE="${this.name}"`
+    // eslint-disable-next-line no-control-regex
+    (value: string) => value === value.replace(/[^\x00-\x7F]/g, '') || t('Heightmap.InvalidNameAscii'),
+]
 
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode }, { loading: 'bedMeshRename' })
-
-        this.closeDialog()
-    }
-
-    closeDialog() {
-        this.showDialog = false
-    }
-
-    onUpdateError(hasError: boolean) {
-        this.isInvalidName = hasError
-    }
-
-    @Watch('showDialog')
-    onShowDialogChanged(newVal: boolean) {
-        if (!newVal) return
-
-        this.newName = this.name
-
-        setTimeout(() => {
-            this.input?.focus()
-        })
-    }
+function closeDialog() {
+    showDialog.value = false
 }
+
+function renameProfile() {
+    if (props.name === newName.value) {
+        closeDialog()
+        return
+    }
+
+    const gcode = `BED_MESH_PROFILE SAVE="${newName.value}"\nBED_MESH_PROFILE REMOVE="${props.name}"`
+
+    useServerStore().addEvent({ message: gcode, type: 'command' })
+    webSocketClient.emit('printer.gcode.script', { script: gcode }, { loading: 'bedMeshRename' })
+
+    closeDialog()
+}
+
+function onUpdateError(hasError: boolean) {
+    isInvalidName.value = hasError
+}
+
+watch(showDialog, (newVal) => {
+    if (!newVal) return
+
+    newName.value = props.name
+
+    setTimeout(() => {
+        input.value?.focus()
+    })
+})
 </script>

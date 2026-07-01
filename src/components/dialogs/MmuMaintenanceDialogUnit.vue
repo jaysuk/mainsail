@@ -2,70 +2,37 @@
     <div v-if="isRotaryOrServoSelector || isLinearSelector">
         <h3 class="text-h5 mb-3 mt-5">{{ name }}</h3>
 
-        <settings-row
-            v-if="isRotaryOrServoSelector"
-            :title="$t('Panels.MmuPanel.MmuMaintenanceDialog.Selector')"
-            dense
-            dynamic-slot-width>
-            <v-btn small :disabled="!canSend" color="secondary" @click="doSend('MMU_HOME')">
-                <v-icon left>{{ mdiHomeOutline }}</v-icon>
-                {{ $t('Panels.MmuPanel.MmuMaintenanceDialog.Home') }}
+        <settings-row v-if="isRotaryOrServoSelector" :title="t('Panels.MmuPanel.MmuMaintenanceDialog.Selector')" dense dynamic-slot-width>
+            <v-btn size="small" :disabled="!canSend" color="secondary" @click="doSend('MMU_HOME')">
+                <v-icon start>{{ mdiHomeOutline }}</v-icon>
+                {{ t('Panels.MmuPanel.MmuMaintenanceDialog.Home') }}
             </v-btn>
-            <v-btn
-                small
-                :disabled="!canSend || mmuGrip === 'Gripped'"
-                color="secondary"
-                class="ml-2"
-                @click="doSend('MMU_GRIP')">
-                <v-icon left>{{ mdiArrowCollapseHorizontal }}</v-icon>
-                {{ $t('Panels.MmuPanel.MmuMaintenanceDialog.Grip') }}
+            <v-btn size="small" :disabled="!canSend || mmuGrip === 'Gripped'" color="secondary" class="ml-2" @click="doSend('MMU_GRIP')">
+                <v-icon start>{{ mdiArrowCollapseHorizontal }}</v-icon>
+                {{ t('Panels.MmuPanel.MmuMaintenanceDialog.Grip') }}
             </v-btn>
-            <v-btn
-                small
-                :disabled="!canSend || mmuGrip === 'Released'"
-                color="secondary"
-                class="ml-2"
-                @click="doSend('MMU_RELEASE')">
-                <v-icon left>{{ mdiArrowExpandHorizontal }}</v-icon>
-                {{ $t('Panels.MmuPanel.MmuMaintenanceDialog.Release') }}
+            <v-btn size="small" :disabled="!canSend || mmuGrip === 'Released'" color="secondary" class="ml-2" @click="doSend('MMU_RELEASE')">
+                <v-icon start>{{ mdiArrowExpandHorizontal }}</v-icon>
+                {{ t('Panels.MmuPanel.MmuMaintenanceDialog.Release') }}
             </v-btn>
         </settings-row>
 
-        <settings-row
-            v-else-if="isLinearSelector"
-            :title="$t('Panels.MmuPanel.MmuMaintenanceDialog.Selector')"
-            dense
-            dynamic-slot-width>
-            <v-btn small :disabled="!canSend" class="ml-2" color="secondary" @click="doSend('MMU_HOME')">
-                <v-icon left>{{ mdiHomeOutline }}</v-icon>
-                {{ $t('Panels.MmuPanel.MmuMaintenanceDialog.Home') }}
+        <settings-row v-else-if="isLinearSelector" :title="t('Panels.MmuPanel.MmuMaintenanceDialog.Selector')" dense dynamic-slot-width>
+            <v-btn size="small" :disabled="!canSend" class="ml-2" color="secondary" @click="doSend('MMU_HOME')">
+                <v-icon start>{{ mdiHomeOutline }}</v-icon>
+                {{ t('Panels.MmuPanel.MmuMaintenanceDialog.Home') }}
             </v-btn>
-            <v-btn
-                small
-                :disabled="!canSend || mmuServo === 'Up'"
-                color="secondary"
-                class="ml-2"
-                @click="doSend('MMU_SERVO POS=up')">
-                <v-icon left>{{ mdiArrowUpThin }}</v-icon>
-                {{ $t('Panels.MmuPanel.MmuMaintenanceDialog.Up') }}
+            <v-btn size="small" :disabled="!canSend || mmuServo === 'Up'" color="secondary" class="ml-2" @click="doSend('MMU_SERVO POS=up')">
+                <v-icon start>{{ mdiArrowUpThin }}</v-icon>
+                {{ t('Panels.MmuPanel.MmuMaintenanceDialog.Up') }}
             </v-btn>
-            <v-btn
-                small
-                :disabled="!canSend || mmuServo === 'Down'"
-                color="secondary"
-                class="ml-2"
-                @click="doSend('MMU_SERVO POS=down')">
-                <v-icon left>{{ mdiArrowDownThin }}</v-icon>
-                {{ $t('Panels.MmuPanel.MmuMaintenanceDialog.Down') }}
+            <v-btn size="small" :disabled="!canSend || mmuServo === 'Down'" color="secondary" class="ml-2" @click="doSend('MMU_SERVO POS=down')">
+                <v-icon start>{{ mdiArrowDownThin }}</v-icon>
+                {{ t('Panels.MmuPanel.MmuMaintenanceDialog.Down') }}
             </v-btn>
-            <v-btn
-                small
-                :disabled="!canSend || mmuServo === 'Move'"
-                color="secondary"
-                class="ml-2"
-                @click="doSend('MMU_SERVO POS=move')">
-                <v-icon left>{{ mdiArrowLeftRight }}</v-icon>
-                {{ $t('Panels.MmuPanel.MmuMaintenanceDialog.Move') }}
+            <v-btn size="small" :disabled="!canSend || mmuServo === 'Move'" color="secondary" class="ml-2" @click="doSend('MMU_SERVO POS=move')">
+                <v-icon start>{{ mdiArrowLeftRight }}</v-icon>
+                {{ t('Panels.MmuPanel.MmuMaintenanceDialog.Move') }}
             </v-btn>
         </settings-row>
 
@@ -73,53 +40,31 @@
     </div>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin from '@/components/mixins/mmu'
-import {
-    mdiCloseThick,
-    mdiHomeOutline,
-    mdiArrowDownThin,
-    mdiArrowUpThin,
-    mdiArrowLeftRight,
-    mdiArrowCollapseHorizontal,
-    mdiArrowExpandHorizontal,
-} from '@mdi/js'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import SettingsRow from '@/components/settings/SettingsRow.vue'
+import { mdiHomeOutline, mdiArrowDownThin, mdiArrowUpThin, mdiArrowLeftRight, mdiArrowCollapseHorizontal, mdiArrowExpandHorizontal } from '@mdi/js'
+import { useMmu } from '@/composables/useMmu'
 
-@Component
-export default class MmuMaintenanceStateDialogUnit extends Mixins(BaseMixin, MmuMixin) {
-    mdiCloseThick = mdiCloseThick
-    mdiHomeOutline = mdiHomeOutline
-    mdiArrowDownThin = mdiArrowDownThin
-    mdiArrowUpThin = mdiArrowUpThin
-    mdiArrowLeftRight = mdiArrowLeftRight
-    mdiArrowCollapseHorizontal = mdiArrowCollapseHorizontal
-    mdiArrowExpandHorizontal = mdiArrowExpandHorizontal
+const props = defineProps<{
+    unitIndex: number
+}>()
 
-    @Prop({ required: true }) readonly unitIndex!: number
+const { t } = useI18n()
+const { canSend, mmuGrip, mmuServo, doSend, getMmuMachineUnit } = useMmu()
 
-    get unit() {
-        return this.getMmuMachineUnit(this.unitIndex)
-    }
+const unit = computed(() => getMmuMachineUnit(props.unitIndex))
 
-    get name() {
-        const name = this.mmuUnit?.name ?? 'Unit'
+const name = computed(() => {
+    const name = unit.value?.name ?? 'Unit'
 
-        return `MMU #${this.unitIndex + 1} - ${name}`
-    }
+    return `MMU #${props.unitIndex + 1} - ${name}`
+})
 
-    get selectorType() {
-        return this.mmuUnit.selectorType ?? 'VirtualSelector'
-    }
+const selectorType = computed(() => unit.value?.selector_type ?? 'VirtualSelector')
 
-    get isRotaryOrServoSelector() {
-        return ['RotarySelector', 'ServoSelector'].includes(this.selectorType)
-    }
+const isRotaryOrServoSelector = computed(() => ['RotarySelector', 'ServoSelector'].includes(selectorType.value))
 
-    get isLinearSelector() {
-        return this.selectorType === 'LinearSelector'
-    }
-}
+const isLinearSelector = computed(() => selectorType.value === 'LinearSelector')
 </script>

@@ -1,111 +1,97 @@
 <template>
     <v-dialog v-model="showDialog" width="500" persistent :fullscreen="isMobile">
-        <panel
-            id="devices-dialog"
-            :title="$t('DevicesDialog.Headline')"
-            :icon="mdiUsb"
-            card-class="devices-dialog"
-            :margin-bottom="false"
-            style="overflow: hidden"
-            :height="isMobile ? 0 : 548">
+        <panel id="devices-dialog" :title="t('DevicesDialog.Headline')" :icon="mdiUsb" card-class="devices-dialog" :margin-bottom="false" style="overflow: hidden" :height="isMobile ? 0 : 548">
             <template #buttons>
-                <v-menu :left="true" :offset-y="true" :close-on-content-click="false" attach="#devices-dialog">
-                    <template #activator="{ on, attrs }">
-                        <v-btn icon tile v-bind="attrs" v-on="on">
-                            <v-icon small>{{ mdiCog }}</v-icon>
+                <v-menu location="bottom end" :close-on-content-click="false" attach="#devices-dialog">
+                    <template #activator="{ props: activatorProps }">
+                        <v-btn icon="" variant="text" v-bind="activatorProps">
+                            <v-icon size="small">{{ mdiCog }}</v-icon>
                         </v-btn>
                     </template>
                     <v-list>
                         <v-list-item class="minHeight36">
-                            <v-checkbox
-                                v-model="hideSystemEntries"
-                                class="mt-0"
-                                hide-details
-                                :label="$t('DevicesDialog.HideSystemEntries')" />
+                            <v-checkbox v-model="hideSystemEntries" class="mt-0" hide-details :label="t('DevicesDialog.HideSystemEntries')" />
                         </v-list-item>
                     </v-list>
                 </v-menu>
-                <v-btn icon tile @click="closePrompt">
+                <v-btn icon="" variant="text" @click="closePrompt">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
                 </v-btn>
             </template>
             <v-tabs v-model="tab" fixed-tabs>
-                <v-tab v-for="tab in tabs" :key="tab.tab">{{ tab.title }}</v-tab>
+                <v-tab v-for="tabEntry in tabs" :key="tabEntry.tab" :value="tabEntry.tab">{{ tabEntry.title }}</v-tab>
             </v-tabs>
-            <overlay-scrollbars style="max-height: 400px; overflow-x: hidden">
-                <v-tabs-items v-model="tab">
-                    <v-tab-item v-for="canInterface in canInterfaces" :key="canInterface">
+            <OverlayScrollbarsComponent style="max-height: 400px; overflow-x: hidden" :options="{}">
+                <v-window v-model="tab">
+                    <v-window-item v-for="canInterface in canInterfaces" :key="canInterface" :value="canInterface">
                         <devices-dialog-can :hide-system-entries="hideSystemEntries" :name="canInterface" />
-                    </v-tab-item>
-                    <v-tab-item key="serial">
+                    </v-window-item>
+                    <v-window-item value="serial">
                         <devices-dialog-serial :hide-system-entries="hideSystemEntries" />
-                    </v-tab-item>
-                    <v-tab-item key="usb">
+                    </v-window-item>
+                    <v-window-item value="usb">
                         <devices-dialog-usb :hide-system-entries="hideSystemEntries" />
-                    </v-tab-item>
-                    <v-tab-item key="video">
+                    </v-window-item>
+                    <v-window-item value="video">
                         <devices-dialog-video :hide-system-entries="hideSystemEntries" />
-                    </v-tab-item>
-                </v-tabs-items>
-            </overlay-scrollbars>
+                    </v-window-item>
+                </v-window>
+            </OverlayScrollbarsComponent>
         </panel>
     </v-dialog>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, VModel } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Panel from '@/components/ui/Panel.vue'
-
 import { mdiCog, mdiCloseThick, mdiUsb } from '@mdi/js'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
+import DevicesDialogCan from '@/components/dialogs/DevicesDialogCan.vue'
+import DevicesDialogSerial from '@/components/dialogs/DevicesDialogSerial.vue'
+import DevicesDialogUsb from '@/components/dialogs/DevicesDialogUsb.vue'
+import DevicesDialogVideo from '@/components/dialogs/DevicesDialogVideo.vue'
+import { useBase } from '@/composables/useBase'
+import { useServerStore } from '@/store/server'
 
-@Component({
-    components: { Panel },
-})
-export default class DevicesDialog extends Mixins(BaseMixin) {
-    mdiCog = mdiCog
-    mdiUsb = mdiUsb
-    mdiCloseThick = mdiCloseThick
+const showDialog = defineModel<boolean>({ required: true })
 
-    tab = 'serial'
-    hideSystemEntries = true
+const { t } = useI18n()
+const { isMobile } = useBase()
+const serverStore = useServerStore()
 
-    @VModel({ type: Boolean }) showDialog!: boolean
+const tab = ref('serial')
+const hideSystemEntries = ref(true)
 
-    get tabs() {
-        const output: { tab: string; title: string }[] = [
-            {
-                tab: 'serial',
-                title: 'Serial',
-            },
-            {
-                tab: 'usb',
-                title: 'USB',
-            },
-            {
-                tab: 'video',
-                title: 'Video',
-            },
-        ]
+const canInterfaces = computed(() => Object.keys(serverStore.system_info?.canbus ?? {}))
 
-        this.canInterfaces.forEach((name) => {
-            output.push({
-                tab: name,
-                title: name.toUpperCase(),
-            })
+const tabs = computed(() => {
+    const output: { tab: string; title: string }[] = [
+        {
+            tab: 'serial',
+            title: 'Serial',
+        },
+        {
+            tab: 'usb',
+            title: 'USB',
+        },
+        {
+            tab: 'video',
+            title: 'Video',
+        },
+    ]
+
+    canInterfaces.value.forEach((name) => {
+        output.push({
+            tab: name,
+            title: name.toUpperCase(),
         })
+    })
 
-        return output.sort((a, b) => a.title.localeCompare(b.title))
-    }
+    return output.sort((a, b) => a.title.localeCompare(b.title))
+})
 
-    get canInterfaces() {
-        return Object.keys(this.$store.state.server.system_info?.canbus ?? {})
-    }
-
-    closePrompt() {
-        this.showDialog = false
-    }
+function closePrompt() {
+    showDialog.value = false
 }
 </script>
-
-<style scoped></style>

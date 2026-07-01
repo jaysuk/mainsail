@@ -1,12 +1,8 @@
 <template>
     <v-dialog v-model="showDialog" persistent :max-width="400" @keydown.esc="closeDialog">
-        <panel
-            :title="$t('Heightmap.BedMeshCalibrate')"
-            :icon="mdiGrid"
-            card-class="heightmap-calibrate-dialog"
-            :margin-bottom="false">
+        <panel :title="t('Heightmap.BedMeshCalibrate')" :icon="mdiGrid" card-class="heightmap-calibrate-dialog" :margin-bottom="false">
             <template #buttons>
-                <v-btn icon tile @click="closeDialog">
+                <v-btn icon="" variant="text" @click="closeDialog">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
                 </v-btn>
             </template>
@@ -14,11 +10,11 @@
                 <v-text-field
                     ref="input"
                     v-model="name"
-                    :label="$t('Heightmap.Name')"
+                    :label="t('Heightmap.Name')"
                     required
                     :rules="rules"
                     @update:error="
-                        (newVal) => {
+                        (newVal: boolean) => {
                             isInvalidName = newVal
                         }
                     "
@@ -26,59 +22,59 @@
             </v-card-text>
             <v-card-actions>
                 <v-spacer />
-                <v-btn text @click="closeDialog">{{ $t('Buttons.Cancel') }}</v-btn>
-                <v-btn :disabled="isInvalidName" color="primary" text @click="calibrateMesh">
-                    {{ $t('Heightmap.Calibrate') }}
+                <v-btn variant="text" @click="closeDialog">{{ t('Buttons.Cancel') }}</v-btn>
+                <v-btn :disabled="isInvalidName" color="primary" variant="text" @click="calibrateMesh">
+                    {{ t('Heightmap.Calibrate') }}
                 </v-btn>
             </v-card-actions>
         </panel>
     </v-dialog>
 </template>
-<script lang="ts">
-import { Component, Mixins, Ref, VModel, Watch } from 'vue-property-decorator'
+
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { FocusableRef } from '@/types/vuetify'
-import BaseMixin from '@/components/mixins/base'
+import Panel from '@/components/ui/Panel.vue'
 import { mdiCloseThick, mdiGrid } from '@mdi/js'
+import { useServerStore } from '@/store/server'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
-@Component
-export default class HeightmapRenameProfileDialog extends Mixins(BaseMixin) {
-    mdiCloseThick = mdiCloseThick
-    mdiGrid = mdiGrid
+const showDialog = defineModel<boolean>({ required: true })
 
-    @VModel({ type: Boolean }) showDialog!: boolean
-    @Ref() readonly input!: FocusableRef
+const { t } = useI18n()
 
-    isInvalidName = false
-    name = ''
+const input = ref<FocusableRef | null>(null)
 
-    rules = [
-        (value: string) => !!value || this.$t('Heightmap.InvalidNameEmpty'),
+const isInvalidName = ref(false)
+const name = ref('')
 
-        // eslint-disable-next-line no-control-regex
-        (value: string) => value === value.replace(/[^\x00-\x7F]/g, '') || this.$t('Heightmap.InvalidNameAscii'),
-    ]
+const rules = [
+    (value: string) => !!value || t('Heightmap.InvalidNameEmpty'),
 
-    calibrateMesh(): void {
-        const gcode = `BED_MESH_CALIBRATE PROFILE="${this.name}"`
+    // eslint-disable-next-line no-control-regex
+    (value: string) => value === value.replace(/[^\x00-\x7F]/g, '') || t('Heightmap.InvalidNameAscii'),
+]
 
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode }, { loading: 'bedMeshCalibrate' })
+function calibrateMesh(): void {
+    const gcode = `BED_MESH_CALIBRATE PROFILE="${name.value}"`
 
-        this.closeDialog()
-    }
+    useServerStore().addEvent({ message: gcode, type: 'command' })
+    webSocketClient.emit('printer.gcode.script', { script: gcode }, { loading: 'bedMeshCalibrate' })
 
-    closeDialog() {
-        this.showDialog = false
-    }
-
-    @Watch('showDialog')
-    onShowDialogChanged(newVal: boolean) {
-        if (!newVal) return
-
-        this.name = 'default'
-        setTimeout(() => {
-            this.input?.focus()
-        })
-    }
+    closeDialog()
 }
+
+function closeDialog() {
+    showDialog.value = false
+}
+
+watch(showDialog, (newVal) => {
+    if (!newVal) return
+
+    name.value = 'default'
+    setTimeout(() => {
+        input.value?.focus()
+    })
+})
 </script>

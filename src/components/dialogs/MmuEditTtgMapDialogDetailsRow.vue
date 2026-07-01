@@ -13,53 +13,51 @@
     </tr>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, { GATE_EMPTY } from '@/components/mixins/mmu'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useMmu, GATE_EMPTY } from '@/composables/useMmu'
+import MmuUnitGateSpool from '@/components/panels/Mmu/MmuUnitGateSpool.vue'
+import MmuGateSummary from '@/components/panels/Mmu/MmuGateSummary.vue'
 
-@Component({})
-export default class MmuGateDialogRow extends Mixins(BaseMixin, MmuMixin) {
-    @Prop({ required: true }) readonly gate!: number
-    @Prop({ required: true }) readonly selectedGate!: number
+const props = defineProps<{
+    gate: number
+    selectedGate: number
+}>()
 
-    get rowClass() {
-        return {
-            'cursor-pointer': true,
-            'disabled-row': this.gateStatus === GATE_EMPTY,
-            'selected-row': this.gate === this.selectedGate,
-        }
-    }
+const emit = defineEmits<{
+    'select-gate': []
+    'select-endless-spool-group': []
+}>()
 
-    get gateStatus() {
-        const status = this.mmu?.gate_status ?? []
+const { mmu, endlessSpoolGroups } = useMmu()
 
-        return status[this.gate] ?? GATE_EMPTY
-    }
+const gateStatus = computed(() => {
+    const status = mmu.value?.gate_status ?? []
 
-    get endlessSpoolGroup() {
-        return this.endlessSpoolGroups[this.gate] ?? null
-    }
+    return status[props.gate] ?? GATE_EMPTY
+})
 
-    get selectedEndlessSpoolGroup() {
-        return this.endlessSpoolGroups[this.selectedGate] ?? null
-    }
+const rowClass = computed(() => ({
+    'cursor-pointer': true,
+    'disabled-row': gateStatus.value === GATE_EMPTY,
+    'selected-row': props.gate === props.selectedGate,
+}))
 
-    get endlessSpoolClass() {
-        return {
-            'disabled-group': this.selectedEndlessSpoolGroup === this.gate,
-            'selected-group': this.endlessSpoolGroup === this.selectedEndlessSpoolGroup,
-        }
-    }
+const endlessSpoolGroup = computed(() => endlessSpoolGroups.value[props.gate] ?? null)
 
-    selectGate() {
-        this.$emit('select-gate')
-    }
+const selectedEndlessSpoolGroup = computed(() => endlessSpoolGroups.value[props.selectedGate] ?? null)
 
-    selectEndlessSpoolGroup() {
-        this.$emit('select-endless-spool-group')
-    }
+const endlessSpoolClass = computed(() => ({
+    'disabled-group': selectedEndlessSpoolGroup.value === props.gate,
+    'selected-group': endlessSpoolGroup.value === selectedEndlessSpoolGroup.value,
+}))
+
+function selectGate() {
+    emit('select-gate')
+}
+
+function selectEndlessSpoolGroup() {
+    emit('select-endless-spool-group')
 }
 </script>
 
@@ -76,7 +74,7 @@ export default class MmuGateDialogRow extends Mixins(BaseMixin, MmuMixin) {
     opacity: 0.7;
 }
 
-::v-deep .w-36 {
+:deep(.w-36) {
     width: 36px;
 }
 
@@ -85,7 +83,7 @@ export default class MmuGateDialogRow extends Mixins(BaseMixin, MmuMixin) {
     width: 24px;
     height: 24px;
     border-radius: 25%;
-    border: 1px solid var(--v-secondary-lighten3);
+    border: 1px solid rgb(var(--v-theme-secondary));
     vertical-align: middle;
     cursor: context-menu;
 }

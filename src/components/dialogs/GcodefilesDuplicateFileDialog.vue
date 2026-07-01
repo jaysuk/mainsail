@@ -1,86 +1,75 @@
 <template>
     <v-dialog v-model="showDialog" width="400">
-        <panel :title="$t('Files.DuplicateFile')" card-class="gcodefiles-duplicate-file-dialog" :margin-bottom="false">
+        <panel :title="t('Files.DuplicateFile')" card-class="gcodefiles-duplicate-file-dialog" :margin-bottom="false">
             <template #buttons>
-                <v-btn icon tile @click="closePrompt">
+                <v-btn icon="" variant="text" @click="closePrompt">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
                 </v-btn>
             </template>
             <v-card-text>
-                <v-text-field
-                    ref="inputField"
-                    v-model="name"
-                    :label="$t('Files.Name')"
-                    required
-                    :rules="nameInputRules"
-                    @update:error="updateIsInvalidName"
-                    @keydown.enter="duplicateFileAction" />
+                <v-text-field ref="inputField" v-model="name" :label="t('Files.Name')" required :rules="nameInputRules" @update:error="updateIsInvalidName" @keydown.enter="duplicateFileAction" />
             </v-card-text>
             <v-card-actions>
                 <v-spacer />
-                <v-btn text @click="closePrompt">{{ $t('Buttons.Cancel') }}</v-btn>
-                <v-btn :disabled="isInvalidName || name.length === 0" color="primary" text @click="duplicateFileAction">
-                    {{ $t('Files.Duplicate') }}
+                <v-btn variant="text" @click="closePrompt">{{ t('Buttons.Cancel') }}</v-btn>
+                <v-btn :disabled="isInvalidName || name.length === 0" color="primary" variant="text" @click="duplicateFileAction">
+                    {{ t('Files.Duplicate') }}
                 </v-btn>
             </v-card-actions>
         </panel>
     </v-dialog>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop, Ref, VModel, Watch } from 'vue-property-decorator'
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { FocusableRef } from '@/types/vuetify'
-import BaseMixin from '@/components/mixins/base'
 import Panel from '@/components/ui/Panel.vue'
 import { mdiCloseThick } from '@mdi/js'
-import GcodefilesMixin from '@/components/mixins/gcodefiles'
-import { FileStateGcodefile } from '@/store/files/types'
+import type { FileStateGcodefile } from '@/store/files/types'
+import { useGcodefiles } from '@/composables/useGcodefiles'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
-@Component({
-    components: { Panel },
-})
-export default class GcodefilesDuplicateFileDialog extends Mixins(BaseMixin, GcodefilesMixin) {
-    mdiCloseThick = mdiCloseThick
+const props = defineProps<{
+    item: FileStateGcodefile
+}>()
 
-    name = ''
-    isInvalidName = true
+const showDialog = defineModel<boolean>({ required: true })
 
-    @VModel({ type: Boolean }) showDialog!: boolean
-    @Prop({ type: Object, required: true }) item!: FileStateGcodefile
-    @Ref() readonly inputField!: FocusableRef
+const { t } = useI18n()
+const { currentPath, existsFilename } = useGcodefiles()
 
-    nameInputRules = [
-        (value: string) => !!value || this.$t('Files.InvalidNameEmpty'),
-        (value: string) => !this.existsFilename(value) || this.$t('Files.InvalidNameAlreadyExists'),
-    ]
+const name = ref('')
+const isInvalidName = ref(true)
+const inputField = ref<FocusableRef | null>(null)
 
-    updateIsInvalidName(value: boolean) {
-        this.isInvalidName = value
-    }
+const nameInputRules = [(value: string) => !!value || t('Files.InvalidNameEmpty'), (value: string) => !existsFilename(value) || t('Files.InvalidNameAlreadyExists')]
 
-    duplicateFileAction() {
-        this.$socket.emit('server.files.copy', {
-            source: 'gcodes' + this.currentPath + '/' + this.item.filename,
-            dest: 'gcodes' + this.currentPath + '/' + this.name,
-        })
-
-        this.closePrompt()
-    }
-
-    closePrompt() {
-        this.showDialog = false
-    }
-
-    @Watch('showDialog')
-    onShowDialogChanged(newVal: boolean) {
-        if (!newVal) return
-
-        this.name = this.item.filename
-        this.isInvalidName = true
-
-        setTimeout(() => {
-            this.inputField?.focus()
-        })
-    }
+function updateIsInvalidName(value: boolean) {
+    isInvalidName.value = value
 }
+
+function duplicateFileAction() {
+    webSocketClient.emit('server.files.copy', {
+        source: 'gcodes' + currentPath.value + '/' + props.item.filename,
+        dest: 'gcodes' + currentPath.value + '/' + name.value,
+    })
+
+    closePrompt()
+}
+
+function closePrompt() {
+    showDialog.value = false
+}
+
+watch(showDialog, (newVal) => {
+    if (!newVal) return
+
+    name.value = props.item.filename
+    isInvalidName.value = true
+
+    setTimeout(() => {
+        inputField.value?.focus()
+    })
+})
 </script>

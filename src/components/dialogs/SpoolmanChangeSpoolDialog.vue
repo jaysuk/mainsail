@@ -1,70 +1,32 @@
 <template>
     <v-dialog v-model="showDialog" width="800" persistent :fullscreen="isMobile">
-        <panel
-            :title="setActiveSpool ? $t('Panels.SpoolmanPanel.ChangeSpool') : $t('Panels.SpoolmanPanel.SelectSpool')"
-            :icon="mdiAdjust"
-            card-class="spoolman-change-spool-dialog"
-            :margin-bottom="false">
+        <panel :title="setActiveSpool ? t('Panels.SpoolmanPanel.ChangeSpool') : t('Panels.SpoolmanPanel.SelectSpool')" :icon="mdiAdjust" card-class="spoolman-change-spool-dialog" :margin-bottom="false">
             <template #buttons>
-                <v-btn icon tile @click="close">
+                <v-btn icon="" variant="text" @click="close">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
                 </v-btn>
             </template>
             <v-card-title>
-                <v-text-field
-                    v-model="search"
-                    :append-icon="mdiMagnify"
-                    :label="$t('Panels.SpoolmanPanel.Search')"
-                    outlined
-                    dense
-                    hide-details
-                    style="max-width: 300px" />
+                <v-text-field v-model="search" :append-inner-icon="mdiMagnify" :label="t('Panels.SpoolmanPanel.Search')" variant="outlined" density="compact" hide-details style="max-width: 300px" />
                 <v-spacer />
-                <v-btn
-                    v-if="afcLane"
-                    :title="$t('Panels.SpoolmanPanel.EjectSpool')"
-                    class="px-2 minwidth-0 ml-3"
-                    :loading="loadings.includes('ejectSpool')"
-                    @click="ejectSpool">
+                <v-btn v-if="afcLane" :title="t('Panels.SpoolmanPanel.EjectSpool')" class="px-2 minwidth-0 ml-3" :loading="loadings.includes('ejectSpool')" @click="ejectSpool">
                     <v-icon>{{ mdiEject }}</v-icon>
                 </v-btn>
-                <v-btn
-                    :title="$t('Panels.SpoolmanPanel.Refresh')"
-                    class="px-2 minwidth-0 ml-3"
-                    :loading="loadings.includes('refreshSpools')"
-                    @click="refreshSpools">
+                <v-btn :title="t('Panels.SpoolmanPanel.Refresh')" class="px-2 minwidth-0 ml-3" :loading="loadings.includes('refreshSpools')" @click="refreshSpools">
                     <v-icon>{{ mdiRefresh }}</v-icon>
                 </v-btn>
-                <v-btn
-                    v-if="spoolManagerUrl"
-                    :title="$t('Panels.SpoolmanPanel.OpenSpoolManager')"
-                    class="px-2 minwidth-0 ml-3"
-                    @click="openSpoolManager">
+                <v-btn v-if="spoolManagerUrl" :title="t('Panels.SpoolmanPanel.OpenSpoolManager')" class="px-2 minwidth-0 ml-3" @click="openSpoolManager">
                     <v-icon>{{ mdiDatabase }}</v-icon>
                 </v-btn>
             </v-card-title>
             <v-card-text class="px-0 pb-0">
-                <v-data-table
-                    :headers="headers"
-                    :items="spools"
-                    item-key="id"
-                    :search="search"
-                    sort-by="last_used"
-                    :sort-desc="true"
-                    :custom-filter="customFilter">
+                <v-data-table :headers="headers" :items="spools" item-value="id" :search="search" :sort-by="[{ key: 'last_used', order: 'desc' }]" :custom-filter="customFilter">
                     <template #no-data>
-                        <div class="text-center">{{ $t('Panels.SpoolmanPanel.NoSpools') }}</div>
-                    </template>
-                    <template #no-results>
-                        <div class="text-center">{{ $t('Panels.SpoolmanPanel.NoResults') }}</div>
+                        <div class="text-center">{{ search ? t('Panels.SpoolmanPanel.NoResults') : t('Panels.SpoolmanPanel.NoSpools') }}</div>
                     </template>
 
                     <template #item="{ item }">
-                        <SpoolmanChangeSpoolDialogRow
-                            :key="item.id"
-                            :spool="item"
-                            :max_id_digits="max_spool_id_digits"
-                            @set-spool="setSpool" />
+                        <SpoolmanChangeSpoolDialogRow :key="item.id" :spool="item" :max_id_digits="max_spool_id_digits" @set-spool="setSpool" />
                     </template>
                 </v-data-table>
             </v-card-text>
@@ -72,198 +34,197 @@
     </v-dialog>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop, VModel, Watch } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Panel from '@/components/ui/Panel.vue'
 import { mdiCloseThick, mdiAdjust, mdiDatabase, mdiMagnify, mdiRefresh, mdiEject } from '@mdi/js'
-import { ServerSpoolmanStateSpool } from '@/store/server/spoolman/types'
+import type { InternalItem } from 'vuetify'
+import type { ServerSpoolmanStateSpool } from '@/store/server/spoolman/types'
 import SpoolmanChangeSpoolDialogRow from '@/components/dialogs/SpoolmanChangeSpoolDialogRow.vue'
-@Component({
-    components: { SpoolmanChangeSpoolDialogRow, Panel },
+import { useBase } from '@/composables/useBase'
+import { useServerSpoolmanStore } from '@/store/server/spoolman'
+import { usePrinterStore } from '@/store/printer'
+import { webSocketClient } from '@/plugins/webSocketClient'
+import { useServerStore } from '@/store/server'
+
+const props = withDefaults(
+    defineProps<{
+        tool?: string | null
+        afcLane?: string | null
+        setActiveSpool?: boolean
+    }>(),
+    {
+        tool: null,
+        afcLane: null,
+        setActiveSpool: true,
+    }
+)
+
+const showDialog = defineModel<boolean>({ required: true })
+
+const emit = defineEmits<{
+    'select-spool': [spool: ServerSpoolmanStateSpool]
+}>()
+
+const { t } = useI18n()
+const { isMobile, loadings, spoolManagerUrl } = useBase()
+const spoolmanStore = useServerSpoolmanStore()
+const printerStore = usePrinterStore()
+
+const search = ref('')
+
+const spools = computed<ServerSpoolmanStateSpool[]>(() => spoolmanStore.spools ?? [])
+
+const max_spool_id_digits = computed<number>(() => {
+    const max_id = spoolmanStore.spools.reduce((x: number, s: ServerSpoolmanStateSpool) => Math.max(x, s.id), 0)
+
+    return max_id.toString().length
 })
-export default class SpoolmanChangeSpoolDialog extends Mixins(BaseMixin) {
-    mdiAdjust = mdiAdjust
-    mdiCloseThick = mdiCloseThick
-    mdiDatabase = mdiDatabase
-    mdiEject = mdiEject
-    mdiMagnify = mdiMagnify
-    mdiRefresh = mdiRefresh
 
-    @VModel({ type: Boolean }) showDialog!: boolean
-    @Prop({ required: false, default: null }) declare readonly tool?: string
-    @Prop({ required: false, default: null }) declare readonly afcLane?: string
-    @Prop({ required: false, default: true }) declare readonly setActiveSpool?: boolean
+const headers = computed(() => [
+    {
+        title: ' ',
+        align: 'start' as const,
+        sortable: false,
+    },
+    {
+        title: t('Panels.SpoolmanPanel.Filament'),
+        align: 'start' as const,
+        key: 'filament.name',
+        sortable: false,
+    },
+    {
+        title: t('Panels.SpoolmanPanel.Material'),
+        align: 'center' as const,
+        key: 'filament.material',
+    },
+    {
+        title: t('Panels.SpoolmanPanel.LastUsed'),
+        align: 'end' as const,
+        key: 'last_used',
+    },
+    {
+        title: t('Panels.SpoolmanPanel.Weight'),
+        align: 'end' as const,
+        key: 'remaining_weight',
+    },
+])
 
-    search = ''
+const existsSaveVariables = computed(() => {
+    const settings = printerStore.configfile?.settings ?? {}
 
-    get spools(): ServerSpoolmanStateSpool[] {
-        return this.$store.state.server.spoolman.spools ?? []
-    }
+    return 'save_variables' in settings
+})
 
-    get max_spool_id_digits(): number {
-        const max_id = this.$store.state.server.spoolman.spools.reduce(
-            (x: number, s: ServerSpoolmanStateSpool) => Math.max(x, s.id),
-            0
-        )
-
-        return max_id.toString().length
-    }
-
-    get headers() {
-        return [
-            {
-                text: ' ',
-                align: 'start',
-                sortable: false,
-            },
-            {
-                text: this.$t('Panels.SpoolmanPanel.Filament'),
-                align: 'start',
-                value: 'filament.name',
-                sortable: false,
-            },
-            {
-                text: this.$t('Panels.SpoolmanPanel.Material'),
-                align: 'center',
-                value: 'filament.material',
-            },
-            {
-                text: this.$t('Panels.SpoolmanPanel.LastUsed'),
-                align: 'end',
-                value: 'last_used',
-            },
-            {
-                text: this.$t('Panels.SpoolmanPanel.Weight'),
-                align: 'end',
-                value: 'remaining_weight',
-            },
-        ]
-    }
-
-    get existsSaveVariables() {
-        const settings = this.$store.state.printer.configfile?.settings ?? {}
-
-        return 'save_variables' in settings
-    }
-
-    openSpoolManager() {
-        window.open(this.spoolManagerUrl, '_blank')
-    }
-
-    refresh() {
-        this.$store.dispatch('server/spoolman/refreshSpools')
-    }
-
-    close() {
-        this.showDialog = false
-    }
-
-    refreshSpools() {
-        this.$store.dispatch('server/spoolman/refreshSpools')
-    }
-
-    customFilter(_value: unknown, search: string, item: ServerSpoolmanStateSpool): boolean {
-        if (search.trim().startsWith('web+spoolman:s-')) {
-            const spoolId = parseInt(search.split('-')[1] ?? -1)
-            return item.id === spoolId
-        }
-
-        const querySplits = search.toLowerCase().split(' ')
-        const searchArray = [
-            item.id.toString(),
-            item.comment,
-            item.filament.name,
-            item.filament.vendor?.name,
-            item.filament.material,
-            item.location,
-        ]
-
-        for (const query of querySplits) {
-            const result = searchArray.some((q) => q?.toLowerCase().includes(query))
-
-            if (!result) return false
-        }
-
-        return true
-    }
-
-    setSpool(spool: ServerSpoolmanStateSpool) {
-        // If dialog is used for selection only, bypass setting of active spool and propogate event
-        if (!this.setActiveSpool) {
-            this.$emit('select-spool', spool)
-            this.close()
-            return
-        }
-
-        // if afcLane is set, execute SET_SPOOL_ID and close, because it's not an active printing spool change
-        if (this.afcLane) {
-            this.sendGcode(`SET_SPOOL_ID LANE=${this.afcLane} SPOOL_ID=${spool.id}`)
-            this.close()
-            return
-        }
-
-        // if tool is set
-        // -> execute setMacroVariable
-        // -> write to lane database
-        // and close, because it's not an active printing spool change
-        if (this.tool) {
-            // more infos can be found in the orcaslicer repo:
-            // https://github.com/OrcaSlicer/OrcaSlicer/blob/e700113b39f39b837175c680929538aa9655a9f9/src/slic3r/Utils/MoonrakerPrinterAgent.cpp#L727
-            this.$socket.emit('server.database.post_item', {
-                namespace: 'lane_data',
-                key: this.tool,
-                value: {
-                    // must be a string for orcaslicer and this will be the filament slot number
-                    lane: this.tool.substring(1),
-                    color: spool.filament.color_hex,
-                    material: spool.filament.material,
-                    bed_temp: spool.filament.settings_bed_temp,
-                    nozzle_temp: spool.filament.settings_extruder_temp,
-                },
-            })
-
-            this.setMacroVariable(spool)
-            this.close()
-            return
-        }
-
-        this.$store.dispatch('server/spoolman/setActiveSpool', spool.id)
-
-        this.close()
-    }
-
-    setMacroVariable(spool: ServerSpoolmanStateSpool) {
-        // Set spool_id for tool
-        this.sendGcode(`SET_GCODE_VARIABLE MACRO=${this.tool} VARIABLE=spool_id VALUE=${spool.id}`)
-
-        // Close dialog if save_variables is not enabled
-        if (!this.existsSaveVariables) {
-            this.close()
-            return
-        }
-
-        // Set spool_id to save_variable
-        this.sendGcode(`SAVE_VARIABLE VARIABLE=${this.tool?.toLowerCase()}__spool_id VALUE=${spool.id}`)
-    }
-
-    sendGcode(gcode: string) {
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode })
-    }
-
-    ejectSpool() {
-        this.sendGcode(`SET_SPOOL_ID LANE=${this.afcLane} SPOOL_ID=`)
-        this.close()
-    }
-
-    @Watch('showDialog')
-    onShowDialogChanged(newVal: boolean) {
-        if (!newVal) return
-
-        this.refresh()
-        this.search = ''
-    }
+function openSpoolManager() {
+    window.open(spoolManagerUrl.value, '_blank')
 }
+
+function refresh() {
+    spoolmanStore.refreshSpools()
+}
+
+function close() {
+    showDialog.value = false
+}
+
+function refreshSpools() {
+    spoolmanStore.refreshSpools()
+}
+
+function customFilter(_value: string, search: string, item?: InternalItem<ServerSpoolmanStateSpool>): boolean {
+    const spool = item!.raw
+    if (search.trim().startsWith('web+spoolman:s-')) {
+        const spoolId = parseInt(search.split('-')[1] ?? '-1')
+        return spool.id === spoolId
+    }
+
+    const querySplits = search.toLowerCase().split(' ')
+    const searchArray = [spool.id.toString(), spool.comment, spool.filament.name, spool.filament.vendor?.name, spool.filament.material, spool.location]
+
+    for (const query of querySplits) {
+        const result = searchArray.some((q) => q?.toLowerCase().includes(query))
+
+        if (!result) return false
+    }
+
+    return true
+}
+
+function sendGcode(gcode: string) {
+    useServerStore().addEvent({ message: gcode, type: 'command' })
+    webSocketClient.emit('printer.gcode.script', { script: gcode })
+}
+
+function setMacroVariable(spool: ServerSpoolmanStateSpool) {
+    // Set spool_id for tool
+    sendGcode(`SET_GCODE_VARIABLE MACRO=${props.tool} VARIABLE=spool_id VALUE=${spool.id}`)
+
+    // Close dialog if save_variables is not enabled
+    if (!existsSaveVariables.value) {
+        close()
+        return
+    }
+
+    // Set spool_id to save_variable
+    sendGcode(`SAVE_VARIABLE VARIABLE=${props.tool?.toLowerCase()}__spool_id VALUE=${spool.id}`)
+}
+
+function setSpool(spool: ServerSpoolmanStateSpool) {
+    // If dialog is used for selection only, bypass setting of active spool and propogate event
+    if (!props.setActiveSpool) {
+        emit('select-spool', spool)
+        close()
+        return
+    }
+
+    // if afcLane is set, execute SET_SPOOL_ID and close, because it's not an active printing spool change
+    if (props.afcLane) {
+        sendGcode(`SET_SPOOL_ID LANE=${props.afcLane} SPOOL_ID=${spool.id}`)
+        close()
+        return
+    }
+
+    // if tool is set
+    // -> execute setMacroVariable
+    // -> write to lane database
+    // and close, because it's not an active printing spool change
+    if (props.tool) {
+        // more infos can be found in the orcaslicer repo:
+        // https://github.com/OrcaSlicer/OrcaSlicer/blob/e700113b39f39b837175c680929538aa9655a9f9/src/slic3r/Utils/MoonrakerPrinterAgent.cpp#L727
+        webSocketClient.emit('server.database.post_item', {
+            namespace: 'lane_data',
+            key: props.tool,
+            value: {
+                // must be a string for orcaslicer and this will be the filament slot number
+                lane: props.tool.substring(1),
+                color: spool.filament.color_hex,
+                material: spool.filament.material,
+                bed_temp: spool.filament.settings_bed_temp,
+                nozzle_temp: spool.filament.settings_extruder_temp,
+            },
+        })
+
+        setMacroVariable(spool)
+        close()
+        return
+    }
+
+    spoolmanStore.setActiveSpool(spool.id)
+
+    close()
+}
+
+function ejectSpool() {
+    sendGcode(`SET_SPOOL_ID LANE=${props.afcLane} SPOOL_ID=`)
+    close()
+}
+
+watch(showDialog, (newVal) => {
+    if (!newVal) return
+
+    refresh()
+    search.value = ''
+})
 </script>

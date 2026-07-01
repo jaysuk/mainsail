@@ -8,7 +8,7 @@
                 </v-col>
                 <v-col cols="7" class="d-flex flex-column justify-space-between pl-1">
                     <div class="body-2 text-center">
-                        <div>{{ $t('Panels.MmuPanel.TtgMapDialog.Gate') }}</div>
+                        <div>{{ t('Panels.MmuPanel.TtgMapDialog.Gate') }}</div>
                         <div class="body-1 font-weight-bold">#{{ gate }}</div>
                     </div>
                     <div class="body-2 text-center">
@@ -24,46 +24,54 @@
     </v-card>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, { TOOL_GATE_BYPASS, TOOL_GATE_UNKNOWN } from '@/components/mixins/mmu'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useMmu, TOOL_GATE_BYPASS, TOOL_GATE_UNKNOWN } from '@/composables/useMmu'
+import MmuUnitGateSpool from '@/components/panels/Mmu/MmuUnitGateSpool.vue'
 
-@Component
-export default class MmuEditTtgMapDialogTool extends Mixins(BaseMixin, MmuMixin) {
-    @Prop({ required: true }) readonly gate!: number
-    @Prop({ required: true }) readonly tool!: number
-    @Prop({ default: false }) readonly isSelected!: boolean
-    @Prop({ default: false }) readonly isDisabled!: boolean
-
-    get title() {
-        if (this.tool === TOOL_GATE_BYPASS) return this.$t('Panels.MmuPanel.Bypass')
-        if (this.tool === TOOL_GATE_UNKNOWN) return `T?`
-
-        return `T${this.tool}`
+const props = withDefaults(
+    defineProps<{
+        gate: number
+        tool: number
+        isSelected?: boolean
+        isDisabled?: boolean
+    }>(),
+    {
+        isSelected: false,
+        isDisabled: false,
     }
+)
 
-    get endlessSpoolText() {
-        const currentGroup = this.endlessSpoolGroups[this.gate]
+const emit = defineEmits<{
+    'select-tool': [tool: number]
+}>()
 
-        const eSGates = this.endlessSpoolGroups
-            .map((_, i) => (this.gate + i) % this.endlessSpoolGroups.length)
-            .filter((idx) => idx !== this.gate && this.endlessSpoolGroups[idx] === currentGroup)
+const { t } = useI18n()
+const { endlessSpoolGroups } = useMmu()
 
-        return eSGates.join(', ') || this.$t('Panels.MmuPanel.TtgMapDialog.None')
-    }
+const title = computed(() => {
+    if (props.tool === TOOL_GATE_BYPASS) return t('Panels.MmuPanel.Bypass')
+    if (props.tool === TOOL_GATE_UNKNOWN) return `T?`
 
-    get cardClasses() {
-        return {
-            'is-selected': this.isSelected,
-            'is-disabled': this.isDisabled,
-        }
-    }
+    return `T${props.tool}`
+})
 
-    selectTool() {
-        this.$emit('select-tool', this.tool)
-    }
+const endlessSpoolText = computed(() => {
+    const currentGroup = endlessSpoolGroups.value[props.gate]
+
+    const eSGates = endlessSpoolGroups.value.map((_, i) => (props.gate + i) % endlessSpoolGroups.value.length).filter((idx) => idx !== props.gate && endlessSpoolGroups.value[idx] === currentGroup)
+
+    return eSGates.join(', ') || t('Panels.MmuPanel.TtgMapDialog.None')
+})
+
+const cardClasses = computed(() => ({
+    'is-selected': props.isSelected,
+    'is-disabled': props.isDisabled,
+}))
+
+function selectTool() {
+    emit('select-tool', props.tool)
 }
 </script>
 

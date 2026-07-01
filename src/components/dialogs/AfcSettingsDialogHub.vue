@@ -1,9 +1,7 @@
 <template>
     <div>
         <h3 class="text-h5 mb-3">{{ title }}</h3>
-        <settings-row
-            :title="$t('Panels.AfcPanel.SettingsDialog.BowdenLength')"
-            :sub-title="$t('Panels.AfcPanel.SettingsDialog.BowdenLengthDescription')">
+        <settings-row :title="t('Panels.AfcPanel.SettingsDialog.BowdenLength')" :sub-title="t('Panels.AfcPanel.SettingsDialog.BowdenLengthDescription')">
             <number-input
                 label="afc_bowden_length"
                 param="LENGTH"
@@ -23,55 +21,49 @@
     </div>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import Panel from '@/components/ui/Panel.vue'
-import AfcMixin from '@/components/mixins/afc'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import SettingsRow from '@/components/settings/SettingsRow.vue'
+import NumberInput from '@/components/inputs/NumberInput.vue'
 import { convertName } from '@/plugins/helpers'
+import { useControl } from '@/composables/useControl'
+import { usePrinterStore } from '@/store/printer'
 
-@Component({
-    components: { Panel },
+const props = defineProps<{
+    name: string
+}>()
+
+const { t } = useI18n()
+const { doSend } = useControl()
+const printerStore = usePrinterStore()
+
+const title = computed(() => {
+    const name = convertName(`Hub ${props.name}`)
+
+    return t('Panels.AfcPanel.SettingsDialog.SettingsForTitle', { name })
 })
-export default class AfcSettingsDialogHub extends Mixins(BaseMixin, AfcMixin) {
-    @Prop({ type: String, required: true }) readonly name!: string
 
-    get title() {
-        const name = convertName(`Hub ${this.name}`)
+const afcSettingsHub = computed(() => {
+    const settings = printerStore.configfile?.settings ?? {}
+    const name = `AFC_hub ${props.name}`.toLowerCase()
 
-        return this.$t('Panels.AfcPanel.SettingsDialog.SettingsForTitle', { name })
-    }
+    return settings[name] || {}
+})
 
-    doSend(gcode: string) {
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode })
-    }
+const settingsLength = computed(() => afcSettingsHub.value.afc_bowden_length || 0)
 
-    get afcSettingsHub() {
-        const settings = this.$store.state.printer.configfile?.settings ?? {}
-        const name = `AFC_hub ${this.name}`.toLowerCase()
+const printerObject = computed(() => {
+    const printer = printerStore as unknown as Record<string, any>
+    const key = `AFC_hub ${props.name}`
 
-        return settings[name] || {}
-    }
+    return printer[key] ?? {}
+})
 
-    get settingsLength() {
-        return this.afcSettingsHub.afc_bowden_length || 0
-    }
+const currentLength = computed(() => printerObject.value.afc_bowden_length || 0)
 
-    get printerObject() {
-        const printer = this.$store.state.printer ?? {}
-        const key = `AFC_hub ${this.name}`
-
-        return printer[key] ?? {}
-    }
-
-    get currentLength() {
-        return this.printerObject.afc_bowden_length || 0
-    }
-
-    setBowdenLength(args: { name: string; value: number }) {
-        const gcode = `SET_BOWDEN_LENGTH HUB=${this.name} ${args.name}=${args.value}`
-        this.doSend(gcode)
-    }
+function setBowdenLength(args: { name: string; value: number }) {
+    const gcode = `SET_BOWDEN_LENGTH HUB=${props.name} ${args.name}=${args.value}`
+    doSend(gcode)
 }
 </script>

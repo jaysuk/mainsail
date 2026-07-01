@@ -1,55 +1,44 @@
 <template>
     <v-dialog v-model="showDialog" width="700" @click:outside="closeDialog">
-        <panel
-            :title="$t('Panels.AfcPanel.AfcSettings')"
-            :icon="afcIconLogo"
-            card-class="afc-settings-dialog"
-            :margin-bottom="false">
+        <panel :title="t('Panels.AfcPanel.AfcSettings')" :icon="afcIconLogo" card-class="afc-settings-dialog" :margin-bottom="false">
             <template #buttons>
-                <v-btn
-                    text
-                    tile
-                    href="https://www.armoredturtle.xyz/docs/afc-klipper-add-on/toolhead/calculation.html"
-                    target="_blank">
-                    <v-icon left>{{ mdiLifebuoy }}</v-icon>
-                    {{ $t('Panels.AfcPanel.SettingsDialog.Help') }}
+                <v-btn variant="text" href="https://www.armoredturtle.xyz/docs/afc-klipper-add-on/toolhead/calculation.html" target="_blank">
+                    <v-icon start>{{ mdiLifebuoy }}</v-icon>
+                    {{ t('Panels.AfcPanel.SettingsDialog.Help') }}
                 </v-btn>
-                <v-btn icon tile @click="closeDialog">
+                <v-btn icon="" variant="text" @click="closeDialog">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
                 </v-btn>
             </template>
-            <overlay-scrollbars class="height500">
+            <OverlayScrollbarsComponent class="height500" :options="{}">
                 <v-card-text class="d-flex flex-column gap-3">
                     <afc-settings-dialog-hub v-for="hub in afcHubs" :key="hub" :name="hub" />
                     <afc-settings-dialog-extruder v-for="extruder in afcExtruders" :key="extruder" :name="extruder" />
                     <afc-settings-dialog-lane v-for="lane in afcLanes" :key="lane" :name="lane" />
                 </v-card-text>
-            </overlay-scrollbars>
+            </OverlayScrollbarsComponent>
         </panel>
     </v-dialog>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, VModel } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import Panel from '@/components/ui/Panel.vue'
 import { mdiCloseThick, mdiLifebuoy } from '@mdi/js'
-import AfcMixin from '@/components/mixins/afc'
 import { afcIconLogo } from '@/plugins/afcIcons'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
+import AfcSettingsDialogHub from '@/components/dialogs/AfcSettingsDialogHub.vue'
+import AfcSettingsDialogExtruder from '@/components/dialogs/AfcSettingsDialogExtruder.vue'
+import AfcSettingsDialogLane from '@/components/dialogs/AfcSettingsDialogLane.vue'
+import { useAfc } from '@/composables/useAfc'
 
-@Component({
-    components: { Panel },
-})
-export default class AfcSettingsDialog extends Mixins(BaseMixin, AfcMixin) {
-    afcIconLogo = afcIconLogo
-    mdiCloseThick = mdiCloseThick
-    mdiLifebuoy = mdiLifebuoy
+const showDialog = defineModel<boolean>({ required: true })
 
-    @VModel({ type: Boolean }) showDialog!: boolean
+const { t } = useI18n()
+const { afcHubs, afcExtruders, afcLanes } = useAfc()
 
-    closeDialog() {
-        this.showDialog = false
-    }
+function closeDialog() {
+    showDialog.value = false
 }
 </script>
 

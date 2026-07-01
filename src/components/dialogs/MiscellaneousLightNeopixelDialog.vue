@@ -1,12 +1,8 @@
 <template>
     <v-dialog v-model="showDialog" width="400">
-        <panel
-            :title="outputName"
-            :icon="mdiLightbulbOutline"
-            card-class="miscellaneous-light-neopixel-dialog"
-            :margin-bottom="false">
+        <panel :title="outputName" :icon="mdiLightbulbOutline" card-class="miscellaneous-light-neopixel-dialog" :margin-bottom="false">
             <template #buttons>
-                <v-btn icon tile @click="closePrompt">
+                <v-btn icon="" variant="text" @click="closePrompt">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
                 </v-btn>
             </template>
@@ -14,33 +10,21 @@
                 <template v-if="presets.length">
                     <v-row>
                         <v-col class="light-presets-container d-flex flex-wrap flex-row justify-center">
-                            <miscellaneous-light-neopixel-dialog-preset
-                                v-for="preset in presets"
-                                :key="preset.id"
-                                :preset="preset"
-                                @update-color="updateColor" />
+                            <miscellaneous-light-neopixel-dialog-preset v-for="preset in presets" :key="preset.id" :preset="preset" @update-color="updateColor" />
                         </v-col>
                     </v-row>
                     <v-divider class="my-3" />
                 </template>
                 <v-row>
                     <v-col class="text-center">
-                        <color-picker
-                            :color="colorRGB"
-                            :options="colorPickerOptions"
-                            @update:color="onColorRGBChanged" />
-                        <color-picker
-                            v-if="colorOrder.includes('W')"
-                            :color="colorRGBW"
-                            :options="colorPickerWhiteOptions"
-                            class="mt-3"
-                            @update:color="onColorWhiteChanged" />
+                        <color-picker :color="colorRGB" :options="colorPickerOptions" @update:color="onColorRGBChanged" />
+                        <color-picker v-if="colorOrder.includes('W')" :color="colorRGBW" :options="colorPickerWhiteOptions" class="mt-3" @update:color="onColorWhiteChanged" />
                     </v-col>
                     <v-col>
                         <v-row v-if="colorOrder.includes('R')">
                             <v-col>
                                 <number-input
-                                    :label="$t('Panels.MiscellaneousPanel.Light.Red')"
+                                    :label="t('Panels.MiscellaneousPanel.Light.Red')"
                                     param="red"
                                     :target="targetRed"
                                     :default-value="defaultRed"
@@ -55,47 +39,17 @@
                         </v-row>
                         <v-row v-if="colorOrder.includes('G')">
                             <v-col>
-                                <number-input
-                                    :label="$t('Panels.MiscellaneousPanel.Light.Green')"
-                                    param="green"
-                                    :target="targetGreen"
-                                    :default-value="defaultGreen"
-                                    :min="0"
-                                    :max="255"
-                                    :dec="1"
-                                    :step="1"
-                                    :has-spinner="true"
-                                    @submit="onColorInput" />
+                                <number-input :label="t('Panels.MiscellaneousPanel.Light.Green')" param="green" :target="targetGreen" :default-value="defaultGreen" :min="0" :max="255" :dec="1" :step="1" :has-spinner="true" @submit="onColorInput" />
                             </v-col>
                         </v-row>
                         <v-row v-if="colorOrder.includes('B')">
                             <v-col>
-                                <number-input
-                                    :label="$t('Panels.MiscellaneousPanel.Light.Blue')"
-                                    param="blue"
-                                    :target="targetBlue"
-                                    :default-value="defaultBlue"
-                                    :min="0"
-                                    :max="255"
-                                    :dec="1"
-                                    :step="1"
-                                    :has-spinner="true"
-                                    @submit="onColorInput" />
+                                <number-input :label="t('Panels.MiscellaneousPanel.Light.Blue')" param="blue" :target="targetBlue" :default-value="defaultBlue" :min="0" :max="255" :dec="1" :step="1" :has-spinner="true" @submit="onColorInput" />
                             </v-col>
                         </v-row>
                         <v-row v-if="colorOrder.includes('W')">
                             <v-col>
-                                <number-input
-                                    :label="$t('Panels.MiscellaneousPanel.Light.White')"
-                                    param="white"
-                                    :target="targetWhite"
-                                    :default-value="defaultWhite"
-                                    :min="0"
-                                    :max="255"
-                                    :dec="1"
-                                    :step="1"
-                                    :has-spinner="true"
-                                    @submit="onColorInput" />
+                                <number-input :label="t('Panels.MiscellaneousPanel.Light.White')" param="white" :target="targetWhite" :default-value="defaultWhite" :min="0" :max="255" :dec="1" :step="1" :has-spinner="true" @submit="onColorInput" />
                             </v-col>
                         </v-row>
                     </v-col>
@@ -104,17 +58,21 @@
         </panel>
     </v-dialog>
 </template>
-<script lang="ts">
-import { Component, Mixins, Prop, VModel } from 'vue-property-decorator'
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { mdiCloseThick, mdiLightbulbOutline } from '@mdi/js'
-import BaseMixin from '@/components/mixins/base'
+import Panel from '@/components/ui/Panel.vue'
 import { caseInsensitiveSort, convertName } from '@/plugins/helpers'
 import type { ColorPickerProps } from '@jaames/iro/dist/ColorPicker.d'
 import iro from '@jaames/iro'
-import { IroColor } from '@irojs/iro-core'
-import { Debounce } from 'vue-debounce-decorator'
-import { GuiMiscellaneousStateEntry } from '@/store/gui/miscellaneous/types'
+import type { IroColor } from '@irojs/iro-core'
+import type { GuiMiscellaneousStateEntry } from '@/store/gui/miscellaneous/types'
 import MiscellaneousLightNeopixelDialogPreset from '@/components/dialogs/MiscellaneousLightNeopixelDialogPreset.vue'
+import ColorPicker from '@/components/inputs/ColorPicker.vue'
+import { usePrinterStore } from '@/store/printer'
+import { useGuiMiscellaneousStore } from '@/store/gui/miscellaneous'
 
 interface ColorData {
     red: number
@@ -125,263 +83,252 @@ interface ColorData {
     [key: string]: number
 }
 
-@Component({
-    components: { MiscellaneousLightNeopixelDialogPreset },
+const props = withDefaults(
+    defineProps<{
+        type: string
+        name: string
+        group?: GuiMiscellaneousStateEntry
+        index?: number
+    }>(),
+    {
+        index: 1,
+    }
+)
+
+const showDialog = defineModel<boolean>({ required: true })
+
+const emit = defineEmits<{
+    'update-color': [red: number, green: number, blue: number, white: number]
+}>()
+
+const { t } = useI18n()
+const printerStore = usePrinterStore()
+const guiMiscellaneousStore = useGuiMiscellaneousStore()
+
+const outputName = computed(() => convertName(props.name))
+
+const settings = computed(() => {
+    const settings = printerStore.configfile.settings ?? {}
+
+    const key = `${props.type.toLowerCase()} ${props.name.toLowerCase()}`
+    return settings[key] ?? {}
 })
-export default class MiscellaneousLightNeopixelDialog extends Mixins(BaseMixin) {
-    mdiCloseThick = mdiCloseThick
-    mdiLightbulbOutline = mdiLightbulbOutline
 
-    @VModel({ type: Boolean }) showDialog!: boolean
-    @Prop({ type: String, required: true }) type!: string
-    @Prop({ type: String, required: true }) name!: string
-    @Prop({ type: Object, required: false }) group!: GuiMiscellaneousStateEntry
-    @Prop({ type: Number, default: 1 }) index!: number
+const guiEntry = computed(() => {
+    const entries = (guiMiscellaneousStore.entries ?? {}) as Record<string, GuiMiscellaneousStateEntry>
 
-    get outputName() {
-        return convertName(this.name)
+    const result = Object.entries(entries).find(([, value]) => {
+        return value.type === props.type && value.name === props.name
+    })
+
+    return result ? result[1] : null
+})
+
+const presets = computed(() => {
+    if (!guiEntry.value?.presets) return []
+
+    const presets = Object.entries(guiEntry.value.presets).map(([key, value]) => {
+        return { ...value, id: key }
+    })
+
+    return caseInsensitiveSort(presets, 'name')
+})
+
+const colorOrder = computed(() => {
+    if (props.type !== 'led') {
+        const colorOrder = settings.value.color_order ?? []
+
+        return colorOrder[0] ?? ''
     }
 
-    get settings() {
-        const settings = this.$store.state.printer.configfile.settings ?? {}
+    const pins = ['red_pin', 'green_pin', 'blue_pin', 'white_pin']
+    let colorOrder = ''
+    pins.forEach((pin) => {
+        if (pin in settings.value) colorOrder += pin.substring(0, 1).toUpperCase()
+    })
 
-        const key = `${this.type.toLowerCase()} ${this.name.toLowerCase()}`
-        return settings[key] ?? {}
+    return colorOrder
+})
+
+const defaultRed = computed(() => Math.round((settings.value.initial_red ?? 0) * 255))
+
+const defaultGreen = computed(() => Math.round((settings.value.initial_green ?? 0) * 255))
+
+const defaultBlue = computed(() => Math.round((settings.value.initial_blue ?? 0) * 255))
+
+const defaultWhite = computed(() => Math.round((settings.value.initial_white ?? 0) * 255))
+
+const printerObject = computed(() => {
+    const printer = printerStore as unknown as Record<string, any>
+
+    return printer[`${props.type} ${props.name}`] ?? {}
+})
+
+const colorData = computed(() => printerObject.value.color_data ?? [])
+
+const current = computed(() => {
+    const data = colorData.value[props.index - 1] ?? []
+
+    return {
+        red: data[0] ?? null,
+        green: data[1] ?? null,
+        blue: data[2] ?? null,
+        white: data[3] ?? null,
     }
+})
 
-    get guiEntry() {
-        const entries = (this.$store.state.gui.miscellaneous.entries ?? {}) as GuiMiscellaneousStateEntry[]
+const targetRed = computed(() => Math.round((current.value.red ?? 0) * 255))
 
-        const result = Object.entries(entries).find(([, value]) => {
-            return value.type === this.type && value.name === this.name
-        })
+const targetGreen = computed(() => Math.round((current.value.green ?? 0) * 255))
 
-        return result ? result[1] : null
+const targetBlue = computed(() => Math.round((current.value.blue ?? 0) * 255))
+
+const targetWhite = computed(() => Math.round((current.value.white ?? 0) * 255))
+
+const colorPickerOptions = computed(() => {
+    const options: ColorPickerProps = {
+        width: 200,
+        margin: 15,
+        layout: [],
     }
+    const layout: ColorPickerProps['layout'] = []
 
-    get presets() {
-        if (!this.guiEntry?.presets) return []
+    const existRed = colorOrder.value.includes('R')
+    const existGreen = colorOrder.value.includes('G')
+    const existBlue = colorOrder.value.includes('B')
 
-        const presets = Object.entries(this.guiEntry.presets).map(([key, value]) => {
-            return { ...value, id: key }
-        })
-
-        return caseInsensitiveSort(presets, 'name')
-    }
-
-    get colorOrder() {
-        if (this.type !== 'led') {
-            const colorOrder = this.settings.color_order ?? []
-
-            return colorOrder[0] ?? ''
-        }
-
-        const pins = ['red_pin', 'green_pin', 'blue_pin', 'white_pin']
-        let colorOrder = ''
-        pins.forEach((pin) => {
-            if (pin in this.settings) colorOrder += pin.substring(0, 1).toUpperCase()
-        })
-
-        return colorOrder
-    }
-
-    get defaultRed() {
-        return Math.round((this.settings.initial_red ?? 0) * 255)
-    }
-
-    get defaultGreen() {
-        return Math.round((this.settings.initial_green ?? 0) * 255)
-    }
-
-    get defaultBlue() {
-        return Math.round((this.settings.initial_blue ?? 0) * 255)
-    }
-
-    get defaultWhite() {
-        return Math.round((this.settings.initial_white ?? 0) * 255)
-    }
-
-    get targetRed() {
-        return Math.round((this.current.red ?? 0) * 255)
-    }
-
-    get targetGreen() {
-        return Math.round((this.current.green ?? 0) * 255)
-    }
-
-    get targetBlue() {
-        return Math.round((this.current.blue ?? 0) * 255)
-    }
-
-    get targetWhite() {
-        return Math.round((this.current.white ?? 0) * 255)
-    }
-
-    get printerObject() {
-        const printer = this.$store.state.printer ?? {}
-
-        return printer[`${this.type} ${this.name}`] ?? {}
-    }
-
-    get colorData() {
-        return this.printerObject.color_data ?? []
-    }
-
-    get current() {
-        const data = this.colorData[this.index - 1] ?? []
-
-        return {
-            red: data[0] ?? null,
-            green: data[1] ?? null,
-            blue: data[2] ?? null,
-            white: data[3] ?? null,
-        }
-    }
-
-    get colorPickerOptions() {
-        const options: ColorPickerProps = {
-            width: 200,
-            margin: 15,
-            layout: [],
-        }
-        const layout: ColorPickerProps['layout'] = []
-
-        const existRed = this.colorOrder.includes('R')
-        const existGreen = this.colorOrder.includes('G')
-        const existBlue = this.colorOrder.includes('B')
-
-        if (existRed && existGreen && existBlue) {
-            options.layout = [
-                {
-                    component: iro.ui.Wheel,
-                },
-                {
-                    component: iro.ui.Slider,
-                    options: {
-                        sliderType: 'value',
-                    },
-                },
-            ]
-
-            return options
-        }
-
-        if (existRed) {
-            layout.push({
+    if (existRed && existGreen && existBlue) {
+        options.layout = [
+            {
+                component: iro.ui.Wheel,
+            },
+            {
                 component: iro.ui.Slider,
                 options: {
-                    sliderType: 'red',
+                    sliderType: 'value',
                 },
-            })
-        }
-
-        if (existGreen) {
-            layout.push({
-                component: iro.ui.Slider,
-                options: {
-                    sliderType: 'green',
-                },
-            })
-        }
-
-        if (existBlue) {
-            layout.push({
-                component: iro.ui.Slider,
-                options: {
-                    sliderType: 'blue',
-                },
-            })
-        }
-
-        options.layout = layout
-        return options
-    }
-
-    get colorPickerWhiteOptions() {
-        const options: ColorPickerProps = {
-            width: 200,
-            margin: 15,
-            layout: [
-                {
-                    component: iro.ui.Slider,
-                    options: {
-                        sliderType: 'alpha',
-                    },
-                },
-            ],
-        }
+            },
+        ]
 
         return options
     }
 
-    get colorRGB() {
-        const red = Math.round((this.current.red ?? 0) * 255)
-        const green = Math.round((this.current.green ?? 0) * 255)
-        const blue = Math.round((this.current.blue ?? 0) * 255)
-
-        return `rgb(${red}, ${green}, ${blue})`
+    if (existRed) {
+        layout.push({
+            component: iro.ui.Slider,
+            options: {
+                sliderType: 'red',
+            },
+        })
     }
 
-    get colorRGBW() {
-        return `rgba(255, 255, 255, ${this.current.white ?? 0})`
+    if (existGreen) {
+        layout.push({
+            component: iro.ui.Slider,
+            options: {
+                sliderType: 'green',
+            },
+        })
     }
 
-    @Debounce({ time: 500 })
-    onColorRGBChanged(value: IroColor) {
-        if (value.red === this.targetRed && value.green === this.targetGreen && value.blue === this.targetBlue) return
+    if (existBlue) {
+        layout.push({
+            component: iro.ui.Slider,
+            options: {
+                sliderType: 'blue',
+            },
+        })
+    }
+
+    options.layout = layout
+    return options
+})
+
+const colorPickerWhiteOptions = computed<ColorPickerProps>(() => ({
+    width: 200,
+    margin: 15,
+    layout: [
+        {
+            component: iro.ui.Slider,
+            options: {
+                sliderType: 'alpha',
+            },
+        },
+    ],
+}))
+
+const colorRGB = computed(() => {
+    const red = Math.round((current.value.red ?? 0) * 255)
+    const green = Math.round((current.value.green ?? 0) * 255)
+    const blue = Math.round((current.value.blue ?? 0) * 255)
+
+    return `rgb(${red}, ${green}, ${blue})`
+})
+
+const colorRGBW = computed(() => `rgba(255, 255, 255, ${current.value.white ?? 0})`)
+
+function updateColor(colorData: ColorData) {
+    const red = Math.round((colorData.red / 255) * 100) / 100
+    const green = Math.round((colorData.green / 255) * 100) / 100
+    const blue = Math.round((colorData.blue / 255) * 100) / 100
+    const white = Math.round((colorData.white / 255) * 100) / 100
+
+    emit('update-color', red, green, blue, white)
+}
+
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
+function onColorRGBChanged(value: IroColor) {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+        if (value.red === targetRed.value && value.green === targetGreen.value && value.blue === targetBlue.value) return
 
         const color: ColorData = {
             red: value.red,
             green: value.green,
             blue: value.blue,
-            white: this.targetWhite,
+            white: targetWhite.value,
         }
 
-        this.updateColor(color)
-    }
+        updateColor(color)
+    }, 500)
+}
 
-    @Debounce({ time: 500 })
-    onColorWhiteChanged(value: IroColor) {
-        if (value.alpha === this.targetWhite) return
+function onColorWhiteChanged(value: IroColor) {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+        if (value.alpha === targetWhite.value) return
 
         const color: ColorData = {
-            red: this.targetRed,
-            green: this.targetGreen,
-            blue: this.targetBlue,
+            red: targetRed.value,
+            green: targetGreen.value,
+            blue: targetBlue.value,
             white: Math.round(value.alpha * 255),
         }
 
-        this.updateColor(color)
-    }
+        updateColor(color)
+    }, 500)
+}
 
-    @Debounce({ time: 500 })
-    onColorInput(payload: { name: string; value: number }) {
+function onColorInput(payload: { name: string; value: number }) {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
         const color: ColorData = {
-            red: this.targetRed,
-            green: this.targetGreen,
-            blue: this.targetBlue,
-            white: this.targetWhite,
+            red: targetRed.value,
+            green: targetGreen.value,
+            blue: targetBlue.value,
+            white: targetWhite.value,
         }
 
         // stop when the value is the same as the current value
         if (!(payload.name in color) || color[payload.name] === payload.value) return
 
         color[payload.name] = payload.value
-        this.updateColor(color)
-    }
+        updateColor(color)
+    }, 500)
+}
 
-    updateColor(colorData: ColorData) {
-        const red = Math.round((colorData.red / 255) * 100) / 100
-        const green = Math.round((colorData.green / 255) * 100) / 100
-        const blue = Math.round((colorData.blue / 255) * 100) / 100
-        const white = Math.round((colorData.white / 255) * 100) / 100
-
-        this.$emit('update-color', red, green, blue, white)
-    }
-
-    closePrompt() {
-        this.showDialog = false
-    }
+function closePrompt() {
+    showDialog.value = false
 }
 </script>
 
@@ -390,7 +337,7 @@ export default class MiscellaneousLightNeopixelDialog extends Mixins(BaseMixin) 
     gap: 6px;
 }
 
-.light-presets-container ::v-deep > div {
+.light-presets-container :deep(> div) {
     width: 28px;
     height: 28px;
     border-radius: 4px;

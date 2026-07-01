@@ -2,56 +2,62 @@
     <v-dialog v-model="showDialog" width="400" :fullscreen="isMobile">
         <panel card-class="confirm-top-corner-menu-dialog" :icon="iconToUse" :title="title" :margin-bottom="false">
             <template #buttons>
-                <v-btn icon tile @click="close">
+                <v-btn icon="" variant="text" @click="close">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
                 </v-btn>
             </template>
             <v-card-text>{{ text }}</v-card-text>
             <v-card-actions>
                 <v-spacer />
-                <v-btn text @click="close">{{ cancelButtonComputed }}</v-btn>
-                <v-btn text :color="actionButtonColor" @click="action">{{ actionButtonText }}</v-btn>
+                <v-btn variant="text" @click="close">{{ cancelButtonComputed }}</v-btn>
+                <v-btn variant="text" :color="actionButtonColor" @click="action">{{ actionButtonText }}</v-btn>
             </v-card-actions>
         </panel>
     </v-dialog>
 </template>
-<script lang="ts">
-import Component from 'vue-class-component'
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Panel from '@/components/ui/Panel.vue'
-import { Mixins, Prop, VModel } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
 import { mdiAlert, mdiCloseThick } from '@mdi/js'
+import { useBase } from '@/composables/useBase'
 
-@Component({
-    components: { Panel },
-})
-export default class ConfirmationDialog extends Mixins(BaseMixin) {
-    mdiAlert = mdiAlert
-    mdiCloseThick = mdiCloseThick
-
-    @VModel({ type: Boolean }) showDialog!: boolean
-    @Prop({ type: String, required: true }) title!: string
-    @Prop({ type: String, required: true }) text!: string
-    @Prop({ type: String, required: true }) actionButtonText!: string
-    @Prop({ type: String, default: '' }) cancelButtonText!: string
-    @Prop({ type: String, default: 'error' }) actionButtonColor!: string
-    @Prop({ type: String, default: null }) icon!: string | null
-
-    get iconToUse() {
-        return this.icon ?? this.mdiAlert
+const props = withDefaults(
+    defineProps<{
+        title: string
+        text: string
+        actionButtonText: string
+        cancelButtonText?: string
+        actionButtonColor?: string
+        icon?: string | null
+    }>(),
+    {
+        cancelButtonText: '',
+        actionButtonColor: 'error',
+        icon: null,
     }
+)
 
-    get cancelButtonComputed(): string {
-        return this.cancelButtonText || this.$t('Buttons.Cancel').toString()
-    }
+const emit = defineEmits<{
+    action: []
+}>()
 
-    action() {
-        this.$emit('action')
-        this.showDialog = false
-    }
+const showDialog = defineModel<boolean>({ required: true })
 
-    close() {
-        this.showDialog = false
-    }
+const { t } = useI18n()
+const { isMobile } = useBase()
+
+const iconToUse = computed(() => props.icon ?? mdiAlert)
+
+const cancelButtonComputed = computed<string>(() => props.cancelButtonText || t('Buttons.Cancel'))
+
+function action() {
+    emit('action')
+    showDialog.value = false
+}
+
+function close() {
+    showDialog.value = false
 }
 </script>

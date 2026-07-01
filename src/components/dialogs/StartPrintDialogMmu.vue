@@ -3,38 +3,39 @@
         <p class="body-2">{{ summary }}</p>
         <div class="text-center">
             <v-btn color="primary" @click="showEditTtgMapDialog = true">
-                <v-icon left>{{ mdiStateMachine }}</v-icon>
-                {{ $t('Panels.MmuPanel.EditTtgMap') }}
+                <v-icon start>{{ mdiStateMachine }}</v-icon>
+                {{ t('Panels.MmuPanel.EditTtgMap') }}
             </v-btn>
         </div>
         <mmu-edit-ttg-map-dialog v-model="showEditTtgMapDialog" :file="file" />
     </v-card-text>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import MmuMixin, { TOOL_GATE_BYPASS } from '@/components/mixins/mmu'
-import { FileStateGcodefile } from '@/store/files/types'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useMmu, TOOL_GATE_BYPASS } from '@/composables/useMmu'
+import type { FileStateGcodefile } from '@/store/files/types'
 import { mdiStateMachine } from '@mdi/js'
+import MmuEditTtgMapDialog from '@/components/dialogs/MmuEditTtgMapDialog.vue'
 
-@Component
-export default class StartPrintDialogMmu extends Mixins(BaseMixin, MmuMixin) {
-    mdiStateMachine = mdiStateMachine
+const props = defineProps<{
+    file: FileStateGcodefile
+}>()
 
-    showEditTtgMapDialog = false
+const { t } = useI18n()
+const { mmuGate } = useMmu()
 
-    @Prop({ required: true }) readonly file!: FileStateGcodefile
+const showEditTtgMapDialog = ref(false)
 
-    get summary() {
-        const referencedTools = this.file.referenced_tools ?? ''
-        const numTools = referencedTools.length
+const summary = computed(() => {
+    const referencedTools = props.file.referenced_tools ?? ''
+    const numTools = referencedTools.length
 
-        if (numTools <= 1 && this.mmuGate !== TOOL_GATE_BYPASS) {
-            return this.$t('Panels.MmuPanel.StartPrintDialogMmu.SingleColor')
-        }
-
-        return this.$t('Panels.MmuPanel.StartPrintDialogMmu.MultiColor', { numTools: numTools })
+    if (numTools <= 1 && mmuGate.value !== TOOL_GATE_BYPASS) {
+        return t('Panels.MmuPanel.StartPrintDialogMmu.SingleColor')
     }
-}
+
+    return t('Panels.MmuPanel.StartPrintDialogMmu.MultiColor', { numTools: numTools })
+})
 </script>

@@ -1,130 +1,105 @@
 <template>
     <v-dialog v-model="showDialog" width="400">
-        <panel
-            :title="$t('Panels.AfcPanel.FilamentForLane', { name })"
-            :icon="afcIconLogo"
-            card-class="afc-unit-lane-filament-dialog"
-            :margin-bottom="false">
+        <panel :title="t('Panels.AfcPanel.FilamentForLane', { name })" :icon="afcIconLogo" card-class="afc-unit-lane-filament-dialog" :margin-bottom="false">
             <template #buttons>
-                <v-btn icon tile @click="closeDialog">
+                <v-btn icon="" variant="text" @click="closeDialog">
                     <v-icon>{{ mdiCloseThick }}</v-icon>
                 </v-btn>
             </template>
             <v-card-text class="pb-0">
-                <settings-row
-                    :title="$t('Panels.AfcPanel.Material')"
-                    :sub-title="$t('Panels.AfcPanel.MaterialSubtitle')">
-                    <v-text-field v-model="material" placeholder="ABS" dense outlined hide-details />
+                <settings-row :title="t('Panels.AfcPanel.Material')" :sub-title="t('Panels.AfcPanel.MaterialSubtitle')">
+                    <v-text-field v-model="material" placeholder="ABS" density="compact" variant="outlined" hide-details />
                 </settings-row>
                 <v-divider class="my-3" />
-                <settings-row :title="$t('Panels.AfcPanel.Weight')" :sub-title="$t('Panels.AfcPanel.WeightSubtitle')">
-                    <v-text-field
-                        v-model="weight"
-                        placeholder="1000"
-                        dense
-                        outlined
-                        type="number"
-                        :min="0"
-                        :step="1"
-                        hide-details />
+                <settings-row :title="t('Panels.AfcPanel.Weight')" :sub-title="t('Panels.AfcPanel.WeightSubtitle')">
+                    <v-text-field v-model="weight" placeholder="1000" density="compact" variant="outlined" type="number" :min="0" :step="1" hide-details />
                 </settings-row>
                 <v-divider class="my-3" />
-                <v-color-picker hide-mode-switch mode="hexa" :value="color" class="mx-auto" @update:color="setColor" />
+                <v-color-picker hide-mode-switch mode="hexa" :model-value="color" class="mx-auto" @update:model-value="setColor" />
             </v-card-text>
             <v-card-actions>
                 <v-spacer />
-                <v-btn text color="disabled" @click="closeDialog">{{ $t('Buttons.Cancel') }}</v-btn>
-                <v-btn :disabled="disableSetBtn" color="primary" text @click="setSpool">
-                    {{ $t('Panels.AfcPanel.SetSpool') }}
+                <v-btn variant="text" color="disabled" @click="closeDialog">{{ t('Buttons.Cancel') }}</v-btn>
+                <v-btn :disabled="disableSetBtn" color="primary" variant="text" @click="setSpool">
+                    {{ t('Panels.AfcPanel.SetSpool') }}
                 </v-btn>
             </v-card-actions>
         </panel>
     </v-dialog>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Prop, VModel, Watch } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Panel from '@/components/ui/Panel.vue'
+import SettingsRow from '@/components/settings/SettingsRow.vue'
 import { mdiCloseThick } from '@mdi/js'
-import AfcMixin from '@/components/mixins/afc'
 import { afcIconLogo } from '@/plugins/afcIcons'
-import { VColorPickerColor } from '@/types/vuetify'
-import { Debounce } from 'vue-debounce-decorator'
+import { useAfc } from '@/composables/useAfc'
+import { useControl } from '@/composables/useControl'
 
-@Component({
-    components: { Panel },
-})
-export default class AfcUnitLaneFilamentDialog extends Mixins(BaseMixin, AfcMixin) {
-    afcIconLogo = afcIconLogo
-    mdiCloseThick = mdiCloseThick
+const props = defineProps<{
+    name: string
+}>()
 
-    @VModel({ type: Boolean }) showDialog!: boolean
-    @Prop({ type: String, required: true }) readonly name!: string
+const showDialog = defineModel<boolean>({ required: true })
 
-    color = '#000000'
-    material = ''
-    weight = 0
+const { t } = useI18n()
+const { getAfcLaneObject } = useAfc()
+const { doSend } = useControl()
 
-    get lane() {
-        return this.getAfcLaneObject(this.name)
-    }
+const color = ref('#000000')
+const material = ref('')
+const weight = ref(0)
 
-    get currentColor() {
-        return this.lane.color || '#000000'
-    }
+const lane = computed(() => getAfcLaneObject(props.name) as Record<string, any>)
 
-    get currentMaterial() {
-        return this.lane.material ?? ''
-    }
+const currentColor = computed(() => lane.value.color || '#000000')
 
-    get currentWeight() {
-        return Math.round(this.lane.weight ?? 0)
-    }
+const currentMaterial = computed(() => lane.value.material ?? '')
 
-    get disableSetBtn() {
-        return !this.material || !this.weight || !this.color
-    }
+const currentWeight = computed(() => Math.round(lane.value.weight ?? 0))
 
-    @Debounce(500)
-    setColor(newColor: VColorPickerColor) {
-        this.color = newColor.hex
-    }
+const disableSetBtn = computed(() => !material.value || !weight.value || !color.value)
 
-    setSpool() {
-        const gcode = []
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
+function setColor(newColor: string | { hex: string } | Record<string, unknown> | null): void {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+        let colorValue = newColor
+        if (colorValue !== null && typeof colorValue === 'object' && 'hex' in colorValue) colorValue = colorValue.hex as string
 
-        if (this.color !== this.currentColor) {
-            const cleanedColor = this.color.replace('#', '')
-            gcode.push(`SET_COLOR LANE=${this.name} COLOR=${cleanedColor}`)
-        }
-        if (this.material !== this.currentMaterial) {
-            gcode.push(`SET_MATERIAL LANE=${this.name} MATERIAL=${this.material}`)
-        }
-        if (this.weight !== this.currentWeight) {
-            gcode.push(`SET_WEIGHT LANE=${this.name} WEIGHT=${this.weight}`)
-        }
-
-        this.doSend(gcode.join('\n'))
-        this.closeDialog()
-    }
-
-    doSend(gcode: string) {
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode })
-    }
-
-    closeDialog() {
-        this.showDialog = false
-    }
-
-    @Watch('showDialog')
-    onShowDialogChange(newValue: boolean) {
-        if (!newValue) return
-
-        this.color = this.currentColor
-        this.material = this.currentMaterial
-        this.weight = this.currentWeight
-    }
+        color.value = colorValue as string
+    }, 500)
 }
+
+function closeDialog() {
+    showDialog.value = false
+}
+
+function setSpool() {
+    const gcode = []
+
+    if (color.value !== currentColor.value) {
+        const cleanedColor = color.value.replace('#', '')
+        gcode.push(`SET_COLOR LANE=${props.name} COLOR=${cleanedColor}`)
+    }
+    if (material.value !== currentMaterial.value) {
+        gcode.push(`SET_MATERIAL LANE=${props.name} MATERIAL=${material.value}`)
+    }
+    if (weight.value !== currentWeight.value) {
+        gcode.push(`SET_WEIGHT LANE=${props.name} WEIGHT=${weight.value}`)
+    }
+
+    doSend(gcode.join('\n'))
+    closeDialog()
+}
+
+watch(showDialog, (newValue) => {
+    if (!newValue) return
+
+    color.value = currentColor.value
+    material.value = currentMaterial.value
+    weight.value = currentWeight.value
+})
 </script>
