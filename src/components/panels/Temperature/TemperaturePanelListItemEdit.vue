@@ -7,24 +7,11 @@
                 </v-btn>
             </template>
             <v-card-text class="pt-6">
-                <temperature-panel-list-item-edit-chart-serie
-                    v-for="dataset in chartSeries"
-                    :key="dataset"
-                    :object-name="objectName"
-                    :serie-name="dataset" />
-                <temperature-panel-list-item-edit-additional-sensor
-                    v-for="additionalSensor in additionalValues"
-                    :key="additionalSensor"
-                    :object-name="objectName"
-                    :additional-sensor="additionalSensor" />
+                <temperature-panel-list-item-edit-chart-serie v-for="dataset in chartSeries" :key="dataset" :object-name="objectName" :serie-name="dataset" />
+                <temperature-panel-list-item-edit-additional-sensor v-for="additionalSensor in additionalValues" :key="additionalSensor" :object-name="objectName" :additional-sensor="additionalSensor" />
                 <v-row>
                     <v-col class="col-12 text-center pb-0">
-                        <v-color-picker
-                            hide-mode-switch
-                            mode="hexa"
-                            :value="color"
-                            class="mx-auto"
-                            @update:color="setChartColor" />
+                        <v-color-picker hide-mode-switch mode="hexa" :model-value="color" class="mx-auto" @update:model-value="setChartColor" />
                     </v-col>
                 </v-row>
             </v-card-text>
@@ -32,60 +19,68 @@
     </v-dialog>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop, VModel } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { computed, onBeforeUnmount } from 'vue'
 import { mdiCloseThick } from '@mdi/js'
+import Panel from '@/components/ui/Panel.vue'
 import TemperaturePanelListItemEditChartSerie from '@/components/panels/Temperature/TemperaturePanelListItemEditChartSerie.vue'
 import TemperaturePanelListItemEditAdditionalSensor from '@/components/panels/Temperature/TemperaturePanelListItemEditAdditionalSensor.vue'
-import { Debounce } from 'vue-debounce-decorator'
+import { useGuiStore } from '@/store/gui'
+import { usePrinterStore } from '@/store/printer'
+import { usePrinterTempHistoryStore } from '@/store/printer/tempHistory'
 
-@Component({
-    components: { TemperaturePanelListItemEditAdditionalSensor, TemperaturePanelListItemEditChartSerie },
+const props = defineProps<{
+    objectName: string
+    name: string
+    additionalSensorName: string | null
+    formatName: string
+    icon: string
+    color: string
+}>()
+
+const showDialog = defineModel<boolean>({ required: true })
+
+const guiStore = useGuiStore()
+const printerStore = usePrinterStore()
+const printerTempHistoryStore = usePrinterTempHistoryStore()
+
+const chartSeries = computed(() => printerTempHistoryStore.getSerieNames(props.objectName) ?? [])
+
+const printerObjectAdditionalSensor = computed(() => {
+    if (props.additionalSensorName === null || !(props.additionalSensorName in printerStore)) return {}
+
+    return printerStore[props.additionalSensorName]
 })
-export default class TemperaturePanelListItemEdit extends Mixins(BaseMixin) {
-    mdiCloseThick = mdiCloseThick
 
-    @VModel({ type: Boolean }) showDialog!: boolean
-    @Prop({ type: String, required: true }) readonly objectName!: string
-    @Prop({ type: String, required: true }) readonly name!: string
-    @Prop({ required: true }) readonly additionalSensorName!: string | null
-    @Prop({ type: String, required: true }) readonly formatName!: string
-    @Prop({ type: String, required: true }) readonly icon!: string
-    @Prop({ type: String, required: true }) readonly color!: string
+const additionalValues = computed(() => {
+    if (props.objectName === 'z_thermal_adjust') return ['current_z_adjust']
+    if (props.objectName.startsWith('nevermore')) return ['temperature', 'pressure', 'humidity', 'rpm']
 
-    get chartSeries() {
-        return this.$store.getters['printer/tempHistory/getSerieNames'](this.objectName) ?? []
-    }
+    return Object.keys(printerObjectAdditionalSensor.value).filter((key) => key !== 'temperature')
+})
 
-    get printerObjectAdditionalSensor() {
-        if (this.additionalSensorName === null || !(this.additionalSensorName in this.$store.state.printer)) return {}
+// debounce replaces the removed vue-debounce-decorator @Debounce(500)
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
+function setChartColor(value: string | { hex: string } | Record<string, unknown> | null): void {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+        let colorValue = value
+        if (colorValue !== null && typeof colorValue === 'object' && 'hex' in colorValue) colorValue = colorValue.hex as string
 
-        return this.$store.state.printer[this.additionalSensorName]
-    }
-
-    get additionalValues() {
-        if (this.objectName === 'z_thermal_adjust') return ['current_z_adjust']
-        if (this.objectName.startsWith('nevermore')) return ['temperature', 'pressure', 'humidity', 'rpm']
-
-        return Object.keys(this.printerObjectAdditionalSensor).filter((key) => key !== 'temperature')
-    }
-
-    @Debounce(500)
-    setChartColor(value: string | { hex: string }): void {
-        if (typeof value === 'object' && 'hex' in value) value = value.hex
-
-        this.$store.dispatch('gui/setChartColor', {
-            objectName: this.objectName,
-            value,
+        guiStore.setChartColor({
+            objectName: props.objectName,
+            value: colorValue as string,
         })
 
-        this.$store.dispatch('printer/tempHistory/setColor', { name: this.objectName, value })
-    }
-
-    closeDialog() {
-        this.showDialog = false
-    }
+        printerTempHistoryStore.setColor({ name: props.objectName, value: colorValue as string })
+    }, 500)
 }
+
+function closeDialog() {
+    showDialog.value = false
+}
+
+onBeforeUnmount(() => {
+    if (debounceTimer) clearTimeout(debounceTimer)
+})
 </script>

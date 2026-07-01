@@ -6,35 +6,36 @@
     </v-row>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useGuiStore } from '@/store/gui'
 
-@Component
-export default class TemperaturePanelListItemEditAdditionalSensor extends Mixins(BaseMixin) {
-    @Prop({ type: String, required: true }) readonly objectName!: string
-    @Prop({ type: String, required: true }) readonly additionalSensor!: string
+const props = defineProps<{
+    objectName: string
+    additionalSensor: string
+}>()
 
-    get value() {
-        return this.$store.getters['gui/getDatasetAdditionalSensorValue']({
-            name: this.objectName,
-            type: this.additionalSensor,
-        })
-    }
+const { t } = useI18n()
+const guiStore = useGuiStore()
 
-    set value(newVal) {
-        this.$store.dispatch('gui/setDatasetAdditionalSensorStatus', {
-            objectName: this.objectName,
-            dataset: this.additionalSensor,
+const value = computed<boolean>({
+    get: () =>
+        guiStore.getDatasetAdditionalSensorValue({
+            name: props.objectName,
+            sensor: props.additionalSensor,
+        }),
+    set: (newVal) =>
+        guiStore.setDatasetAdditionalSensorStatus({
+            objectName: props.objectName,
+            dataset: props.additionalSensor,
             value: newVal,
-        })
-    }
+        }),
+})
 
-    get label() {
-        return this.$t('Panels.TemperaturePanel.ShowNameInList', {
-            name: this.additionalSensor,
-        })
-    }
-}
+const label = computed(() =>
+    t('Panels.TemperaturePanel.ShowNameInList', {
+        name: props.additionalSensor,
+    })
+)
 </script>

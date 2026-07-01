@@ -589,7 +589,7 @@ export const useGuiStore = defineStore('gui', () => {
         ;(state.dashboard[payload.layoutname] as GuiStateLayoutoption[]) = layoutArray
     }
 
-    const setChartDatasetStatusState = (payload: { objectName: string; dataset: string; value: boolean }) => {
+    const setChartDatasetStatusState = (payload: { objectName: string; dataset: string; value: boolean | string }) => {
         if (!(payload.objectName in state.view.tempchart.datasetSettings)) {
             state.view.tempchart.datasetSettings[payload.objectName] = { [payload.dataset]: payload.value }
             return
@@ -1011,7 +1011,7 @@ export const useGuiStore = defineStore('gui', () => {
         updateSettings({ keyName: 'view.tempchart.datasetSettings', newVal: state.view.tempchart.datasetSettings })
     }
 
-    const setChartColor = (payload: { objectName: string; value: boolean }) => {
+    const setChartColor = (payload: { objectName: string; value: string }) => {
         setChartDatasetStatusState({ objectName: payload.objectName, dataset: 'color', value: payload.value })
         updateSettings({ keyName: 'view.tempchart.datasetSettings', newVal: state.view.tempchart.datasetSettings })
     }

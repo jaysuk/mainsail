@@ -1,83 +1,53 @@
 <template>
-    <v-menu :offset-y="true" :close-on-content-click="false" :title="$t('Panels.TemperaturePanel.SetupTemperatures')">
-        <template #activator="{ on, attrs }">
-            <v-btn icon tile v-bind="attrs" v-on="on">
-                <v-icon small>{{ mdiCog }}</v-icon>
+    <v-menu location="bottom end" :close-on-content-click="false" :title="t('Panels.TemperaturePanel.SetupTemperatures')">
+        <template #activator="{ props: activatorProps }">
+            <v-btn icon tile v-bind="activatorProps">
+                <v-icon size="small">{{ mdiCog }}</v-icon>
             </v-btn>
         </template>
         <v-list>
             <v-list-item class="minHeight36">
-                <v-checkbox
-                    v-model="boolTempchart"
-                    class="mt-0"
-                    hide-details
-                    :label="$t('Panels.TemperaturePanel.ShowChart')" />
+                <v-checkbox v-model="boolTempchart" class="mt-0" hide-details :label="t('Panels.TemperaturePanel.ShowChart')" />
             </v-list-item>
             <v-list-item class="minHeight36">
-                <v-checkbox
-                    v-model="hideMcuHostSensors"
-                    class="mt-0"
-                    hide-details
-                    :label="$t('Panels.TemperaturePanel.HideMcuHostSensors')" />
+                <v-checkbox v-model="hideMcuHostSensors" class="mt-0" hide-details :label="t('Panels.TemperaturePanel.HideMcuHostSensors')" />
             </v-list-item>
             <v-list-item class="minHeight36">
-                <v-checkbox
-                    v-model="hideMonitors"
-                    class="mt-0"
-                    hide-details
-                    :label="$t('Panels.TemperaturePanel.HideMonitors')" />
+                <v-checkbox v-model="hideMonitors" class="mt-0" hide-details :label="t('Panels.TemperaturePanel.HideMonitors')" />
             </v-list-item>
             <v-list-item class="minHeight36">
-                <v-checkbox
-                    v-model="autoscaleTempchart"
-                    class="mt-0"
-                    hide-details
-                    :label="$t('Panels.TemperaturePanel.AutoscaleChart')" />
+                <v-checkbox v-model="autoscaleTempchart" class="mt-0" hide-details :label="t('Panels.TemperaturePanel.AutoscaleChart')" />
             </v-list-item>
         </v-list>
     </v-menu>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { mdiCog } from '@mdi/js'
+import { useGuiStore } from '@/store/gui'
 
-@Component
-export default class TemperaturePanelSettings extends Mixins(BaseMixin) {
-    mdiCog = mdiCog
+const { t } = useI18n()
+const guiStore = useGuiStore()
 
-    get boolTempchart(): boolean {
-        return this.$store.state.gui.view.tempchart.boolTempchart ?? false
-    }
+const boolTempchart = computed<boolean>({
+    get: () => guiStore.view.tempchart.boolTempchart ?? false,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.tempchart.boolTempchart', value: newVal }),
+})
 
-    set boolTempchart(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.tempchart.boolTempchart', value: newVal })
-    }
+const autoscaleTempchart = computed<boolean>({
+    get: () => guiStore.view.tempchart.autoscale ?? false,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.tempchart.autoscale', value: newVal }),
+})
 
-    get autoscaleTempchart(): boolean {
-        return this.$store.state.gui.view.tempchart.autoscale ?? false
-    }
+const hideMcuHostSensors = computed<boolean>({
+    get: () => guiStore.view.tempchart.hideMcuHostSensors ?? false,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.tempchart.hideMcuHostSensors', value: newVal }),
+})
 
-    set autoscaleTempchart(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.tempchart.autoscale', value: newVal })
-    }
-
-    get hideMcuHostSensors(): boolean {
-        return this.$store.state.gui.view.tempchart.hideMcuHostSensors ?? false
-    }
-
-    set hideMcuHostSensors(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.tempchart.hideMcuHostSensors', value: newVal })
-    }
-
-    get hideMonitors(): boolean {
-        return this.$store.state.gui.view.tempchart.hideMonitors ?? false
-    }
-
-    set hideMonitors(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'view.tempchart.hideMonitors', value: newVal })
-    }
-}
+const hideMonitors = computed<boolean>({
+    get: () => guiStore.view.tempchart.hideMonitors ?? false,
+    set: (newVal) => guiStore.saveSetting({ name: 'view.tempchart.hideMonitors', value: newVal }),
+})
 </script>

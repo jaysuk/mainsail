@@ -1,136 +1,122 @@
 <template>
     <div style="height: 100%">
-        <v-menu v-if="presets.length" :offset-y="true" left>
-            <template #activator="{ on, attrs }">
-                <v-btn
-                    text
-                    tile
-                    color="primary"
-                    v-bind="attrs"
-                    :disabled="['printing', 'paused'].includes(printer_state)"
-                    class="pa-1"
-                    v-on="on">
-                    <span class="d-none ml-1 d-md-block">{{ $t('Panels.TemperaturePanel.Presets') }}</span>
+        <v-menu v-if="presets.length" location="bottom start">
+            <template #activator="{ props: activatorProps }">
+                <v-btn variant="text" tile color="primary" v-bind="activatorProps" :disabled="['printing', 'paused'].includes(printer_state)" class="pa-1">
+                    <span class="d-none ml-1 d-md-block">{{ t('Panels.TemperaturePanel.Presets') }}</span>
                     <v-icon class="d-md-none">{{ mdiFire }}</v-icon>
                     <v-icon>{{ mdiMenuDown }}</v-icon>
                 </v-btn>
             </template>
-            <v-list dense class="py-0">
+            <v-list density="compact" class="py-0">
                 <v-list-item v-for="(preset, index) of presets" :key="index" link @click="preheat(preset)">
                     <div class="d-flex align-center _preset-title">
-                        <v-icon small class="mr-1">{{ mdiFire }}</v-icon>
+                        <v-icon size="small" class="mr-1">{{ mdiFire }}</v-icon>
                         <span style="padding-top: 2px">{{ preset.name }}</span>
                     </div>
                 </v-list-item>
             </v-list>
             <v-divider class="_fix_transparency" />
-            <v-list dense class="py-0">
+            <v-list density="compact" class="py-0">
                 <v-list-item link @click="btnCoolDown">
                     <div class="d-flex align-center _preset-title">
-                        <v-icon small color="primary" class="mr-1">{{ mdiSnowflake }}</v-icon>
-                        <span class="primary--text">{{ $t('Panels.TemperaturePanel.Cooldown') }}</span>
+                        <v-icon size="small" color="primary" class="mr-1">{{ mdiSnowflake }}</v-icon>
+                        <span class="text-primary">{{ t('Panels.TemperaturePanel.Cooldown') }}</span>
                     </div>
                 </v-list-item>
             </v-list>
         </v-menu>
-        <v-btn
-            v-else
-            :icon="$vuetify.breakpoint.smAndDown"
-            :text="$vuetify.breakpoint.mdAndUp"
-            tile
-            color="primary"
-            @click="btnCoolDown">
-            <v-icon small>{{ mdiSnowflake }}</v-icon>
-            <span class="d-none ml-1 d-md-inline">{{ $t('Panels.TemperaturePanel.Cooldown') }}</span>
+        <v-btn v-else :icon="smAndDown" :variant="mdAndUp ? 'text' : undefined" tile color="primary" @click="btnCoolDown">
+            <v-icon size="small">{{ mdiSnowflake }}</v-icon>
+            <span class="d-none ml-1 d-md-inline">{{ t('Panels.TemperaturePanel.Cooldown') }}</span>
         </v-btn>
         <confirmation-dialog
             v-model="showCoolDownDialog"
             :icon="mdiSnowflake"
-            :title="$t('CoolDownDialog.CoolDown')"
-            :text="$t('CoolDownDialog.AreYouSure')"
-            :action-button-text="$t('Buttons.Yes')"
+            :title="t('CoolDownDialog.CoolDown')"
+            :text="t('CoolDownDialog.AreYouSure')"
+            :action-button-text="t('Buttons.Yes')"
             :action-button-color="'primary'"
-            :cancel-button-text="$t('Buttons.No')"
+            :cancel-button-text="t('Buttons.No')"
             @action="cooldown" />
     </div>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import { GuiPresetsStatePreset } from '@/store/gui/presets/types'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useDisplay } from 'vuetify'
+import type { GuiPresetsStatePreset } from '@/store/gui/presets/types'
 import { mdiFire, mdiMenuDown, mdiSnowflake } from '@mdi/js'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
+import { useBase } from '@/composables/useBase'
+import { useGuiStore } from '@/store/gui'
+import { useGuiPresetsStore } from '@/store/gui/presets'
+import { useServerStore } from '@/store/server'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
-@Component({
-    components: { ConfirmationDialog },
-})
-export default class TemperaturePanelPresets extends Mixins(BaseMixin) {
-    mdiFire = mdiFire
-    mdiMenuDown = mdiMenuDown
-    mdiSnowflake = mdiSnowflake
+const { t } = useI18n()
+const { printer_state } = useBase()
+const display = useDisplay()
+const guiStore = useGuiStore()
+const guiPresetsStore = useGuiPresetsStore()
 
-    showCoolDownDialog = false
+const smAndDown = computed(() => display.smAndDown.value)
+const mdAndUp = computed(() => display.mdAndUp.value)
 
-    get presets(): GuiPresetsStatePreset[] {
-        return this.$store.getters['gui/presets/getPresets'] ?? []
-    }
+const showCoolDownDialog = ref(false)
 
-    get cooldownGcode(): string {
-        return this.$store.getters['gui/presets/getCooldownGcode']
-    }
+const presets = computed<GuiPresetsStatePreset[]>(() => guiPresetsStore.getPresets ?? [])
 
-    get confirmOnCoolDown(): boolean {
-        return this.$store.state.gui.uiSettings.confirmOnCoolDown
-    }
+const cooldownGcode = computed<string>(() => guiPresetsStore.getCooldownGcode)
 
-    preheat(preset: GuiPresetsStatePreset): void {
-        for (const [name, attributes] of Object.entries(preset.values)) {
-            if (attributes.bool) {
-                const splits = name.split(' ')
-                const printerObject = splits[0]
-                const printerObjectName = splits[1] ?? splits[0]
+const confirmOnCoolDown = computed<boolean>(() => guiStore.uiSettings.confirmOnCoolDown)
 
-                // set default heater command
-                let command = 'SET_HEATER_TEMPERATURE'
-                let commandAttribute = 'HEATER'
+function preheat(preset: GuiPresetsStatePreset): void {
+    for (const [name, attributes] of Object.entries(preset.values)) {
+        if (attributes.bool) {
+            const splits = name.split(' ')
+            const printerObject = splits[0]
+            const printerObjectName = splits[1] ?? splits[0]
 
-                // override command for temperature_fan
-                if (printerObject === 'temperature_fan') {
-                    command = 'SET_TEMPERATURE_FAN_TARGET'
-                    commandAttribute = 'TEMPERATURE_FAN'
-                }
+            // set default heater command
+            let command = 'SET_HEATER_TEMPERATURE'
+            let commandAttribute = 'HEATER'
 
-                // build gcode
-                const gcode = `${command} ${commandAttribute}=${printerObjectName} TARGET=${attributes.value}`
-
-                this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-                this.$socket.emit('printer.gcode.script', { script: gcode })
+            // override command for temperature_fan
+            if (printerObject === 'temperature_fan') {
+                command = 'SET_TEMPERATURE_FAN_TARGET'
+                commandAttribute = 'TEMPERATURE_FAN'
             }
-        }
 
-        if (preset.gcode !== '') {
-            setTimeout(() => {
-                this.$store.dispatch('server/addEvent', { message: preset.gcode, type: 'command' })
-                this.$socket.emit('printer.gcode.script', { script: preset.gcode })
-            }, 100)
+            // build gcode
+            const gcode = `${command} ${commandAttribute}=${printerObjectName} TARGET=${attributes.value}`
+
+            useServerStore().addEvent({ message: gcode, type: 'command' })
+            webSocketClient.emit('printer.gcode.script', { script: gcode })
         }
     }
 
-    btnCoolDown(): void {
-        if (this.confirmOnCoolDown) {
-            this.showCoolDownDialog = true
-            return
-        }
+    if (preset.gcode !== '') {
+        setTimeout(() => {
+            useServerStore().addEvent({ message: preset.gcode, type: 'command' })
+            webSocketClient.emit('printer.gcode.script', { script: preset.gcode })
+        }, 100)
+    }
+}
 
-        this.cooldown()
+function btnCoolDown(): void {
+    if (confirmOnCoolDown.value) {
+        showCoolDownDialog.value = true
+        return
     }
 
-    cooldown(): void {
-        this.$store.dispatch('server/addEvent', { message: this.cooldownGcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: this.cooldownGcode })
-    }
+    cooldown()
+}
+
+function cooldown(): void {
+    useServerStore().addEvent({ message: cooldownGcode.value, type: 'command' })
+    webSocketClient.emit('printer.gcode.script', { script: cooldownGcode.value })
 }
 </script>
 
