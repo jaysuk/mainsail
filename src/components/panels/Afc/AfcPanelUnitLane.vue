@@ -8,38 +8,39 @@
         <afc-panel-unit-lane-empty v-else :name="name" />
     </div>
 </template>
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import AfcMixin from '@/components/mixins/afc'
 
-@Component
-export default class AfcPanelUnitLane extends Mixins(BaseMixin, AfcMixin) {
-    @Prop({ type: String, required: true }) readonly name!: string
+<script setup lang="ts">
+import { computed } from 'vue'
+import AfcPanelUnitLaneHeader from '@/components/panels/Afc/AfcPanelUnitLaneHeader.vue'
+import AfcPanelUnitLaneBody from '@/components/panels/Afc/AfcPanelUnitLaneBody.vue'
+import AfcPanelUnitLaneActions from '@/components/panels/Afc/AfcPanelUnitLaneActions.vue'
+import AfcPanelUnitLaneEmpty from '@/components/panels/Afc/AfcPanelUnitLaneEmpty.vue'
+import { useAfc } from '@/composables/useAfc'
+import { useMainsailTheme } from '@/composables/useMainsailTheme'
 
-    get lane() {
-        return this.getAfcLaneObject(this.name)
-    }
+const props = defineProps<{
+    name: string
+}>()
 
-    get laneActive() {
-        const activeLaneName = this.afcCurrentLane?.name ?? ''
+const { afcCurrentLane, afcErrorState, getAfcLaneObject } = useAfc()
+const { isDark } = useMainsailTheme()
 
-        return this.name === activeLaneName
-    }
+const lane = computed(() => getAfcLaneObject(props.name) as Record<string, any>)
 
-    get laneStatusClass() {
-        return {
-            'darken-3': this.$vuetify.theme.dark,
-            'lighten-2': !this.$vuetify.theme.dark,
-            'border-error': this.laneActive && this.afcErrorState,
-            'border-success': this.laneActive && !this.afcErrorState,
-        }
-    }
+const laneActive = computed(() => {
+    const activeLaneName = (afcCurrentLane.value as { name?: string })?.name ?? ''
 
-    get laneReady() {
-        return this.lane.load && this.lane.prep
-    }
-}
+    return props.name === activeLaneName
+})
+
+const laneStatusClass = computed(() => ({
+    'darken-3': isDark.value,
+    'lighten-2': !isDark.value,
+    'border-error': laneActive.value && afcErrorState.value,
+    'border-success': laneActive.value && !afcErrorState.value,
+}))
+
+const laneReady = computed(() => lane.value.load && lane.value.prep)
 </script>
 
 <style scoped>
@@ -52,10 +53,10 @@ export default class AfcPanelUnitLane extends Mixins(BaseMixin, AfcMixin) {
 }
 
 .v-application .border-error {
-    border-color: var(--v-error-base) !important;
+    border-color: rgb(var(--v-theme-error)) !important;
 }
 
 .v-application .border-success {
-    border-color: var(--v-primary-base) !important;
+    border-color: rgb(var(--v-theme-primary)) !important;
 }
 </style>

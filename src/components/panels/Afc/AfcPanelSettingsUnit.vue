@@ -3,51 +3,41 @@
         <v-checkbox v-model="value" class="mt-0" hide-details :label="label" />
     </v-list-item>
 </template>
-<script lang="ts">
-import { Component, Mixins, Prop, Watch } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import AfcMixin from '@/components/mixins/afc'
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { convertName } from '@/plugins/helpers'
+import { useAfc } from '@/composables/useAfc'
+import { useGuiStore } from '@/store/gui'
 
-@Component
-export default class AfcPanelSettingsUnit extends Mixins(BaseMixin, AfcMixin) {
-    @Prop({ type: String, required: true }) readonly name!: string
+const props = defineProps<{
+    name: string
+}>()
 
-    value = true
+const { t } = useI18n()
+const { afcHiddenUnits } = useAfc()
+const guiStore = useGuiStore()
 
-    get label() {
-        const unitName = this.name.substring(this.name.indexOf(' ') + 1)
+const label = computed(() => {
+    const unitName = props.name.substring(props.name.indexOf(' ') + 1)
 
-        return this.$t(`Panels.AfcPanel.ShowUnit`, { name: convertName(unitName) }) as string
-    }
+    return t('Panels.AfcPanel.ShowUnit', { name: convertName(unitName) })
+})
 
-    mounted() {
-        this.value = !this.afcHiddenUnits.includes(this.name)
-    }
+const value = computed<boolean>({
+    get: () => !afcHiddenUnits.value.includes(props.name),
+    set: (newValue) => {
+        const hiddenUnits = [...afcHiddenUnits.value]
+        const index = hiddenUnits.indexOf(props.name)
 
-    @Watch('value')
-    onValueChange(newValue: boolean) {
         if (newValue) {
-            this.removeFromHiddenUnits(this.name)
-            return
+            if (index > -1) hiddenUnits.splice(index, 1)
+        } else if (index === -1) {
+            hiddenUnits.push(props.name)
         }
 
-        this.addToHiddenUnits(this.name)
-    }
-
-    private removeFromHiddenUnits(name: string) {
-        const hiddenUnits = [...this.afcHiddenUnits]
-        const index = hiddenUnits.indexOf(name)
-        if (index > -1) hiddenUnits.splice(index, 1)
-
-        this.$store.dispatch('gui/saveSetting', { name: 'view.afc.hiddenUnits', value: hiddenUnits })
-    }
-
-    private addToHiddenUnits(name: string) {
-        const hiddenUnits = [...this.afcHiddenUnits]
-        if (!hiddenUnits.includes(name)) hiddenUnits.push(name)
-
-        this.$store.dispatch('gui/saveSetting', { name: 'view.afc.hiddenUnits', value: hiddenUnits })
-    }
-}
+        guiStore.saveSetting({ name: 'view.afc.hiddenUnits', value: hiddenUnits })
+    },
+})
 </script>

@@ -1,48 +1,41 @@
 <template>
     <div class="ml-3">
-        <v-tooltip top>
-            <template #activator="{ on, attr }">
-                <span
-                    v-bind="attr"
-                    class="sensor-status rounded-circle d-inline-block mr-2"
-                    :class="sensorClass"
-                    v-on="on" />
+        <v-tooltip location="top">
+            <template #activator="{ props: activatorProps }">
+                <span v-bind="activatorProps" class="sensor-status rounded-circle d-inline-block mr-2" :class="sensorClass" />
             </template>
             <span>{{ sensorOutput }}</span>
         </v-tooltip>
-        <span class="text-body-1">{{ $t('Panels.AfcPanel.Hub') }}</span>
+        <span class="text-body-1">{{ t('Panels.AfcPanel.Hub') }}</span>
     </div>
 </template>
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import AfcMixin from '@/components/mixins/afc'
 
-@Component
-export default class AfcPanelUnitHub extends Mixins(BaseMixin, AfcMixin) {
-    @Prop({ type: String, required: true }) readonly name!: string
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useAfc } from '@/composables/useAfc'
 
-    get hub() {
-        return this.getAfcHubObject(this.name)
-    }
+const props = defineProps<{
+    name: string
+}>()
 
-    get sensorStatus() {
-        return this.hub.state ?? false
-    }
+const { t } = useI18n()
+const { getAfcHubObject } = useAfc()
 
-    get sensorOutput() {
-        const status = this.sensorStatus ? this.$t('Panels.AfcPanel.Detected') : this.$t('Panels.AfcPanel.Empty')
+const hub = computed(() => getAfcHubObject(props.name) as Record<string, any>)
 
-        return `${this.name} ${this.$t('Panels.AfcPanel.HubLoad')} - ${status}`
-    }
+const sensorStatus = computed(() => hub.value.state ?? false)
 
-    get sensorClass() {
-        return {
-            success: this.sensorStatus,
-            error: !this.sensorStatus,
-        }
-    }
-}
+const sensorOutput = computed(() => {
+    const status = sensorStatus.value ? t('Panels.AfcPanel.Detected') : t('Panels.AfcPanel.Empty')
+
+    return `${props.name} ${t('Panels.AfcPanel.HubLoad')} - ${status}`
+})
+
+const sensorClass = computed(() => ({
+    success: sensorStatus.value,
+    error: !sensorStatus.value,
+}))
 </script>
 
 <style scoped>

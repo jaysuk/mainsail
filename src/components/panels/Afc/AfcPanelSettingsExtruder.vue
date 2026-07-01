@@ -3,48 +3,36 @@
         <v-checkbox v-model="value" class="mt-0" hide-details :label="label" />
     </v-list-item>
 </template>
-<script lang="ts">
-import { Component, Mixins, Prop, Watch } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import AfcMixin from '@/components/mixins/afc'
 
-@Component
-export default class AfcPanelSettingsExtruder extends Mixins(BaseMixin, AfcMixin) {
-    @Prop({ type: String, required: true }) readonly name!: string
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useAfc } from '@/composables/useAfc'
+import { useGuiStore } from '@/store/gui'
 
-    value = true
+const props = defineProps<{
+    name: string
+}>()
 
-    get label() {
-        return this.$t(`Panels.AfcPanel.ShowTool`, { name: this.name }) as string
-    }
+const { t } = useI18n()
+const { afcHiddenExtruders } = useAfc()
+const guiStore = useGuiStore()
 
-    mounted() {
-        this.value = !this.afcHiddenExtruders.includes(this.name)
-    }
+const label = computed(() => t('Panels.AfcPanel.ShowTool', { name: props.name }))
 
-    @Watch('value')
-    onValueChange(newValue: boolean) {
+const value = computed<boolean>({
+    get: () => !afcHiddenExtruders.value.includes(props.name),
+    set: (newValue) => {
+        const hiddenExtruders = [...afcHiddenExtruders.value]
+        const index = hiddenExtruders.indexOf(props.name)
+
         if (newValue) {
-            this.removeFromHiddenExtruders(this.name)
-            return
+            if (index > -1) hiddenExtruders.splice(index, 1)
+        } else if (index === -1) {
+            hiddenExtruders.push(props.name)
         }
 
-        this.addToHiddenExtruders(this.name)
-    }
-
-    private removeFromHiddenExtruders(name: string) {
-        const hiddenExtruders = [...this.afcHiddenExtruders]
-        const index = hiddenExtruders.indexOf(name)
-        if (index > -1) hiddenExtruders.splice(index, 1)
-
-        this.$store.dispatch('gui/saveSetting', { name: 'view.afc.hiddenExtruders', value: hiddenExtruders })
-    }
-
-    private addToHiddenExtruders(name: string) {
-        const hiddenExtruders = [...this.afcHiddenExtruders]
-        if (!hiddenExtruders.includes(name)) hiddenExtruders.push(name)
-
-        this.$store.dispatch('gui/saveSetting', { name: 'view.afc.hiddenExtruders', value: hiddenExtruders })
-    }
-}
+        guiStore.saveSetting({ name: 'view.afc.hiddenExtruders', value: hiddenExtruders })
+    },
+})
 </script>

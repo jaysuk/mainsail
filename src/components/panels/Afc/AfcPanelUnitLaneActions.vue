@@ -2,101 +2,74 @@
     <v-row>
         <v-col class="px-6 pt-3 pb-6 d-flex flex-row justify-space-between">
             <v-item-group class="_btn-group d-flex flex-nowrap w-100 py-0">
-                <v-tooltip v-if="toolLoaded" top>
-                    <template #activator="{ on, attrs }">
-                        <v-btn
-                            :disabled="printerIsPrintingOnly"
-                            dense
-                            class="flex-grow-1 px-0 first-btn"
-                            v-bind="attrs"
-                            v-on="on"
-                            @click="unloadLane">
-                            <v-icon small>{{ mdiArrowUpBold }}</v-icon>
+                <v-tooltip v-if="toolLoaded" location="top">
+                    <template #activator="{ props: activatorProps }">
+                        <v-btn :disabled="printerIsPrintingOnly" density="compact" class="flex-grow-1 px-0 first-btn" v-bind="activatorProps" @click="unloadLane">
+                            <v-icon size="small">{{ mdiArrowUpBold }}</v-icon>
                         </v-btn>
                     </template>
-                    <span>{{ $t('Panels.AfcPanel.UnloadLane') }}</span>
+                    <span>{{ t('Panels.AfcPanel.UnloadLane') }}</span>
                 </v-tooltip>
-                <v-tooltip v-else top>
-                    <template #activator="{ on, attrs }">
-                        <v-btn
-                            :disabled="printerIsPrintingOnly"
-                            dense
-                            class="flex-grow-1 px-0 first-btn"
-                            v-bind="attrs"
-                            v-on="on"
-                            @click="loadLane">
-                            <v-icon small>{{ mdiArrowDownBold }}</v-icon>
+                <v-tooltip v-else location="top">
+                    <template #activator="{ props: activatorProps }">
+                        <v-btn :disabled="printerIsPrintingOnly" density="compact" class="flex-grow-1 px-0 first-btn" v-bind="activatorProps" @click="loadLane">
+                            <v-icon size="small">{{ mdiArrowDownBold }}</v-icon>
                         </v-btn>
                     </template>
-                    <span>{{ $t('Panels.AfcPanel.LoadLane') }}</span>
+                    <span>{{ t('Panels.AfcPanel.LoadLane') }}</span>
                 </v-tooltip>
-                <v-tooltip top>
-                    <template #activator="{ on, attrs }">
-                        <v-btn
-                            :disabled="toolLoaded || (!laneRunout && toolLoaded)"
-                            dense
-                            class="flex-grow-1 px-0 last-btn"
-                            v-bind="attrs"
-                            v-on="on"
-                            @click="ejectLane">
-                            <v-icon small>{{ mdiEject }}</v-icon>
+                <v-tooltip location="top">
+                    <template #activator="{ props: activatorProps }">
+                        <v-btn :disabled="toolLoaded || (!laneRunout && toolLoaded)" density="compact" class="flex-grow-1 px-0 last-btn" v-bind="activatorProps" @click="ejectLane">
+                            <v-icon size="small">{{ mdiEject }}</v-icon>
                         </v-btn>
                     </template>
-                    <span>{{ $t('Panels.AfcPanel.EjectFilament') }}</span>
+                    <span>{{ t('Panels.AfcPanel.EjectFilament') }}</span>
                 </v-tooltip>
             </v-item-group>
         </v-col>
     </v-row>
 </template>
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import AfcMixin from '@/components/mixins/afc'
-import ExtruderMixin from '@/components/mixins/extruder'
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { mdiArrowDownBold, mdiArrowUpBold, mdiEject } from '@mdi/js'
+import { useBase } from '@/composables/useBase'
+import { useAfc } from '@/composables/useAfc'
+import { useControl } from '@/composables/useControl'
 
-@Component
-export default class AfcPanelUnitLaneActions extends Mixins(BaseMixin, AfcMixin, ExtruderMixin) {
-    mdiArrowUpBold = mdiArrowUpBold
-    mdiArrowDownBold = mdiArrowDownBold
-    mdiEject = mdiEject
+const props = defineProps<{
+    name: string
+}>()
 
-    @Prop({ type: String, required: true }) readonly name!: string
+const { t } = useI18n()
+const { printerIsPrintingOnly } = useBase()
+const { afcCurrentLane, getAfcLaneObject } = useAfc()
+const { doSend } = useControl()
 
-    get lane() {
-        return this.getAfcLaneObject(this.name)
-    }
+const lane = computed(() => getAfcLaneObject(props.name) as Record<string, any>)
 
-    get laneActive() {
-        const activeLaneName = this.afcCurrentLane?.name ?? ''
+const laneActive = computed(() => {
+    const activeLaneName = (afcCurrentLane.value as { name?: string })?.name ?? ''
 
-        return this.name === activeLaneName
-    }
+    return props.name === activeLaneName
+})
 
-    get laneRunout() {
-        return this.laneActive && !this.lane.prep
-    }
+const laneRunout = computed(() => laneActive.value && !lane.value.prep)
 
-    get toolLoaded() {
-        return this.lane.tool_loaded ?? false
-    }
+const toolLoaded = computed(() => lane.value.tool_loaded ?? false)
 
-    loadLane() {
-        this.doSend(`CHANGE_TOOL LANE=${this.name}`)
-    }
+function loadLane() {
+    doSend(`CHANGE_TOOL LANE=${props.name}`)
+}
 
-    unloadLane() {
-        this.doSend(`TOOL_UNLOAD LANE=${this.name}`)
-    }
+function unloadLane() {
+    doSend(`TOOL_UNLOAD LANE=${props.name}`)
+}
 
-    ejectLane() {
-        this.doSend(`LANE_UNLOAD LANE=${this.name}`)
-    }
-
-    doSend(gcode: string) {
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode })
-    }
+function ejectLane() {
+    doSend(`LANE_UNLOAD LANE=${props.name}`)
 }
 </script>
 

@@ -1,48 +1,45 @@
 <template>
-    <v-alert v-if="message" :icon="mdiAlert" :type="type" class="mt-3 align-content-center" dense text>
+    <v-alert v-if="message" :icon="mdiAlert" :type="type" class="mt-3 align-content-center" density="compact" variant="text">
         <v-row>
             <v-col class="grow text-format">{{ message }}</v-col>
             <v-col class="shrink py-0 align-content-center">
-                <v-btn icon @click="clearMessage">
-                    <v-icon small>{{ mdiClose }}</v-icon>
+                <v-btn icon="" variant="text" @click="clearMessage">
+                    <v-icon size="small">{{ mdiClose }}</v-icon>
                 </v-btn>
             </v-col>
         </v-row>
     </v-alert>
 </template>
-<script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import AfcMixin from '@/components/mixins/afc'
+
+<script setup lang="ts">
+import { computed } from 'vue'
 import { mdiAlert, mdiClose } from '@mdi/js'
+import { useAfc } from '@/composables/useAfc'
+import { useControl } from '@/composables/useControl'
 
-@Component
-export default class AfcPanelMessage extends Mixins(BaseMixin, AfcMixin) {
-    mdiAlert = mdiAlert
-    mdiClose = mdiClose
+const { afc } = useAfc()
+const { doSend } = useControl()
 
-    get type() {
-        const type = this.afc.message?.type ?? 'error'
-        const possibleTypes = ['info', 'warning', 'success', 'error']
+const afcMessage = computed(() => afc.value.message as { type?: string; message?: string } | undefined)
 
-        if (!possibleTypes.includes(type)) {
-            window.console.warn(`AfcPanelMessage: Invalid message type "${type}" detected. Defaulting to "error".`)
-            return 'error'
-        }
+type AlertType = 'error' | 'warning' | 'success' | 'info'
 
-        return type
+const type = computed<AlertType>(() => {
+    const type = afcMessage.value?.type ?? 'error'
+    const possibleTypes: AlertType[] = ['info', 'warning', 'success', 'error']
+
+    if (!possibleTypes.includes(type as AlertType)) {
+        window.console.warn(`AfcPanelMessage: Invalid message type "${type}" detected. Defaulting to "error".`)
+        return 'error'
     }
 
-    get message() {
-        return this.afc.message?.message ?? ''
-    }
+    return type as AlertType
+})
 
-    clearMessage() {
-        const gcode = `AFC_CLEAR_MESSAGE`
+const message = computed(() => afcMessage.value?.message ?? '')
 
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode })
-    }
+function clearMessage() {
+    doSend('AFC_CLEAR_MESSAGE')
 }
 </script>
 

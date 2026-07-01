@@ -2,24 +2,16 @@
     <div class="rounded-lg grey border-1" :class="containerClasses">
         <v-row>
             <v-col class="pl-6 py-4 text-no-wrap">
-                <v-tooltip top>
-                    <template #activator="{ on, attr }">
-                        <span
-                            v-bind="attr"
-                            class="sensor-status rounded-circle d-inline-block mr-2"
-                            :class="preSensorClasses"
-                            v-on="on" />
+                <v-tooltip location="top">
+                    <template #activator="{ props: activatorProps }">
+                        <span v-bind="activatorProps" class="sensor-status rounded-circle d-inline-block mr-2" :class="preSensorClasses" />
                     </template>
                     <span>{{ preSensorOutput }}</span>
                 </v-tooltip>
                 <span>{{ name }}</span>
-                <v-tooltip v-if="hasPostSensor" top>
-                    <template #activator="{ on, attr }">
-                        <span
-                            v-bind="attr"
-                            class="sensor-status rounded-circle d-inline-block ml-2"
-                            :class="postSensorClasses"
-                            v-on="on" />
+                <v-tooltip v-if="hasPostSensor" location="top">
+                    <template #activator="{ props: activatorProps }">
+                        <span v-bind="activatorProps" class="sensor-status rounded-circle d-inline-block ml-2" :class="postSensorClasses" />
                     </template>
                     <span>{{ postSensorOutput }}</span>
                 </v-tooltip>
@@ -32,143 +24,131 @@
         </v-row>
     </div>
 </template>
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import AfcMixin from '@/components/mixins/afc'
 
-@Component
-export default class AfcPanelExtruder extends Mixins(BaseMixin, AfcMixin) {
-    @Prop({ type: String, required: true }) readonly name!: string
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useBase } from '@/composables/useBase'
+import { useAfc } from '@/composables/useAfc'
+import { useMainsailTheme } from '@/composables/useMainsailTheme'
 
-    get afcExtruder() {
-        return this.getAfcExtruderObject(this.name)
-    }
+const props = defineProps<{
+    name: string
+}>()
 
-    get settings() {
-        return this.getAfcExtruderSettings(this.name)
-    }
+const { t } = useI18n()
+const { printerIsPrintingOnly } = useBase()
+const { afcCurrentLane, afcCurrentBuffer, afcCurrentState, afcErrorState, getAfcExtruderObject, getAfcExtruderSettings } = useAfc()
+const { isDark } = useMainsailTheme()
 
-    get useRamming() {
-        const toolStart = this.afcExtruder.tool_start ?? ''
+const afcExtruder = computed(() => getAfcExtruderObject(props.name) as Record<string, any>)
+const settings = computed(() => getAfcExtruderSettings(props.name) as Record<string, any>)
 
-        return toolStart === 'buffer'
-    }
+const useRamming = computed(() => {
+    const toolStart = afcExtruder.value.tool_start ?? ''
 
-    get hasActiveLane() {
-        if (this.afcCurrentLane === null) return false
+    return toolStart === 'buffer'
+})
 
-        const lanes = this.afcExtruder.lanes ?? []
-        return lanes.includes(this.afcCurrentLane?.name)
-    }
+const hasActiveLane = computed(() => {
+    if (afcCurrentLane.value === null) return false
 
-    get containerClasses() {
+    const lanes = afcExtruder.value.lanes ?? []
+    return lanes.includes((afcCurrentLane.value as { name?: string })?.name)
+})
+
+const containerClasses = computed(() => ({
+    'border-primary': hasActiveLane.value,
+    'border-error': hasActiveLane.value && afcErrorState.value,
+    'darken-3': isDark.value,
+    'lighten-2': !isDark.value,
+}))
+
+const rammingState = computed(() => {
+    if (!useRamming.value) return false
+
+    const extruder = (afcCurrentLane.value as { extruder?: string })?.extruder ?? ''
+    const bufferState = ((afcCurrentBuffer.value as { state?: string })?.state ?? '').toLowerCase()
+
+    return extruder === props.name && bufferState === 'trailing'
+})
+
+const laneLoaded = computed(() => afcExtruder.value.lane_loaded ?? '')
+
+const preSensorStatus = computed(() => afcExtruder.value.tool_start_status ?? false)
+
+const preSensorClasses = computed(() => {
+    if (useRamming.value) {
         return {
-            'border-primary': this.hasActiveLane,
-            'border-error': this.hasActiveLane && this.afcErrorState,
-            'darken-3': this.$vuetify.theme.dark,
-            'lighten-2': !this.$vuetify.theme.dark,
+            success: !laneLoaded.value && rammingState.value,
+            error: !laneLoaded.value && !rammingState.value,
+            'grey lighten4': !!laneLoaded.value,
         }
     }
 
-    get rammingState() {
-        if (!this.useRamming) return false
+    return {
+        success: preSensorStatus.value,
+        error: !preSensorStatus.value,
+    }
+})
 
-        const extruder = this.afcCurrentLane?.extruder ?? ''
-        const bufferState = (this.afcCurrentBuffer?.state ?? '').toLowerCase()
+const preSensorOutput = computed(() => {
+    if (useRamming.value) {
+        if (laneLoaded.value) return `${t('Panels.AfcPanel.RammingSensor')}`
 
-        return extruder === this.name && bufferState === 'trailing'
+        const status = rammingState.value ? t('Panels.AfcPanel.Detected') : t('Panels.AfcPanel.Empty')
+        return `${t('Panels.AfcPanel.RammingSensor')} - ${status}`
     }
 
-    get laneLoaded() {
-        return this.afcExtruder.lane_loaded ?? ''
+    const status = preSensorStatus.value ? t('Panels.AfcPanel.Detected') : t('Panels.AfcPanel.Empty')
+
+    return `${t('Panels.AfcPanel.PreExtruderSensor')} - ${status}`
+})
+
+const hasPostSensor = computed(() => 'pin_tool_end' in settings.value)
+
+const postSensorStatus = computed(() => afcExtruder.value.tool_end_status ?? false)
+
+const postSensorClasses = computed(() => ({
+    success: postSensorStatus.value,
+    error: !postSensorStatus.value,
+}))
+
+const postSensorOutput = computed(() => {
+    const status = postSensorStatus.value ? t('Panels.AfcPanel.Detected') : t('Panels.AfcPanel.Empty')
+
+    return `${t('Panels.AfcPanel.PostExtruderSensor')} - ${status}`
+})
+
+const bufferOutput = computed(() => {
+    const extruder = (afcCurrentLane.value as { extruder?: string })?.extruder ?? ''
+    if (extruder !== props.name) return t('Panels.AfcPanel.BufferDisabled')
+
+    return `${(afcCurrentLane.value as { buffer?: string })?.buffer ?? '--'}: ${(afcCurrentBuffer.value as { state?: string })?.state ?? '--'}`
+})
+
+const state = computed(() => {
+    const extruder = (afcCurrentLane.value as { extruder?: string })?.extruder ?? ''
+    if (extruder === props.name) {
+        if (printerIsPrintingOnly.value) return t('Panels.AfcPanel.Printing')
+
+        return t(`Panels.AfcPanel.${afcCurrentState.value}`)
     }
 
-    get preSensorStatus() {
-        return this.afcExtruder.tool_start_status ?? false
-    }
+    return t('Panels.AfcPanel.Idle')
+})
 
-    get preSensorClasses() {
-        if (this.useRamming) {
-            return {
-                success: !this.laneLoaded && this.rammingState,
-                error: !this.laneLoaded && !this.rammingState,
-                'grey lighten4': this.laneLoaded,
-            }
-        }
+const stateLane = computed(() => {
+    if (afcExtruder.value.lane_loaded) return afcExtruder.value.lane_loaded
+    if (afcCurrentLane.value) return (afcCurrentLane.value as { name?: string }).name
 
-        return {
-            success: this.preSensorStatus,
-            error: !this.preSensorStatus,
-        }
-    }
+    return t('Panels.AfcPanel.LaneLoadedNone')
+})
 
-    get preSensorOutput() {
-        if (this.useRamming) {
-            if (this.laneLoaded) return `${this.$t('Panels.AfcPanel.RammingSensor')}`
-
-            const status = this.rammingState ? this.$t('Panels.AfcPanel.Detected') : this.$t('Panels.AfcPanel.Empty')
-            return `${this.$t('Panels.AfcPanel.RammingSensor')} - ${status}`
-        }
-
-        const status = this.preSensorStatus ? this.$t('Panels.AfcPanel.Detected') : this.$t('Panels.AfcPanel.Empty')
-
-        return `${this.$t('Panels.AfcPanel.PreExtruderSensor')} - ${status}`
-    }
-
-    get hasPostSensor() {
-        return 'pin_tool_end' in this.settings
-    }
-
-    get postSensorStatus() {
-        return this.afcExtruder.tool_end_status ?? false
-    }
-
-    get postSensorClasses() {
-        return {
-            success: this.postSensorStatus,
-            error: !this.postSensorStatus,
-        }
-    }
-
-    get postSensorOutput() {
-        const status = this.postSensorStatus ? this.$t('Panels.AfcPanel.Detected') : this.$t('Panels.AfcPanel.Empty')
-
-        return `${this.$t('Panels.AfcPanel.PostExtruderSensor')} - ${status}`
-    }
-
-    get bufferOutput() {
-        const extruder = this.afcCurrentLane?.extruder ?? ''
-        if (extruder !== this.name) return this.$t('Panels.AfcPanel.BufferDisabled')
-
-        return `${this.afcCurrentLane?.buffer ?? '--'}: ${this.afcCurrentBuffer?.state ?? '--'}`
-    }
-
-    get state() {
-        const extruder = this.afcCurrentLane?.extruder ?? ''
-        if (extruder === this.name) {
-            if (this.printerIsPrintingOnly) return this.$t('Panels.AfcPanel.Printing')
-
-            return this.$t(`Panels.AfcPanel.${this.afcCurrentState}`)
-        }
-
-        return this.$t('Panels.AfcPanel.Idle')
-    }
-
-    get stateLane() {
-        if (this.afcExtruder.lane_loaded) return this.afcExtruder.lane_loaded
-        if (this.afcCurrentLane) return this.afcCurrentLane.name
-
-        return this.$t('Panels.AfcPanel.LaneLoadedNone')
-    }
-
-    get stateLaneClasses() {
-        return {
-            'primary--text': this.hasActiveLane,
-            'error--text': this.hasActiveLane && this.afcErrorState,
-        }
-    }
-}
+const stateLaneClasses = computed(() => ({
+    'text-primary': hasActiveLane.value,
+    'text-error': hasActiveLane.value && afcErrorState.value,
+}))
 </script>
 
 <style scoped>
@@ -183,10 +163,10 @@ export default class AfcPanelExtruder extends Mixins(BaseMixin, AfcMixin) {
 }
 
 .v-application .border-primary {
-    border-color: var(--v-primary-base) !important;
+    border-color: rgb(var(--v-theme-primary)) !important;
 }
 
 .v-application .border-error {
-    border-color: var(--v-error-base) !important;
+    border-color: rgb(var(--v-theme-error)) !important;
 }
 </style>
