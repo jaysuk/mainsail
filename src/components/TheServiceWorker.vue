@@ -1,60 +1,57 @@
 <template>
     <v-dialog v-model="showDialog" persistent max-width="400" class="mx-0">
-        <panel
-            :title="$t('App.TheServiceWorker.TitleNeedUpdate')"
-            card-class="service-worker-dialog"
-            :margin-bottom="false">
+        <panel :title="t('App.TheServiceWorker.TitleNeedUpdate')" card-class="service-worker-dialog" :margin-bottom="false">
             <v-card-text>
-                <p>{{ $t('App.TheServiceWorker.DescriptionNeedUpdate') }}</p>
+                <p>{{ t('App.TheServiceWorker.DescriptionNeedUpdate') }}</p>
             </v-card-text>
             <v-card-actions>
                 <v-spacer />
-                <v-btn text color="primary" @click="update">{{ $t('App.TheServiceWorker.Update') }}</v-btn>
+                <v-btn variant="text" color="primary" @click="update">{{ t('App.TheServiceWorker.Update') }}</v-btn>
             </v-card-actions>
         </panel>
     </v-dialog>
 </template>
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
 
-@Component
-export default class TheServiceWorker extends Mixins(BaseMixin) {
-    showDialog = false
-    updateSW: ((reloadPage?: boolean | undefined) => Promise<void>) | null = null
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import Panel from '@/components/ui/Panel.vue'
 
-    onOfflineReady() {
-        window.console.info('PWA is offline ready')
-    }
+const { t } = useI18n()
 
-    onNeedRefresh() {
-        window.console.warn('PWA needs to refresh')
-        this.showDialog = true
-    }
+const showDialog = ref(false)
+let updateSW: ((reloadPage?: boolean) => Promise<void>) | null = null
 
-    onRegistered() {
-        window.console.debug('PWA is registered')
-    }
-
-    onRegisterError(error: Error) {
-        window.console.error('PWA registration error:', error)
-    }
-
-    update() {
-        this.updateSW?.(true)
-        this.showDialog = false
-    }
-
-    async mounted() {
-        const { registerSW } = await import('virtual:pwa-register')
-        this.updateSW = registerSW({
-            immediate: true,
-            onOfflineReady: this.onOfflineReady,
-            onNeedRefresh: this.onNeedRefresh,
-            onRegistered: this.onRegistered,
-            onRegisterError: this.onRegisterError,
-        })
-    }
+function onOfflineReady() {
+    window.console.info('PWA is offline ready')
 }
+
+function onNeedRefresh() {
+    window.console.warn('PWA needs to refresh')
+    showDialog.value = true
+}
+
+function onRegistered() {
+    window.console.debug('PWA is registered')
+}
+
+function onRegisterError(error: Error) {
+    window.console.error('PWA registration error:', error)
+}
+
+function update() {
+    updateSW?.(true)
+    showDialog.value = false
+}
+
+onMounted(async () => {
+    const { registerSW } = await import('virtual:pwa-register')
+    updateSW = registerSW({
+        immediate: true,
+        onOfflineReady,
+        onNeedRefresh,
+        onRegistered,
+        onRegisterError,
+    })
+})
 </script>

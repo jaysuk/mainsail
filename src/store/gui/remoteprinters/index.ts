@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { reactive, toRefs } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import type { GuiRemoteprintersState, GuiRemoteprintersStatePrinter } from '@/store/gui/remoteprinters/types'
+import type { ConfigJsonInstance } from '@/store/types'
 import { caseInsensitiveSort } from '@/plugins/helpers'
 import { resetState, deepMerge } from '@/store/helpers'
 import { webSocketClient } from '@/plugins/webSocketClient'
@@ -38,8 +39,8 @@ export const useGuiRemoteprintersStore = defineStore('guiRemoteprinters', () => 
 
     const setData = (payload: Partial<GuiRemoteprintersState>) => deepMerge(state, payload)
 
-    const initFromLocalstorage = (payload: { instancesDB: string; configInstances: GuiRemoteprintersStatePrinter[] }) => {
-        let value: GuiRemoteprintersStatePrinter[] = payload.configInstances ?? []
+    const initFromLocalstorage = (payload: { instancesDB: string; configInstances: ConfigJsonInstance[] }) => {
+        let value: ConfigJsonInstance[] = payload.configInstances ?? []
         if (payload.instancesDB === 'browser') value = JSON.parse(localStorage.getItem('printers') ?? '{}')
 
         if (Array.isArray(value)) {
@@ -47,7 +48,7 @@ export const useGuiRemoteprintersStore = defineStore('guiRemoteprinters', () => 
 
             value.forEach((printer) => {
                 const id = uuidv4()
-                printers[id] = printer
+                printers[id] = { ...printer, port: printer.port ?? 7125, path: printer.path ?? '' }
             })
 
             initStore(printers)
