@@ -1,52 +1,39 @@
 <template>
-    <panel :title="$t('Timelapse.Status')" :icon="mdiInformation" card-class="timelapse-status-panel">
+    <panel :title="t('Timelapse.Status')" :icon="mdiInformation" card-class="timelapse-status-panel">
         <v-card-text v-if="framesCount">
             <v-row v-if="frameUrl">
                 <v-col class="pb-0">
-                    <vue-load-image class="d-flex align-center justify-center">
-                        <img
-                            ref="timelapsePreview"
-                            slot="image"
-                            :src="frameUrl"
-                            :alt="$t('Timelapse.Preview').toString()"
-                            class="w-100"
-                            :style="webcamStyle"
-                            @load="calcRatio" />
-                        <div slot="preloader">
+                    <load-image :src="frameUrl" class="d-flex align-center justify-center">
+                        <template #image>
+                            <img ref="timelapsePreview" :src="frameUrl" :alt="t('Timelapse.Preview')" class="w-100" :style="webcamStyle" @load="calcRatio" />
+                        </template>
+                        <template #preloader>
                             <v-progress-circular indeterminate color="primary" />
-                        </div>
-                        <div slot="error">
+                        </template>
+                        <template #error>
                             <v-icon>{{ mdiFile }}</v-icon>
-                        </div>
-                    </vue-load-image>
+                        </template>
+                    </load-image>
                 </v-col>
             </v-row>
             <v-row>
-                <v-col class="text--secondary">
-                    <settings-row :title="$t('Timelapse.Frames')" :dynamic-slot-width="true">
+                <v-col class="text-medium-emphasis">
+                    <settings-row :title="t('Timelapse.Frames')" :dynamic-slot-width="true">
                         {{ framesCount }}
                     </settings-row>
                     <v-divider class="my-2" />
-                    <settings-row :title="$t('Timelapse.EstimatedLength')" :dynamic-slot-width="true">
+                    <settings-row :title="t('Timelapse.EstimatedLength')" :dynamic-slot-width="true">
                         {{ estimatedVideoLength }}
                     </settings-row>
                     <template v-if="!['printing', 'paused'].includes(printer_state)">
                         <v-divider class="mt-2 mb-4" />
                         <v-row>
                             <v-col class="text-center py-1">
-                                <v-btn
-                                    text
-                                    color="primary"
-                                    :disabled="disableRenderButton"
-                                    @click="boolDialogRendersettings = true">
-                                    {{ $t('Timelapse.Render') }}
+                                <v-btn variant="text" color="primary" :disabled="disableRenderButton" @click="boolDialogRendersettings = true">
+                                    {{ t('Timelapse.Render') }}
                                 </v-btn>
-                                <v-btn
-                                    text
-                                    color="primary"
-                                    :loading="loadings.includes('timelapse_saveframes')"
-                                    @click="saveFrames">
-                                    {{ $t('Timelapse.SaveFrames') }}
+                                <v-btn variant="text" color="primary" :loading="loadings.includes('timelapse_saveframes')" @click="saveFrames">
+                                    {{ t('Timelapse.SaveFrames') }}
                                 </v-btn>
                             </v-col>
                         </v-row>
@@ -55,16 +42,16 @@
             </v-row>
         </v-card-text>
         <v-card-text v-else class="">
-            <p class="text-center my-0 font-italic">{{ $t('Timelapse.NoActiveTimelapse') }}</p>
+            <p class="text-center my-0 font-italic">{{ t('Timelapse.NoActiveTimelapse') }}</p>
         </v-card-text>
         <v-card-text v-if="['printing', 'paused'].includes(printer_state)" class="pt-0">
             <v-divider class="mt-0 mb-2" />
-            <settings-row :title="$t('Timelapse.Enabled')" :dynamic-slot-width="true">
+            <settings-row :title="t('Timelapse.Enabled')" :dynamic-slot-width="true">
                 <v-switch v-model="enabled" hide-details class="mt-0" />
             </settings-row>
             <template v-if="enabled">
                 <v-divider class="my-2" />
-                <settings-row :title="$t('Timelapse.Autorender')" :dynamic-slot-width="true">
+                <settings-row :title="t('Timelapse.Autorender')" :dynamic-slot-width="true">
                     <v-switch v-model="autorender" hide-details class="mt-0" />
                 </settings-row>
             </template>
@@ -72,116 +59,80 @@
         <timelapse-renderingsettings-dialog v-model="boolDialogRendersettings" />
     </panel>
 </template>
-<script lang="ts">
-import { Component, Mixins, Ref } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import SettingsRow from '@/components/settings/SettingsRow.vue'
 import Panel from '@/components/ui/Panel.vue'
-import { mdiFile, mdiInformation, mdiCloseThick } from '@mdi/js'
-import WebcamMixin from '@/components/mixins/webcam'
+import LoadImage from '@/components/ui/LoadImage.vue'
+import { mdiFile, mdiInformation } from '@mdi/js'
 import TimelapseRenderingsettingsDialog from '@/components/dialogs/TimelapseRenderingsettingsDialog.vue'
-import TimelapseMixin from '@/components/mixins/timelapse'
-@Component({
-    components: { TimelapseRenderingsettingsDialog, Panel, SettingsRow },
+import { useBase } from '@/composables/useBase'
+import { useTimelapse } from '@/composables/useTimelapse'
+import { useWebcam } from '@/composables/useWebcam'
+import { useServerStore } from '@/store/server'
+import { useGuiWebcamsStore } from '@/store/gui/webcams'
+import { webSocketClient } from '@/plugins/webSocketClient'
+
+const { t } = useI18n()
+const { apiUrl, printer_state, loadings } = useBase()
+const { framesCount, estimatedVideoLength, enabled, autorender } = useTimelapse()
+const { generateTransform } = useWebcam()
+const serverStore = useServerStore()
+const guiWebcamsStore = useGuiWebcamsStore()
+
+const boolDialogRendersettings = ref(false)
+const scale = ref(1)
+const timelapsePreview = ref<HTMLImageElement | null>(null)
+
+const frameUrl = computed(() => {
+    const frame = serverStore.timelapse?.lastFrame?.file ?? null
+
+    if (frame) {
+        return apiUrl.value + '/server/files/timelapse_frames/' + frame
+    }
+
+    return null
 })
-export default class TimelapseStatusPanel extends Mixins(BaseMixin, TimelapseMixin, WebcamMixin) {
-    mdiInformation = mdiInformation
-    mdiFile = mdiFile
-    mdiCloseThick = mdiCloseThick
 
-    boolDialogRendersettings = false
-    scale = 1
+const disableRenderButton = computed(() => (serverStore.timelapse?.rendering.status ?? '') === 'running')
 
-    @Ref('timelapsePreview') timelapsePreview!: HTMLImageElement
+const existsSnapshoturlInMoonrakerConfig = computed(() => 'snapshoturl' in serverStore.config.orig.timelapse)
 
-    get frameUrl() {
-        const frame = this.$store.state.server.timelapse?.lastFrame?.file ?? null
+const moonrakerTimelapseConfig = computed(() => serverStore.config.config.timelapse ?? {})
 
-        if (frame) {
-            return this.apiUrl + '/server/files/timelapse_frames/' + frame
-        }
+const camId = computed(() => serverStore.timelapse?.settings.camera ?? '')
 
-        return null
-    }
+const camSettings = computed(() => guiWebcamsStore.getWebcam(camId.value))
 
-    get enabled() {
-        return this.$store.state.server.timelapse?.settings?.enabled ?? false
-    }
-
-    set enabled(newVal) {
-        this.$socket.emit(
-            'machine.timelapse.post_settings',
-            { enabled: newVal },
-            { action: 'server/timelapse/initSettings' }
-        )
-    }
-
-    get autorender() {
-        return this.$store.state.server.timelapse?.settings?.autorender ?? false
-    }
-
-    set autorender(newVal) {
-        this.$socket.emit(
-            'machine.timelapse.post_settings',
-            { autorender: newVal },
-            { action: 'server/timelapse/initSettings' }
-        )
-    }
-
-    get disableRenderButton() {
-        return (this.$store.state.server.timelapse?.rendering.status ?? '') === 'running'
-    }
-
-    get existsSnapshoturlInMoonrakerConfig() {
-        return 'snapshoturl' in this.$store.state.server.config.orig.timelapse
-    }
-
-    get moonrakerTimelapseConfig() {
-        return this.$store.state.server.config.config.timelapse ?? {}
-    }
-
-    get camId() {
-        return this.$store.state.server.timelapse.settings.camera ?? ''
-    }
-
-    get camSettings() {
-        return this.$store.getters['gui/webcams/getWebcam'](this.camId)
-    }
-
-    get webcamStyle() {
-        // if the snapshoturl is set in moonraker config,
-        // we also use the flip_x and flip_y values from the moonraker config
-        if (this.existsSnapshoturlInMoonrakerConfig) {
-            return {
-                transform: this.generateTransform(
-                    this.moonrakerTimelapseConfig.flip_x ?? false,
-                    this.moonrakerTimelapseConfig.flip_y ?? false,
-                    0
-                ),
-            }
-        }
-
-        if (!this.camSettings) return {}
-
+const webcamStyle = computed(() => {
+    // if the snapshoturl is set in moonraker config,
+    // we also use the flip_x and flip_y values from the moonraker config
+    if (existsSnapshoturlInMoonrakerConfig.value) {
         return {
-            transform: this.generateTransform(
-                this.camSettings.flip_horizontal ?? false,
-                this.camSettings.flip_vertical ?? false,
-                this.camSettings.rotation ?? 0
-            ),
+            transform: generateTransform((moonrakerTimelapseConfig.value.flip_x as boolean | undefined) ?? false, (moonrakerTimelapseConfig.value.flip_y as boolean | undefined) ?? false, 0),
         }
     }
 
-    saveFrames() {
-        this.$socket.emit('machine.timelapse.saveframes', {}, { loading: 'timelapse_saveframes' })
+    if (!camSettings.value) return {}
+
+    return {
+        transform: generateTransform(camSettings.value.flip_horizontal ?? false, camSettings.value.flip_vertical ?? false, camSettings.value.rotation ?? 0),
     }
+})
 
-    calcRatio() {
-        this.scale = this.timelapsePreview.naturalHeight / this.timelapsePreview.naturalWidth
+function saveFrames() {
+    webSocketClient.emit('machine.timelapse.saveframes', {}, { loading: 'timelapse_saveframes' })
+}
 
-        if (this.scale > 1) {
-            this.scale = this.timelapsePreview.naturalWidth / this.timelapsePreview.naturalHeight
-        }
+function calcRatio() {
+    if (!timelapsePreview.value) return
+
+    scale.value = timelapsePreview.value.naturalHeight / timelapsePreview.value.naturalWidth
+
+    if (scale.value > 1) {
+        scale.value = timelapsePreview.value.naturalWidth / timelapsePreview.value.naturalHeight
     }
 }
 </script>

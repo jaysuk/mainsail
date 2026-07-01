@@ -35,6 +35,16 @@ export function useTimelapse() {
         set: (newVal) => timelapseStore.saveSetting({ duplicatelastframe: newVal }),
     })
 
+    const enabled = computed<boolean>({
+        get: () => timelapseStore.settings?.enabled ?? false,
+        set: (newVal) => timelapseStore.saveSetting({ enabled: newVal }),
+    })
+
+    const autorender = computed<boolean>({
+        get: () => timelapseStore.settings?.autorender ?? false,
+        set: (newVal) => timelapseStore.saveSetting({ autorender: newVal }),
+    })
+
     const framesCount = computed(() => timelapseStore.lastFrame?.count ?? 0)
 
     const variableTargetFps = computed(() => {
@@ -63,6 +73,8 @@ export function useTimelapse() {
         targetlength,
         output_framerate,
         duplicatelastframe,
+        enabled,
+        autorender,
         framesCount,
         estimatedVideoLength,
         variableTargetFps,
