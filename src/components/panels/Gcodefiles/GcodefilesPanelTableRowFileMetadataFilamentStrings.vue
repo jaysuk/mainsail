@@ -1,22 +1,17 @@
 <template>
     <td class="text-no-wrap">{{ values.join(', ') }}</td>
 </template>
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import { FileStateGcodefile } from '@/store/files/types'
 
-@Component
-export default class GcodefilesPanelTableRowFileMetadataFilamentStrings extends Mixins(BaseMixin) {
-    @Prop({ type: Object, required: true }) readonly item!: FileStateGcodefile
-    @Prop({ type: String, required: true }) readonly column!: string
+<script setup lang="ts">
+import { computed } from 'vue'
+import type { FileStateGcodefile } from '@/store/files/types'
 
-    get value() {
-        return this.item[this.column] ?? null
-    }
+const props = defineProps<{
+    item: FileStateGcodefile
+    column: string
+}>()
 
-    get values() {
-        return (this.value ?? '').replace(/"/g, '').split(';')
-    }
-}
+const value = computed(() => (props.item as unknown as Record<string, unknown>)[props.column] ?? null)
+
+const values = computed(() => String(value.value ?? '').replace(/"/g, '').split(';'))
 </script>

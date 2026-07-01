@@ -1,65 +1,50 @@
 <template>
     <td class="text-no-wrap">
         <div class="d-flex align-center">
-            <gcodefiles-panel-table-row-file-metadata-filaments-badge
-                v-for="(filament, index) in filaments"
-                :key="index"
-                :filament="filament" />
+            <gcodefiles-panel-table-row-file-metadata-filaments-badge v-for="(filament, index) in filaments" :key="index" :filament="filament" />
         </div>
     </td>
 </template>
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import { FileStateGcodefile, FileStateGcodefileFilament } from '@/store/files/types'
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import type { FileStateGcodefile, FileStateGcodefileFilament } from '@/store/files/types'
 import { convertStringToArray } from '@/plugins/helpers'
+import GcodefilesPanelTableRowFileMetadataFilamentsBadge from '@/components/panels/Gcodefiles/GcodefilesPanelTableRowFileMetadataFilamentsBadge.vue'
 
-@Component
-export default class GcodefilesPanelTableRowFileMetadataFilaments extends Mixins(BaseMixin) {
-    @Prop({ type: Object, required: true }) readonly item!: FileStateGcodefile
+const props = defineProps<{ item: FileStateGcodefile }>()
 
-    get filament_colors() {
-        return this.item.filament_colors ?? []
+const filament_colors = computed(() => props.item.filament_colors ?? [])
+
+const filament_types = computed(() => convertStringToArray(props.item.filament_type ?? ''))
+
+const filament_weights = computed(() => props.item.filament_weights ?? [])
+
+const filament_weights_exists = computed(() => 'filament_weights' in props.item && filament_weights.value.length > 0)
+
+const filament_names = computed(() => convertStringToArray(props.item.filament_name ?? ''))
+
+const filaments = computed<FileStateGcodefileFilament[]>(() => {
+    if (!filament_weights_exists.value && filament_names.value.length === 1 && filament_types.value.length === 1) {
+        return [
+            {
+                color: '#666',
+                name: filament_names.value[0] ?? '--',
+                type: filament_types.value[0] ?? '--',
+                weight: props.item.filament_weight_total ?? 0,
+            },
+        ]
     }
 
-    get filament_types() {
-        return convertStringToArray(this.item.filament_type ?? '')
-    }
-
-    get filament_weights_exists() {
-        return 'filament_weights' in this.item && this.filament_weights.length > 0
-    }
-
-    get filament_weights() {
-        return this.item.filament_weights ?? []
-    }
-
-    get filament_names() {
-        return convertStringToArray(this.item.filament_name ?? '')
-    }
-
-    get filaments(): FileStateGcodefileFilament[] {
-        if (!this.filament_weights_exists && this.filament_names.length === 1 && this.filament_types.length === 1) {
-            return [
-                {
-                    color: '#666',
-                    name: this.filament_names[0] ?? '--',
-                    type: this.filament_types[0] ?? '--',
-                    weight: this.item.filament_weight_total ?? 0,
-                },
-            ]
-        }
-
-        return this.filament_weights
-            .map((weight, index) => {
-                return {
-                    color: this.filament_colors[index] ?? '#000000',
-                    name: this.filament_names[index] ?? '--',
-                    type: this.filament_types[index] ?? '--',
-                    weight: weight,
-                }
-            })
-            .filter((filament) => filament.weight > 0)
-    }
-}
+    return filament_weights.value
+        .map((weight, index) => {
+            return {
+                color: filament_colors.value[index] ?? '#000000',
+                name: filament_names.value[index] ?? '--',
+                type: filament_types.value[index] ?? '--',
+                weight: weight,
+            }
+        })
+        .filter((filament) => filament.weight > 0)
+})
 </script>
