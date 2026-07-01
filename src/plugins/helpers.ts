@@ -12,7 +12,6 @@ import {
     mdiScale,
     mdiThermometer,
 } from '@mdi/js'
-import Vue from 'vue'
 import { VColorPickerColor } from '@/types/vuetify'
 import DOMPurify from 'dompurify'
 
@@ -44,21 +43,6 @@ export const parseNumber = (value: unknown, fallback: number): number => {
     return Number.isFinite(parsedValue) ? parsedValue : fallback
 }
 
-export const setDataDeep = (currentState: unknown, payload: unknown): void => {
-    if (!isRecord(currentState) || !isRecord(payload)) return
-
-    Object.keys(payload).forEach((key: string) => {
-        const value = payload[key]
-        const currentValue = currentState[key]
-
-        if (isRecord(value) && isRecord(currentValue)) {
-            setDataDeep(currentValue, value)
-            return
-        }
-
-        Vue.set(currentState, key, value)
-    })
-}
 
 export const findDirectory = (folder: FileStateFile[], dirArray: string[]): FileStateFile[] | null => {
     if (folder !== undefined && folder !== null && dirArray.length) {

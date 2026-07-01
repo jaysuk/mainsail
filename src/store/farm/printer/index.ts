@@ -3,8 +3,8 @@ import { reactive, computed, toRefs } from 'vue'
 import type { FarmPrinterState, FarmPrinterWsDataEntry } from '@/store/farm/printer/types'
 import { getDefaultState as getGuiDefaultState, useGuiStore } from '@/store/gui'
 import { defaultLogoColor, themeDir, thumbnailBigMin } from '@/store/variables'
-import { convertName, escapePath, setDataDeep } from '@/plugins/helpers'
-import { resetState } from '@/store/helpers'
+import { convertName, escapePath } from '@/plugins/helpers'
+import { resetState, deepMerge } from '@/store/helpers'
 import { useSocketStore } from '@/store/socket'
 import { useGuiRemoteprintersStore } from '@/store/gui/remoteprinters'
 
@@ -380,7 +380,7 @@ export function useFarmPrinterStore(id: string) {
         }
 
         const setMainsailData = (payload: Record<string, unknown>) => {
-            setDataDeep(state.data.gui, payload)
+            deepMerge(state.data.gui, payload)
         }
 
         const setWebcamsData = (payload: FarmPrinterState['data']['webcams']) => {

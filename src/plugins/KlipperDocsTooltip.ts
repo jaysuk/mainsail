@@ -86,11 +86,9 @@ export function KlipperDocsTooltip(baseUrl: string) {
                 const div = document.createElement('div')
                 div.className = 'cm-tooltip-klipper-docs'
 
-                div.innerHTML = i18n
-                    .t('Editor.ViewModuleDocumentation', {
-                        module: `<a href="${url}" rel="noopener" target="_blank">${escapedWord}</a>`,
-                    })
-                    .toString()
+                div.innerHTML = i18n.global.t('Editor.ViewModuleDocumentation', {
+                    module: `<a href="${url}" rel="noopener" target="_blank">${escapedWord}</a>`,
+                })
 
                 return { dom: div }
             },

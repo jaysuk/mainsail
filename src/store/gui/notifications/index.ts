@@ -10,7 +10,6 @@ import type {
 } from '@/store/gui/notifications/types'
 import type { ServerAnnouncementsStateEntry } from '@/store/server/announcements/types'
 import type { PrinterStateKlipperConfigWarning } from '@/store/printer/types'
-import type { RootStateDependency } from '@/store/types'
 import i18n from '@/plugins/i18n'
 import { minBrowserVersions } from '@/store/variables'
 import { resetState, deepMerge } from '@/store/helpers'
@@ -19,6 +18,7 @@ import { useServerStore } from '@/store/server'
 import { useServerAnnouncementsStore } from '@/store/server/announcements'
 import { usePrinterStore } from '@/store/printer'
 import { useGuiMaintenanceStore } from '@/store/gui/maintenance'
+import { useRootStore } from '@/store'
 
 const t = i18n.global.t
 
@@ -155,9 +155,7 @@ export const useGuiNotificationsStore = defineStore('guiNotifications', () => {
     const getNotificationsDependencies = computed<GuiNotificationStateEntry[]>(() => {
         const notifications: GuiNotificationStateEntry[] = []
 
-        // TODO(phase-2): sourced from the root store's getDependencies getter once
-        // the root store is ported; empty until then (no false-positive warnings).
-        const dependencies: RootStateDependency[] = []
+        const dependencies = useRootStore().getDependencies
         if (dependencies.length) {
             const date = useServerStore().system_boot_at ?? new Date()
 

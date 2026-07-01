@@ -1,13 +1,14 @@
 import 'regenerator-runtime' // async polyfill used by the gcodeviewer
 import 'resize-observer-polyfill' // polyfill needed by the responsive class detection
 import { createApp } from 'vue'
-import { createPinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
 import App from '@/App.vue'
 import vuetify from '@/plugins/vuetify'
 import i18n, { setAndLoadLocale } from '@/plugins/i18n'
 import router from '@/plugins/router'
 import { webSocketClient } from '@/plugins/webSocketClient'
 import { useSocketStore } from '@/store/socket'
+import { useRootStore } from '@/store'
 
 // Toast notifications
 import ToastPlugin from 'vue-toast-notification'
@@ -36,8 +37,11 @@ import { defaultMode } from './store/variables'
 use([SVGRenderer, LineChart, BarChart, LegendComponent, PieChart, DatasetComponent, GridComponent, TooltipComponent])
 
 const pinia = createPinia()
+// initLoad() calls into Pinia stores before the app (and app.use(pinia)) is
+// created, so the Pinia instance must be made active explicitly first.
+setActivePinia(pinia)
 
-const initLoad = async (): Promise<Record<string, unknown>> => {
+const initLoad = async (): Promise<void> => {
     try {
         // get base url. by default, it is '/'
         const base = import.meta.env.BASE_URL ?? '/'
@@ -48,9 +52,7 @@ const initLoad = async (): Promise<Record<string, unknown>> => {
 
         window.console.debug('Loaded config.json')
 
-        // TODO(phase-2): funnel config.json into the Pinia root/socket stores
-        // (importConfigJson) once the remaining modules are ported, so the
-        // socket hostname/port/path overrides from config are applied.
+        await useRootStore().importConfigJson(file)
 
         const locale = (file.defaultLocale ?? 'en') as string
         await setAndLoadLocale(locale)
@@ -58,16 +60,13 @@ const initLoad = async (): Promise<Record<string, unknown>> => {
         // Handle mode before mount for consistency in the connecting dialog
         const mode = file.defaultMode ?? defaultMode
         vuetify.theme.global.name.value = mode === 'light' ? 'light' : 'dark'
-
-        return file
     } catch (e) {
         window.console.error('Failed to load config.json')
         window.console.error(e)
-        return {}
     }
 }
 
-initLoad().then((config) => {
+initLoad().then(() => {
     const app = createApp(App)
 
     app.use(pinia)
@@ -89,6 +88,5 @@ initLoad().then((config) => {
     // Bridge the websocket client to the Pinia socket store and connect.
     const socketStore = useSocketStore()
     webSocketClient.setUrl(socketStore.getWebsocketUrl)
-    const instancesDB = (config.instancesDB ?? 'moonraker') as string
-    if (instancesDB === 'moonraker') webSocketClient.connect()
+    if (useRootStore().instancesDB === 'moonraker') webSocketClient.connect()
 })
