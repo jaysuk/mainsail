@@ -2,29 +2,20 @@
     <div>
         <template v-if="!boolFormEdit">
             <v-card-text>
-                <h3 class="text-h5 mb-3">{{ $t('Settings.MacrosTab.Macrogroups') }}</h3>
+                <h3 class="text-h5 mb-3">{{ t('Settings.MacrosTab.Macrogroups') }}</h3>
                 <template v-if="groups.length">
                     <div v-for="(group, index) in groups" :key="index">
                         <v-divider v-if="index" class="my-2" />
                         <settings-row
-                            :title="group.name !== '' ? group.name : '<' + $t('Settings.MacrosTab.UnknownGroup') + '>'"
-                            :sub-title="
-                                $tc('Settings.MacrosTab.CountMacros', 'macros' in group ? group.macros.length : 0, {
-                                    count: 'macros' in group ? group.macros.length : 0,
-                                })
-                            "
+                            :title="group.name !== '' ? group.name : '<' + t('Settings.MacrosTab.UnknownGroup') + '>'"
+                            :sub-title="t('Settings.MacrosTab.CountMacros', { count: 'macros' in group ? group.macros?.length ?? 0 : 0 }, 'macros' in group ? group.macros?.length ?? 0 : 0)"
                             :dynamic-slot-width="true">
-                            <v-btn small outlined class="ml-3" @click="editMacrogroup(group)">
-                                <v-icon left small>{{ mdiPencil }}</v-icon>
-                                {{ $t('Settings.Edit') }}
+                            <v-btn size="small" variant="outlined" class="ml-3" @click="editMacrogroup(group)">
+                                <v-icon start size="small">{{ mdiPencil }}</v-icon>
+                                {{ t('Settings.Edit') }}
                             </v-btn>
-                            <v-btn
-                                small
-                                outlined
-                                class="ml-3 minwidth-0 px-2"
-                                color="error"
-                                @click="deleteMacrogroup(group.id)">
-                                <v-icon small>{{ mdiDelete }}</v-icon>
+                            <v-btn size="small" variant="outlined" class="ml-3 minwidth-0 px-2" color="error" @click="deleteMacrogroup(group.id ?? '')">
+                                <v-icon size="small">{{ mdiDelete }}</v-icon>
                             </v-btn>
                         </settings-row>
                     </div>
@@ -32,261 +23,181 @@
                 <template v-else>
                     <v-row>
                         <v-col>
-                            <p class="mb-0 text-center font-italic">{{ $t('Settings.MacrosTab.NoGroups') }}</p>
+                            <p class="mb-0 text-center font-italic">{{ t('Settings.MacrosTab.NoGroups') }}</p>
                         </v-col>
                     </v-row>
                 </template>
             </v-card-text>
             <v-card-actions class="d-flex justify-end">
-                <v-btn text color="primary" @click="addGroup">{{ $t('Settings.MacrosTab.AddGroup') }}</v-btn>
+                <v-btn variant="text" color="primary" @click="addGroup">{{ t('Settings.MacrosTab.AddGroup') }}</v-btn>
             </v-card-actions>
         </template>
         <template v-else-if="boolFormEdit">
             <v-card-text>
-                <h3 class="text-h5 mb-3">{{ $t('Settings.MacrosTab.EditGroup') }}</h3>
-                <settings-row :title="$t('Settings.MacrosTab.Name')">
-                    <v-text-field
-                        v-model="editGroup.name"
-                        hide-details="auto"
-                        :rules="[rules.required, rules.groupUnique]"
-                        dense
-                        outlined
-                        @change="updateGroupOptionName" />
+                <h3 class="text-h5 mb-3">{{ t('Settings.MacrosTab.EditGroup') }}</h3>
+                <settings-row :title="t('Settings.MacrosTab.Name')">
+                    <v-text-field v-model="editGroupName" hide-details="auto" :rules="[rules.required, rules.groupUnique]" density="compact" variant="outlined" @update:model-value="updateGroupOptionName" />
                 </settings-row>
                 <v-divider class="my-2" />
-                <settings-row :title="$t('Settings.MacrosTab.Color')">
-                    <v-select
-                        v-model="editGroup.color"
-                        :items="groupColors"
-                        outlined
-                        dense
-                        hide-details
-                        attach
-                        @change="updateGroupOptionColor" />
+                <settings-row :title="t('Settings.MacrosTab.Color')">
+                    <v-select v-model="editGroupColor" :items="groupColors" variant="outlined" density="compact" hide-details attach @update:model-value="updateGroupOptionColor" />
                 </settings-row>
                 <template v-if="editGroup?.color === 'custom'">
                     <v-divider class="my-2" />
-                    <settings-row :title="$t('Settings.MacrosTab.CustomColor')">
-                        <v-menu bottom left offset-y :close-on-content-click="false">
-                            <template #activator="{ on, attrs }">
-                                <v-btn
-                                    v-bind="attrs"
-                                    :color="editGroup.colorCustom"
-                                    class="minwidth-0 px-5"
-                                    small
-                                    v-on="on" />
+                    <settings-row :title="t('Settings.MacrosTab.CustomColor')">
+                        <v-menu location="bottom start" :close-on-content-click="false">
+                            <template #activator="{ props: activatorProps }">
+                                <v-btn v-bind="activatorProps" :color="editGroup?.colorCustom" class="minwidth-0 px-5" size="small" />
                             </template>
-                            <v-color-picker
-                                :value="editGroup.colorCustom"
-                                hide-mode-switch
-                                mode="rgba"
-                                @update:color="updateGroupOptionColorCustom" />
+                            <v-color-picker :model-value="editGroup?.colorCustom" hide-mode-switch mode="rgba" @update:model-value="updateGroupOptionColorCustom" />
                         </v-menu>
                     </settings-row>
                 </template>
                 <v-divider class="my-2" />
-                <settings-row :title="$t('Settings.MacrosTab.Status')">
-                    <v-tooltip top>
-                        <template #activator="{ on, attrs }">
+                <settings-row :title="t('Settings.MacrosTab.Status')">
+                    <v-tooltip location="top">
+                        <template #activator="{ props: activatorProps }">
                             <v-btn
-                                small
-                                outlined
-                                v-bind="attrs"
+                                size="small"
+                                variant="outlined"
+                                v-bind="activatorProps"
                                 class="ml-3 minwidth-0 px-2"
                                 :color="editGroup?.showInStandby ? '' : 'secondary'"
-                                v-on="on"
                                 @click="updateGroupOptionShowInStandby(!editGroup?.showInStandby)">
-                                <v-icon small>{{ mdiSleep }}</v-icon>
+                                <v-icon size="small">{{ mdiSleep }}</v-icon>
                             </v-btn>
                         </template>
-                        <span>{{ $t('Settings.MacrosTab.ShowInStateStandby') }}</span>
+                        <span>{{ t('Settings.MacrosTab.ShowInStateStandby') }}</span>
                     </v-tooltip>
-                    <v-tooltip top>
-                        <template #activator="{ on, attrs }">
+                    <v-tooltip location="top">
+                        <template #activator="{ props: activatorProps }">
                             <v-btn
-                                small
-                                outlined
-                                v-bind="attrs"
+                                size="small"
+                                variant="outlined"
+                                v-bind="activatorProps"
                                 class="ml-3 minwidth-0 px-2"
                                 :color="editGroup?.showInPause ? '' : 'secondary'"
-                                v-on="on"
                                 @click="updateGroupOptionShowInPause(!editGroup?.showInPause)">
-                                <v-icon small>{{ mdiPause }}</v-icon>
+                                <v-icon size="small">{{ mdiPause }}</v-icon>
                             </v-btn>
                         </template>
-                        <span>{{ $t('Settings.MacrosTab.ShowInStatePaused') }}</span>
+                        <span>{{ t('Settings.MacrosTab.ShowInStatePaused') }}</span>
                     </v-tooltip>
-                    <v-tooltip top>
-                        <template #activator="{ on, attrs }">
+                    <v-tooltip location="top">
+                        <template #activator="{ props: activatorProps }">
                             <v-btn
-                                small
-                                outlined
-                                v-bind="attrs"
+                                size="small"
+                                variant="outlined"
+                                v-bind="activatorProps"
                                 class="ml-3 minwidth-0 px-2"
                                 :color="editGroup?.showInPrinting ? '' : 'secondary'"
-                                v-on="on"
                                 @click="updateGroupOptionShowInPrinting(!editGroup?.showInPrinting)">
-                                <v-icon small>{{ mdiPrinter3dNozzle }}</v-icon>
+                                <v-icon size="small">{{ mdiPrinter3dNozzle }}</v-icon>
                             </v-btn>
                         </template>
-                        <span>{{ $t('Settings.MacrosTab.ShowInStatePrinting') }}</span>
+                        <span>{{ t('Settings.MacrosTab.ShowInStatePrinting') }}</span>
                     </v-tooltip>
                 </settings-row>
                 <v-divider class="my-2" />
-                <h3 class="text-h5 mt-6 mb-3">{{ $t('Settings.MacrosTab.GroupMacros') }}</h3>
+                <h3 class="text-h5 mt-6 mb-3">{{ t('Settings.MacrosTab.GroupMacros') }}</h3>
                 <template v-if="editGroup?.macros && editGroup?.macros?.length">
-                    <draggable
-                        v-model="editGroupMacros"
-                        handle=".handle"
-                        ghost-class="ghost"
-                        group="macros"
-                        :force-fallback="true"
-                        @change="updateMacroOrder">
-                        <v-row
-                            v-for="(macro, index) in editGroupMacros"
-                            :key="macro.name"
-                            class="my-2 mx-0"
-                            :style="draggableBgStyle">
-                            <v-col class="col-auto pr-0 d-flex py-2">
-                                <v-icon class="handle">{{ mdiDragVertical }}</v-icon>
-                            </v-col>
-                            <v-col class="py-2">
-                                <settings-row
-                                    :key="'groupMacro_macro_' + index"
-                                    :title="macro.name"
-                                    :sub-title="getMacroDescription(macro.name)"
-                                    :dynamic-slot-width="true">
-                                    <template v-if="existsMacro(macro.name)">
-                                        <v-tooltip top>
-                                            <template #activator="{ on, attrs }">
-                                                <v-btn
-                                                    small
-                                                    outlined
-                                                    v-bind="attrs"
-                                                    class="ml-3 minwidth-0 px-2"
-                                                    :color="macro.color"
-                                                    v-on="on"
-                                                    @click="changeColorMacroFromGroup(macro)">
-                                                    <v-icon small left>{{ mdiPalette }}</v-icon>
-                                                    {{ macro.color }}
-                                                </v-btn>
-                                            </template>
-                                            <span>{{ $t('Settings.MacrosTab.ChangeMacroColor') }}</span>
-                                        </v-tooltip>
-                                        <v-tooltip top>
-                                            <template #activator="{ on, attrs }">
-                                                <v-btn
-                                                    small
-                                                    outlined
-                                                    v-bind="attrs"
-                                                    class="ml-3 minwidth-0 px-2"
-                                                    :color="macro.showInStandby ? '' : 'secondary'"
-                                                    v-on="on"
-                                                    @click="
-                                                        updateMacroFromGroup(
-                                                            macro,
-                                                            'showInStandby',
-                                                            !macro.showInStandby
-                                                        )
-                                                    ">
-                                                    <v-icon small>{{ mdiSleep }}</v-icon>
-                                                </v-btn>
-                                            </template>
-                                            <span>{{ $t('Settings.MacrosTab.ShowInStateStandby') }}</span>
-                                        </v-tooltip>
-                                        <v-tooltip top>
-                                            <template #activator="{ on, attrs }">
-                                                <v-btn
-                                                    small
-                                                    outlined
-                                                    v-bind="attrs"
-                                                    class="ml-3 minwidth-0 px-2"
-                                                    :color="macro.showInPause ? '' : 'secondary'"
-                                                    v-on="on"
-                                                    @click="
-                                                        updateMacroFromGroup(macro, 'showInPause', !macro.showInPause)
-                                                    ">
-                                                    <v-icon small>{{ mdiPause }}</v-icon>
-                                                </v-btn>
-                                            </template>
-                                            <span>{{ $t('Settings.MacrosTab.ShowInStatePaused') }}</span>
-                                        </v-tooltip>
-                                        <v-tooltip top>
-                                            <template #activator="{ on, attrs }">
-                                                <v-btn
-                                                    small
-                                                    outlined
-                                                    v-bind="attrs"
-                                                    class="ml-3 minwidth-0 px-2"
-                                                    :color="macro.showInPrinting ? '' : 'secondary'"
-                                                    v-on="on"
-                                                    @click="
-                                                        updateMacroFromGroup(
-                                                            macro,
-                                                            'showInPrinting',
-                                                            !macro.showInPrinting
-                                                        )
-                                                    ">
-                                                    <v-icon small>{{ mdiPrinter3dNozzle }}</v-icon>
-                                                </v-btn>
-                                            </template>
-                                            <span>{{ $t('Settings.MacrosTab.ShowInStatePrinting') }}</span>
-                                        </v-tooltip>
-                                    </template>
-                                    <v-tooltip top>
-                                        <template #activator="{ on, attrs }">
-                                            <v-btn
-                                                small
-                                                outlined
-                                                v-bind="attrs"
-                                                class="ml-3 minwidth-0 px-2"
-                                                color="error"
-                                                v-on="on"
-                                                @click="removeMacroFromGroup(macro)">
-                                                <v-icon small>{{ mdiDelete }}</v-icon>
-                                            </v-btn>
+                    <draggable v-model="editGroupMacros" handle=".handle" ghost-class="ghost" group="macros" :force-fallback="true" @change="updateMacroOrder">
+                        <template #item="{ element: macro, index }">
+                            <v-row class="my-2 mx-0" :style="draggableBgStyle">
+                                <v-col class="col-auto pr-0 d-flex py-2">
+                                    <v-icon class="handle">{{ mdiDragVertical }}</v-icon>
+                                </v-col>
+                                <v-col class="py-2">
+                                    <settings-row :key="'groupMacro_macro_' + index" :title="macro.name" :sub-title="getMacroDescription(macro.name)" :dynamic-slot-width="true">
+                                        <template v-if="existsMacro(macro.name)">
+                                            <v-tooltip location="top">
+                                                <template #activator="{ props: activatorProps }">
+                                                    <v-btn size="small" variant="outlined" v-bind="activatorProps" class="ml-3 minwidth-0 px-2" :color="macro.color" @click="changeColorMacroFromGroup(macro)">
+                                                        <v-icon size="small" start>{{ mdiPalette }}</v-icon>
+                                                        {{ macro.color }}
+                                                    </v-btn>
+                                                </template>
+                                                <span>{{ t('Settings.MacrosTab.ChangeMacroColor') }}</span>
+                                            </v-tooltip>
+                                            <v-tooltip location="top">
+                                                <template #activator="{ props: activatorProps }">
+                                                    <v-btn
+                                                        size="small"
+                                                        variant="outlined"
+                                                        v-bind="activatorProps"
+                                                        class="ml-3 minwidth-0 px-2"
+                                                        :color="macro.showInStandby ? '' : 'secondary'"
+                                                        @click="updateMacroFromGroup(macro, 'showInStandby', !macro.showInStandby)">
+                                                        <v-icon size="small">{{ mdiSleep }}</v-icon>
+                                                    </v-btn>
+                                                </template>
+                                                <span>{{ t('Settings.MacrosTab.ShowInStateStandby') }}</span>
+                                            </v-tooltip>
+                                            <v-tooltip location="top">
+                                                <template #activator="{ props: activatorProps }">
+                                                    <v-btn
+                                                        size="small"
+                                                        variant="outlined"
+                                                        v-bind="activatorProps"
+                                                        class="ml-3 minwidth-0 px-2"
+                                                        :color="macro.showInPause ? '' : 'secondary'"
+                                                        @click="updateMacroFromGroup(macro, 'showInPause', !macro.showInPause)">
+                                                        <v-icon size="small">{{ mdiPause }}</v-icon>
+                                                    </v-btn>
+                                                </template>
+                                                <span>{{ t('Settings.MacrosTab.ShowInStatePaused') }}</span>
+                                            </v-tooltip>
+                                            <v-tooltip location="top">
+                                                <template #activator="{ props: activatorProps }">
+                                                    <v-btn
+                                                        size="small"
+                                                        variant="outlined"
+                                                        v-bind="activatorProps"
+                                                        class="ml-3 minwidth-0 px-2"
+                                                        :color="macro.showInPrinting ? '' : 'secondary'"
+                                                        @click="updateMacroFromGroup(macro, 'showInPrinting', !macro.showInPrinting)">
+                                                        <v-icon size="small">{{ mdiPrinter3dNozzle }}</v-icon>
+                                                    </v-btn>
+                                                </template>
+                                                <span>{{ t('Settings.MacrosTab.ShowInStatePrinting') }}</span>
+                                            </v-tooltip>
                                         </template>
-                                        <span>{{ $t('Settings.MacrosTab.DeleteMacroFromGroup') }}</span>
-                                    </v-tooltip>
-                                </settings-row>
-                            </v-col>
-                        </v-row>
+                                        <v-tooltip location="top">
+                                            <template #activator="{ props: activatorProps }">
+                                                <v-btn size="small" variant="outlined" v-bind="activatorProps" class="ml-3 minwidth-0 px-2" color="error" @click="removeMacroFromGroup(macro)">
+                                                    <v-icon size="small">{{ mdiDelete }}</v-icon>
+                                                </v-btn>
+                                            </template>
+                                            <span>{{ t('Settings.MacrosTab.DeleteMacroFromGroup') }}</span>
+                                        </v-tooltip>
+                                    </settings-row>
+                                </v-col>
+                            </v-row>
+                        </template>
                     </draggable>
                 </template>
                 <template v-else>
                     <v-row>
                         <v-col>
-                            <p class="mb-0 text-center font-italic">{{ $t('Settings.MacrosTab.NoMacrosInGroup') }}</p>
+                            <p class="mb-0 text-center font-italic">{{ t('Settings.MacrosTab.NoMacrosInGroup') }}</p>
                         </v-col>
                     </v-row>
                 </template>
                 <v-row class="mt-6 mb-3 flex-column flex-md-row">
                     <v-col class="py-0 align-content-center mb-3 mb-md-0">
-                        <h3 class="text-h5">{{ $t('Settings.MacrosTab.AvailableMacros') }}</h3>
+                        <h3 class="text-h5">{{ t('Settings.MacrosTab.AvailableMacros') }}</h3>
                     </v-col>
                     <v-col class="py-0">
-                        <v-text-field
-                            v-model="searchMacros"
-                            :append-icon="mdiMagnify"
-                            :label="$t('Settings.MacrosTab.Search')"
-                            single-line
-                            outlined
-                            clearable
-                            hide-details
-                            dense />
+                        <v-text-field v-model="searchMacros" :append-icon="mdiMagnify" :label="t('Settings.MacrosTab.Search')" single-line variant="outlined" clearable hide-details density="compact" />
                     </v-col>
                 </v-row>
                 <template v-if="availableMacros.length">
-                    <template v-for="(macro, index) in availableMacros">
-                        <v-divider v-if="index" :key="'availableMacro_deliver_' + index" class="my-2"></v-divider>
-                        <settings-row
-                            :key="'availableMacro_macro_' + index"
-                            :title="macro.name"
-                            :sub-title="macro.description"
-                            :dynamic-slot-width="true">
-                            <v-btn small outlined class="ml-3" @click="addMacroToGroup(macro)">
-                                <v-icon left small>{{ mdiPlus }}</v-icon>
-                                {{ $t('Settings.MacrosTab.Add') }}
+                    <template v-for="(macro, index) in availableMacros" :key="'availableMacro_macro_' + index">
+                        <v-divider v-if="index" class="my-2" />
+                        <settings-row :title="macro.name" :sub-title="macro.description" :dynamic-slot-width="true">
+                            <v-btn size="small" variant="outlined" class="ml-3" @click="addMacroToGroup(macro)">
+                                <v-icon start size="small">{{ mdiPlus }}</v-icon>
+                                {{ t('Settings.MacrosTab.Add') }}
                             </v-btn>
                         </settings-row>
                     </template>
@@ -294,281 +205,243 @@
                 <template v-else>
                     <v-row>
                         <v-col>
-                            <p class="mb-0 text-center font-italic">{{ $t('Settings.MacrosTab.NoAvailableMacros') }}</p>
+                            <p class="mb-0 text-center font-italic">{{ t('Settings.MacrosTab.NoAvailableMacros') }}</p>
                         </v-col>
                     </v-row>
                 </template>
             </v-card-text>
             <v-card-actions class="d-flex justify-end">
-                <v-btn text @click="cancelEditMacrogroup">{{ $t('Buttons.Close') }}</v-btn>
+                <v-btn variant="text" @click="cancelEditMacrogroup">{{ t('Buttons.Close') }}</v-btn>
             </v-card-actions>
         </template>
     </div>
 </template>
 
-<script lang="ts">
-import { Component, Mixins, Watch } from 'vue-property-decorator'
-import BaseMixin from '../mixins/base'
-import ThemeMixin from '@/components/mixins/theme'
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import draggable from 'vuedraggable'
 import SettingsRow from '@/components/settings/SettingsRow.vue'
-import { Debounce } from 'vue-debounce-decorator'
-import { PrinterStateMacro } from '@/store/printer/types'
-import { GuiMacrosStateMacrogroup, GuiMacrosStateMacrogroupMacro } from '@/store/gui/macros/types'
-import {
-    mdiDelete,
-    mdiSleep,
-    mdiPause,
-    mdiPrinter3dNozzle,
-    mdiPlus,
-    mdiDragVertical,
-    mdiPalette,
-    mdiPencil,
-    mdiMagnify,
-} from '@mdi/js'
-import { clearColorObject, ColorPickerValue } from '@/plugins/helpers'
-import { DraggableChangeEvent } from '@/types/vuedraggable'
+import { mdiDelete, mdiSleep, mdiPause, mdiPrinter3dNozzle, mdiPlus, mdiDragVertical, mdiPalette, mdiPencil, mdiMagnify } from '@mdi/js'
+import type { PrinterStateMacro } from '@/store/printer/types'
+import type { GuiMacrosStateMacrogroup, GuiMacrosStateMacrogroupMacro } from '@/store/gui/macros/types'
+import { clearColorObject, type ColorPickerValue } from '@/plugins/helpers'
+import type { DraggableChangeEvent } from '@/types/vuedraggable'
+import { useMainsailTheme } from '@/composables/useMainsailTheme'
+import { usePrinterStore } from '@/store/printer'
+import { useGuiMacrosStore } from '@/store/gui/macros'
 
-@Component({
-    components: { SettingsRow, draggable },
+const emit = defineEmits<{
+    'update:showGeneral': [boolean]
+    scrollToTop: []
+}>()
+
+const { t } = useI18n()
+const { draggableBgStyle } = useMainsailTheme()
+const printerStore = usePrinterStore()
+const guiMacrosStore = useGuiMacrosStore()
+
+const rules = {
+    required: (value: string) => value !== '' || 'required',
+    groupUnique: (value: string) => !existsGroupName(value) || 'Name already exists',
+}
+
+const boolFormEdit = ref(false)
+const editGroupId = ref<string | null>('')
+const searchMacros = ref('')
+
+const groupColors = computed(() => [
+    { text: t('Settings.MacrosTab.Primary'), value: 'primary' },
+    { text: t('Settings.MacrosTab.Secondary'), value: 'secondary' },
+    { text: t('Settings.MacrosTab.Success'), value: 'success' },
+    { text: t('Settings.MacrosTab.Warning'), value: 'warning' },
+    { text: t('Settings.MacrosTab.Error'), value: 'error' },
+    { text: t('Settings.MacrosTab.Custom'), value: 'custom' },
+])
+
+const macroColors = computed(() => {
+    const colors = [...groupColors.value]
+    const indexCustom = colors.findIndex((color) => color.value === 'custom')
+    if (indexCustom !== -1) colors.splice(indexCustom, 1)
+
+    colors.push({ text: t('Settings.MacrosTab.Group'), value: 'group' })
+
+    return colors
 })
-export default class SettingsMacrosTabExpert extends Mixins(BaseMixin, ThemeMixin) {
-    /**
-     * Icons
-     */
-    mdiPencil = mdiPencil
-    mdiDelete = mdiDelete
-    mdiSleep = mdiSleep
-    mdiPause = mdiPause
-    mdiPrinter3dNozzle = mdiPrinter3dNozzle
-    mdiPlus = mdiPlus
-    mdiDragVertical = mdiDragVertical
-    mdiPalette = mdiPalette
-    mdiMagnify = mdiMagnify
 
-    private rules = {
-        required: (value: string) => value !== '' || 'required',
-        groupUnique: (value: string) => !this.existsGroupName(value) || 'Name already exists',
-    }
+const allMacros = computed(() => {
+    const macros = printerStore.getMacros ?? []
+    return macros.filter((macro: PrinterStateMacro) => {
+        return macro.name.toLowerCase().includes(searchMacros.value.toLowerCase()) || macro.description?.toLowerCase().includes(searchMacros.value.toLowerCase())
+    })
+})
 
-    private boolFormEdit = false
-    private editGroupId: string | null = ''
-    private searchMacros: string = ''
+const editGroupUsedMacros = computed(() => editGroup.value?.macros?.map((m: GuiMacrosStateMacrogroupMacro) => m.name) ?? [])
 
-    get groupColors() {
-        return [
-            {
-                text: this.$t('Settings.MacrosTab.Primary'),
-                value: 'primary',
-            },
-            {
-                text: this.$t('Settings.MacrosTab.Secondary'),
-                value: 'secondary',
-            },
-            {
-                text: this.$t('Settings.MacrosTab.Success'),
-                value: 'success',
-            },
-            {
-                text: this.$t('Settings.MacrosTab.Warning'),
-                value: 'warning',
-            },
-            {
-                text: this.$t('Settings.MacrosTab.Error'),
-                value: 'error',
-            },
-            {
-                text: this.$t('Settings.MacrosTab.Custom'),
-                value: 'custom',
-            },
-        ]
-    }
+const availableMacros = computed(() => allMacros.value.filter((m: PrinterStateMacro) => !editGroupUsedMacros.value.includes(m.name)))
 
-    get macroColors() {
-        const colors = [...this.groupColors]
-        const indexCustom = colors.findIndex((color) => color.value === 'custom')
-        if (indexCustom !== -1) colors.splice(indexCustom, 1)
+const groups = computed(() => guiMacrosStore.getAllMacrogroups ?? [])
 
-        colors.push({
-            text: this.$t('Settings.MacrosTab.Group'),
-            value: 'group',
-        })
+const editGroup = computed<GuiMacrosStateMacrogroup | undefined>(() => guiMacrosStore.getMacrogroup(editGroupId.value ?? ''))
 
-        return colors
-    }
+const editGroupName = ref('')
+const editGroupColor = ref<GuiMacrosStateMacrogroup['color']>('primary')
 
-    get allMacros() {
-        const macros = this.$store.getters['printer/getMacros'] ?? []
-        return macros.filter((macro: PrinterStateMacro) => {
-            return (
-                macro.name.toLowerCase().includes(this.searchMacros.toLowerCase()) ||
-                macro.description?.toLowerCase().includes(this.searchMacros.toLowerCase())
-            )
-        })
-    }
+watch(
+    editGroup,
+    () => {
+        editGroupName.value = editGroup.value?.name ?? ''
+        editGroupColor.value = editGroup.value?.color ?? 'primary'
+    },
+    { immediate: true }
+)
 
-    get availableMacros() {
-        return this.allMacros.filter((m: GuiMacrosStateMacrogroupMacro) => !this.editGroupUsedMacros.includes(m.name))
-    }
-
-    get groups() {
-        return this.$store.getters['gui/macros/getAllMacrogroups'] ?? []
-    }
-
-    get editGroupUsedMacros() {
-        return this.editGroup?.macros?.map((m: GuiMacrosStateMacrogroupMacro) => m.name) ?? []
-    }
-
-    get editGroup(): GuiMacrosStateMacrogroup | null {
-        return this.$store.getters['gui/macros/getMacrogroup'](this.editGroupId)
-    }
-
-    get editGroupMacros() {
-        const macros = this.editGroup?.macros ?? []
+const editGroupMacros = computed<GuiMacrosStateMacrogroupMacro[]>({
+    get: () => {
+        const macros = editGroup.value?.macros ?? []
         macros.sort((a: GuiMacrosStateMacrogroupMacro, b: GuiMacrosStateMacrogroupMacro) => a.pos - b.pos)
 
         return macros
+    },
+    set: () => {},
+})
+
+function existsGroupName(name: string) {
+    return groups.value.findIndex((group: GuiMacrosStateMacrogroup) => group.name === name && group.id !== editGroupId.value) >= 0
+}
+
+function updateShowGeneral(newVal: boolean) {
+    emit('update:showGeneral', newVal)
+}
+
+async function addGroup() {
+    const values: GuiMacrosStateMacrogroup = {
+        id: null,
+        name: '',
+        color: 'primary',
+        colorCustom: '#fff',
+        showInStandby: true,
+        showInPause: true,
+        showInPrinting: true,
     }
+    editGroupId.value = guiMacrosStore.groupStore({ values })
 
-    set editGroupMacros(newVal) {}
+    boolFormEdit.value = true
+}
 
-    existsGroupName(name: string) {
-        return (
-            this.groups.findIndex(
-                (group: GuiMacrosStateMacrogroup) => group.name === name && group.id != this.editGroupId
-            ) >= 0
-        )
-    }
+function editMacrogroup(group: GuiMacrosStateMacrogroup) {
+    boolFormEdit.value = true
+    editGroupId.value = group.id
+}
 
-    updateShowGeneral(newVal: boolean) {
-        this.$emit('update:showGeneral', newVal)
-    }
+function deleteMacrogroup(id: string) {
+    guiMacrosStore.groupDelete(id)
+}
 
-    async addGroup() {
-        const values = {
-            name: '',
-            color: 'primary',
-            colorCustom: '#fff',
-            showInStandby: true,
-            showInPause: true,
-            showInPrinting: true,
-        }
-        this.editGroupId = await this.$store.dispatch('gui/macros/groupStore', { values })
+function addMacroToGroup(macro: PrinterStateMacro) {
+    guiMacrosStore.addMacroToMacrogroup({
+        id: editGroupId.value ?? '',
+        macro: macro.name,
+    })
+}
 
-        this.boolFormEdit = true
-    }
+function updateMacroFromGroup<K extends keyof GuiMacrosStateMacrogroupMacro>(macro: GuiMacrosStateMacrogroupMacro, option: K, value: GuiMacrosStateMacrogroupMacro[K]) {
+    guiMacrosStore.updateMacroFromMacrogroup({
+        id: editGroupId.value ?? '',
+        macro: macro.name,
+        option,
+        value,
+    })
+}
 
-    editMacrogroup(group: GuiMacrosStateMacrogroup) {
-        this.boolFormEdit = true
-        this.editGroupId = group.id
-    }
+function updateMacroOrder(output: DraggableChangeEvent<GuiMacrosStateMacrogroupMacro>) {
+    if (!output.moved) return
 
-    deleteMacrogroup(id: string) {
-        this.$store.dispatch('gui/macros/groupDelete', id)
-    }
+    const oldIndex = output.moved.oldIndex
+    const newIndex = output.moved.newIndex
+    const oldPos = editGroupMacros.value[oldIndex].pos
+    const newPos = editGroupMacros.value[newIndex].pos
 
-    addMacroToGroup(macro: PrinterStateMacro) {
-        this.$store.dispatch('gui/macros/addMacroToMacrogroup', {
-            id: this.editGroupId,
-            macro: macro.name,
-        })
-    }
+    updateMacroFromGroup(editGroupMacros.value[oldIndex], 'pos', newPos)
+    updateMacroFromGroup(editGroupMacros.value[newIndex], 'pos', oldPos)
+}
 
-    updateMacroFromGroup(macro: GuiMacrosStateMacrogroupMacro, option: string, value: boolean | string | number) {
-        this.$store.dispatch('gui/macros/updateMacroFromMacrogroup', {
-            id: this.editGroupId,
-            macro: macro.name,
-            option: option,
-            value: value,
-        })
-    }
+function changeColorMacroFromGroup(macro: GuiMacrosStateMacrogroupMacro) {
+    let index = macroColors.value.findIndex((color) => color.value === macro.color) + 1
+    const maxIndex = macroColors.value.length - 1
 
-    updateMacroOrder(output: DraggableChangeEvent<GuiMacrosStateMacrogroupMacro>) {
-        if (!output.moved) return
+    if (index > maxIndex) index = 0
+    const newColor = macroColors.value[index].value as GuiMacrosStateMacrogroupMacro['color']
 
-        const oldIndex = output.moved.oldIndex
-        const newIndex = output.moved.newIndex
-        const oldPos = this.editGroupMacros[oldIndex].pos
-        const newPos = this.editGroupMacros[newIndex].pos
+    updateMacroFromGroup(macro, 'color', newColor)
+}
 
-        this.updateMacroFromGroup(this.editGroupMacros[oldIndex], 'pos', newPos)
-        this.updateMacroFromGroup(this.editGroupMacros[newIndex], 'pos', oldPos)
-    }
+function removeMacroFromGroup(macro: GuiMacrosStateMacrogroupMacro) {
+    guiMacrosStore.removeMacroFromMacrogroup({
+        id: editGroupId.value ?? '',
+        macro: macro.name,
+    })
+}
 
-    changeColorMacroFromGroup(macro: GuiMacrosStateMacrogroupMacro) {
-        let index = this.macroColors.findIndex((color) => color.value === macro.color) + 1
-        const maxIndex = this.macroColors.length - 1
+function existsMacro(macroname: string) {
+    return allMacros.value.findIndex((m: PrinterStateMacro) => m.name.toLowerCase() === macroname.toLowerCase()) !== -1
+}
 
-        if (index > maxIndex) index = 0
-        const newColor = this.macroColors[index].value
+function getMacroDescription(macroname: string) {
+    const macro = allMacros.value.find((m: PrinterStateMacro) => m.name.toLowerCase() === macroname.toLowerCase())
+    if (!macro) return t('Settings.MacrosTab.DeletedMacro')
 
-        this.updateMacroFromGroup(macro, 'color', newColor)
-    }
+    return macro?.description ?? null
+}
 
-    removeMacroFromGroup(macro: GuiMacrosStateMacrogroupMacro) {
-        this.$store.dispatch('gui/macros/removeMacroFromMacrogroup', {
-            id: this.editGroupId,
-            macro: macro.name,
-        })
-    }
+function updateMacrogroupOption(option: string, newVal: boolean | string) {
+    const values: Record<string, boolean | string> = {}
+    values[option] = newVal
 
-    existsMacro(macroname: string) {
-        return (
-            this.allMacros.findIndex((m: PrinterStateMacro) => m.name.toLowerCase() === macroname.toLowerCase()) !== -1
-        )
-    }
+    guiMacrosStore.groupUpdate({
+        id: editGroupId.value ?? '',
+        values,
+    })
+}
 
-    getMacroDescription(macroname: string) {
-        const macro = this.allMacros.find((m: PrinterStateMacro) => m.name.toLowerCase() === macroname.toLowerCase())
-        if (!macro) return this.$t('Settings.MacrosTab.DeletedMacro')
+let nameDebounceTimer: ReturnType<typeof setTimeout> | undefined
+function updateGroupOptionName(newVal: string) {
+    if (nameDebounceTimer) clearTimeout(nameDebounceTimer)
+    nameDebounceTimer = setTimeout(() => {
+        updateMacrogroupOption('name', newVal)
+    }, 250)
+}
 
-        return macro?.description ?? null
-    }
+function updateGroupOptionColor(newVal: string) {
+    updateMacrogroupOption('color', newVal)
+}
 
-    updateMacrogroupOption(option: string, newVal: boolean | string) {
-        const values: Record<string, boolean | string> = {}
-        values[option] = newVal
+let colorCustomDebounceTimer: ReturnType<typeof setTimeout> | undefined
+function updateGroupOptionColorCustom(newVal: ColorPickerValue) {
+    if (colorCustomDebounceTimer) clearTimeout(colorCustomDebounceTimer)
+    colorCustomDebounceTimer = setTimeout(() => {
+        updateMacrogroupOption('colorCustom', clearColorObject(newVal))
+    }, 250)
+}
 
-        this.$store.dispatch('gui/macros/groupUpdate', {
-            id: this.editGroupId,
-            values,
-        })
-    }
+function updateGroupOptionShowInStandby(newVal: boolean) {
+    updateMacrogroupOption('showInStandby', newVal)
+}
 
-    @Debounce(250)
-    updateGroupOptionName(newVal: string) {
-        this.updateMacrogroupOption('name', newVal)
-    }
+function updateGroupOptionShowInPause(newVal: boolean) {
+    updateMacrogroupOption('showInPause', newVal)
+}
 
-    updateGroupOptionColor(newVal: string) {
-        this.updateMacrogroupOption('color', newVal)
-    }
+function updateGroupOptionShowInPrinting(newVal: boolean) {
+    updateMacrogroupOption('showInPrinting', newVal)
+}
 
-    @Debounce(250)
-    updateGroupOptionColorCustom(newVal: ColorPickerValue) {
-        this.updateMacrogroupOption('colorCustom', clearColorObject(newVal))
-    }
+watch(boolFormEdit, (newVal) => {
+    updateShowGeneral(!newVal)
+})
 
-    updateGroupOptionShowInStandby(newVal: boolean) {
-        this.updateMacrogroupOption('showInStandby', newVal)
-    }
-
-    updateGroupOptionShowInPause(newVal: boolean) {
-        this.updateMacrogroupOption('showInPause', newVal)
-    }
-
-    updateGroupOptionShowInPrinting(newVal: boolean) {
-        this.updateMacrogroupOption('showInPrinting', newVal)
-    }
-
-    @Watch('boolFormEdit')
-    updatedBoolFormEdit(newVal: boolean) {
-        this.updateShowGeneral(!newVal)
-    }
-
-    cancelEditMacrogroup() {
-        this.boolFormEdit = false
-        this.$emit('scrollToTop')
-    }
+function cancelEditMacrogroup() {
+    boolFormEdit.value = false
+    emit('scrollToTop')
 }
 </script>
