@@ -1,148 +1,130 @@
 <template>
     <v-list-item class="minHeight30 pr-2">
         <v-list-item-title>
-            <v-tooltip left>
-                <template #activator="{ on, attrs }">
-                    <span v-bind="attrs" v-on="on">{{ name }}</span>
+            <v-tooltip location="left">
+                <template #activator="{ props: activatorProps }">
+                    <span v-bind="activatorProps">{{ name }}</span>
                 </template>
                 <span>{{ state }} ({{ subState }})</span>
             </v-tooltip>
         </v-list-item-title>
         <v-list-item-action class="my-0 d-flex flex-row" style="min-width: auto">
-            <v-btn v-if="state === 'inactive'" icon small @click="clickStart">
-                <v-icon small>{{ mdiPlay }}</v-icon>
+            <v-btn v-if="state === 'inactive'" icon size="small" @click="clickStart">
+                <v-icon size="small">{{ mdiPlay }}</v-icon>
             </v-btn>
-            <v-btn v-else icon small @click="clickRestart">
-                <v-icon small>{{ mdiRestart }}</v-icon>
+            <v-btn v-else icon size="small" @click="clickRestart">
+                <v-icon size="small">{{ mdiRestart }}</v-icon>
             </v-btn>
-            <v-btn icon small :disabled="disableStopButton" :style="styleStopButton" @click="clickStop">
-                <v-icon small>{{ mdiStop }}</v-icon>
+            <v-btn icon size="small" :disabled="disableStopButton" :style="styleStopButton" @click="clickStop">
+                <v-icon size="small">{{ mdiStop }}</v-icon>
             </v-btn>
         </v-list-item-action>
         <confirmation-dialog
             v-model="showRestartDialog"
             :title="dialogRestartTitle"
             :text="dialogRestartDescription"
-            :action-button-text="$t('App.TopCornerMenu.Restart')"
+            :action-button-text="t('App.TopCornerMenu.Restart')"
             @action="serviceRestart" />
         <confirmation-dialog
             v-model="showStopDialog"
             :title="dialogStopTitle"
             :text="dialogStopDescription"
-            :action-button-text="$t('App.TopCornerMenu.Stop')"
+            :action-button-text="t('App.TopCornerMenu.Stop')"
             @action="serviceStop" />
     </v-list-item>
 </template>
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { mdiPlay, mdiRestart, mdiStop } from '@mdi/js'
 import { capitalize } from '@/plugins/helpers'
-import ServiceMixins from '@/components/mixins/services'
+import { useServerStore } from '@/store/server'
+import { useBase } from '@/composables/useBase'
+import { useServices } from '@/composables/useServices'
+import { webSocketClient } from '@/plugins/webSocketClient'
+import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
 
-@Component({})
-export default class TopCornerMenuService extends Mixins(BaseMixin, ServiceMixins) {
-    mdiPlay = mdiPlay
-    mdiRestart = mdiRestart
-    mdiStop = mdiStop
+const props = defineProps<{ service: string }>()
+const emit = defineEmits<{ 'close-menu': [] }>()
 
-    @Prop({ type: String, required: true }) service!: string
+const { t } = useI18n()
+const serverStore = useServerStore()
+const { printerIsPrinting } = useBase()
+const { hideOtherInstances, klipperInstance, moonrakerInstance } = useServices()
 
-    showRestartDialog = false
-    showStopDialog = false
+const showRestartDialog = ref(false)
+const showStopDialog = ref(false)
 
-    get name() {
-        if (this.hideOtherInstances && this.service === this.klipperInstance) return 'Klipper'
-        if (this.hideOtherInstances && this.service === this.moonrakerInstance) return 'Moonraker'
+const name = computed(() => {
+    if (hideOtherInstances.value && props.service === klipperInstance.value) return 'Klipper'
+    if (hideOtherInstances.value && props.service === moonrakerInstance.value) return 'Moonraker'
 
-        return capitalize(this.service)
+    return capitalize(props.service)
+})
+
+const service_states = computed(() => serverStore.system_info?.service_state ?? {})
+
+const state = computed(() => (props.service in service_states.value ? service_states.value[props.service].active_state : null))
+const subState = computed(() => (props.service in service_states.value ? service_states.value[props.service].sub_state : null))
+
+const dialogRestartTitle = computed(() =>
+    props.service === klipperInstance.value
+        ? t('App.TopCornerMenu.ConfirmationDialog.Title.KlipperRestart')
+        : t('App.TopCornerMenu.ConfirmationDialog.Title.ServiceRestart')
+)
+
+const dialogStopTitle = computed(() => t('App.TopCornerMenu.ConfirmationDialog.Title.ServiceStop'))
+
+const dialogRestartDescription = computed(() =>
+    props.service === klipperInstance.value
+        ? t('App.TopCornerMenu.ConfirmationDialog.Description.KlipperRestart')
+        : t('App.TopCornerMenu.ConfirmationDialog.Description.ServiceRestart')
+)
+
+const dialogStopDescription = computed(() =>
+    props.service === klipperInstance.value
+        ? t('App.TopCornerMenu.ConfirmationDialog.Description.KlipperStop')
+        : t('App.TopCornerMenu.ConfirmationDialog.Description.ServiceStop')
+)
+
+const disableStopButton = computed(() => state.value === 'inactive' || props.service === moonrakerInstance.value)
+const styleStopButton = computed(() => (props.service === moonrakerInstance.value ? 'visibility: hidden;' : ''))
+
+function closeMenu() {
+    emit('close-menu')
+}
+
+function clickStart() {
+    webSocketClient.emit('machine.services.start', { service: props.service })
+    closeMenu()
+}
+
+function clickRestart() {
+    if (printerIsPrinting.value) {
+        showRestartDialog.value = true
+        return
     }
 
-    get service_states() {
-        return this.$store.state.server.system_info?.service_state ?? {}
+    serviceRestart()
+}
+
+function clickStop() {
+    if (printerIsPrinting.value) {
+        showStopDialog.value = true
+        return
     }
 
-    get state() {
-        if (this.service in this.service_states) return this.service_states[this.service].active_state
+    serviceStop()
+}
 
-        return null
-    }
+function serviceRestart() {
+    webSocketClient.emit('machine.services.restart', { service: props.service })
+    closeMenu()
+}
 
-    get subState() {
-        if (this.service in this.service_states) return this.service_states[this.service].sub_state
-
-        return null
-    }
-
-    get dialogRestartTitle() {
-        if (this.service === this.klipperInstance)
-            return this.$t('App.TopCornerMenu.ConfirmationDialog.Title.KlipperRestart')
-
-        return this.$t('App.TopCornerMenu.ConfirmationDialog.Title.ServiceRestart')
-    }
-
-    get dialogStopTitle() {
-        return this.$t('App.TopCornerMenu.ConfirmationDialog.Title.ServiceStop')
-    }
-
-    get dialogRestartDescription() {
-        if (this.service === this.klipperInstance)
-            return this.$t('App.TopCornerMenu.ConfirmationDialog.Description.KlipperRestart')
-
-        return this.$t('App.TopCornerMenu.ConfirmationDialog.Description.ServiceRestart')
-    }
-
-    get dialogStopDescription() {
-        if (this.service === this.klipperInstance)
-            return this.$t('App.TopCornerMenu.ConfirmationDialog.Description.KlipperStop')
-
-        return this.$t('App.TopCornerMenu.ConfirmationDialog.Description.ServiceStop')
-    }
-
-    get disableStopButton() {
-        return this.state === 'inactive' || this.service === this.moonrakerInstance
-    }
-
-    get styleStopButton() {
-        return this.service === this.moonrakerInstance ? 'visibility: hidden;' : ''
-    }
-
-    clickStart() {
-        this.$socket.emit('machine.services.start', { service: this.service })
-        this.closeMenu()
-    }
-
-    clickRestart() {
-        if (this.printerIsPrinting) {
-            this.showRestartDialog = true
-            return
-        }
-
-        this.serviceRestart()
-    }
-
-    clickStop() {
-        if (this.printerIsPrinting) {
-            this.showStopDialog = true
-            return
-        }
-
-        this.serviceStop()
-    }
-
-    serviceRestart() {
-        this.$socket.emit('machine.services.restart', { service: this.service })
-        this.closeMenu()
-    }
-
-    serviceStop() {
-        this.$socket.emit('machine.services.stop', { service: this.service })
-        this.closeMenu()
-    }
-
-    closeMenu() {
-        this.$emit('close-menu')
-    }
+function serviceStop() {
+    webSocketClient.emit('machine.services.stop', { service: props.service })
+    closeMenu()
 }
 </script>

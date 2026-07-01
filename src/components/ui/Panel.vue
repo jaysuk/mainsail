@@ -35,57 +35,60 @@
     </v-card>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import { panelToolbarHeight } from '@/store/variables'
+<script setup lang="ts">
+import { computed, useSlots } from 'vue'
+import { useTheme } from 'vuetify'
 import { mdiChevronDown } from '@mdi/js'
-import { TranslateResult } from 'vue-i18n'
+import { panelToolbarHeight } from '@/store/variables'
+import { useGuiStore } from '@/store/gui'
+import { useBase } from '@/composables/useBase'
 
-@Component
-export default class Panel extends Mixins(BaseMixin) {
-    mdiChevronDown = mdiChevronDown
-    panelToolbarHeight = panelToolbarHeight
-
-    @Prop({ default: null }) declare readonly icon: string | null
-    @Prop({ required: true, default: '' }) declare readonly title: string | TranslateResult
-    @Prop({ default: false }) declare readonly collapsible: boolean
-    @Prop({ required: true }) declare readonly cardClass: string
-    @Prop({ default: '' }) declare readonly toolbarColor: string
-    @Prop({ default: '' }) declare readonly toolbarClass: string
-    @Prop({ default: false }) declare readonly loading: boolean
-    @Prop({ default: true }) declare readonly marginBottom: boolean
-    @Prop({ default: false }) declare readonly hideButtonsOnCollapse: boolean
-
-    get expand() {
-        return this.$store.getters['gui/getPanelExpand'](this.cardClass, this.viewport)
+const props = withDefaults(
+    defineProps<{
+        icon?: string | null
+        title: string
+        collapsible?: boolean
+        cardClass: string
+        toolbarColor?: string
+        toolbarClass?: string
+        loading?: boolean
+        marginBottom?: boolean
+        hideButtonsOnCollapse?: boolean
+    }>(),
+    {
+        icon: null,
+        title: '',
+        collapsible: false,
+        toolbarColor: '',
+        toolbarClass: '',
+        loading: false,
+        marginBottom: true,
+        hideButtonsOnCollapse: false,
     }
+)
 
-    set expand(newVal) {
-        this.$store.dispatch('gui/saveExpandPanel', { name: this.cardClass, value: newVal, viewport: this.viewport })
-    }
+const slots = useSlots()
+const guiStore = useGuiStore()
+const vuetifyTheme = useTheme()
+const { viewport } = useBase()
 
-    get hasIconSlot() {
-        return !!this.$slots.icon
-    }
+const expand = computed<boolean>({
+    get: () => guiStore.getPanelExpand(props.cardClass, viewport.value),
+    set: (newVal) => guiStore.saveExpandPanel({ name: props.cardClass, value: newVal, viewport: viewport.value }),
+})
 
-    get hasButtonsSlot() {
-        return !!this.$slots.buttons
-    }
+const hasIconSlot = computed(() => !!slots.icon)
+const hasButtonsSlot = computed(() => !!slots.buttons)
 
-    get getToolbarClass() {
-        let output = this.toolbarClass
+const getToolbarClass = computed(() => {
+    let output = props.toolbarClass
 
-        if (this.collapsible) output += ' collapsible'
+    if (props.collapsible) output += ' collapsible'
 
-        return output
-    }
+    return output
+})
 
-    get additionalStyle() {
-        return this.$vuetify.theme.dark ? '' : 'border-bottom: 1px solid #A8A8A8'
-    }
-}
+const additionalStyle = computed(() => (vuetifyTheme.current.value.dark ? '' : 'border-bottom: 1px solid #A8A8A8'))
 </script>
 
 <style scoped>
@@ -106,7 +109,7 @@ export default class Panel extends Mixins(BaseMixin) {
     overflow-y: hidden;
 }
 
-::v-deep .panel-toolbar .v-btn {
+:deep(.panel-toolbar .v-btn) {
     height: 100% !important;
     max-height: none;
 }

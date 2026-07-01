@@ -1,14 +1,3 @@
-<style scoped>
-.btn-collapsible > * {
-    will-change: transform;
-    transition: transform 500ms;
-}
-
-.icon-rotate-n90 {
-    transform: rotate(-90deg);
-}
-</style>
-
 <template>
     <div>
         <div class="px-3 d-flex align-center">
@@ -28,29 +17,42 @@
     </div>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
+<script setup lang="ts">
+import { computed } from 'vue'
 import { mdiChevronDown } from '@mdi/js'
+import { useGuiStore } from '@/store/gui'
+import { useBase } from '@/composables/useBase'
 
-@Component
-export default class Panel extends Mixins(BaseMixin) {
-    @Prop({ required: false, default: mdiChevronDown }) declare readonly iconExpanded: string | null
-    @Prop({ required: false, default: mdiChevronDown }) declare readonly iconCollapsed: string | null
-    @Prop({ required: true, default: '' }) declare readonly title: string
-    @Prop({ required: true }) declare readonly subPanelClass: string
-
-    get expand() {
-        return this.$store.getters['gui/getPanelExpand'](this.subPanelClass, this.viewport)
+const props = withDefaults(
+    defineProps<{
+        iconExpanded?: string | null
+        iconCollapsed?: string | null
+        title: string
+        subPanelClass: string
+    }>(),
+    {
+        iconExpanded: mdiChevronDown,
+        iconCollapsed: mdiChevronDown,
+        title: '',
     }
+)
 
-    set expand(newVal) {
-        this.$store.dispatch('gui/saveExpandPanel', {
-            name: this.subPanelClass,
-            value: newVal,
-            viewport: this.viewport,
-        })
-    }
-}
+const guiStore = useGuiStore()
+const { viewport } = useBase()
+
+const expand = computed<boolean>({
+    get: () => guiStore.getPanelExpand(props.subPanelClass, viewport.value),
+    set: (newVal) => guiStore.saveExpandPanel({ name: props.subPanelClass, value: newVal, viewport: viewport.value }),
+})
 </script>
+
+<style scoped>
+.btn-collapsible > * {
+    will-change: transform;
+    transition: transform 500ms;
+}
+
+.icon-rotate-n90 {
+    transform: rotate(-90deg);
+}
+</style>

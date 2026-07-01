@@ -1,4 +1,5 @@
 import { computed } from 'vue'
+import { useDisplay } from 'vuetify'
 import { useSocketStore } from '@/store/socket'
 import { useServerStore } from '@/store/server'
 import { usePrinterStore } from '@/store/printer'
@@ -18,6 +19,30 @@ export function useBase() {
     const guiStore = useGuiStore()
     const rootStore = useRootStore()
     const powerStore = useServerPowerStore()
+    const display = useDisplay()
+
+    const isMobile = computed(() => display.mobile.value)
+    const isTablet = computed(() => display.smAndUp.value && !isDesktop.value && !isWidescreen.value)
+    const isDesktop = computed(() => display.lgAndUp.value && !isWidescreen.value)
+    const isWidescreen = computed(() => display.xl.value)
+    const viewport = computed(() => {
+        if (isMobile.value) return 'mobile'
+        else if (isTablet.value) return 'tablet'
+        else if (isDesktop.value) return 'desktop'
+        else return 'widescreen'
+    })
+
+    const isTouchDevice = computed(
+        () => 'ontouchstart' in window || (navigator.maxTouchPoints > 0 && navigator.maxTouchPoints !== 256)
+    )
+
+    const isIOS = computed(
+        () =>
+            !!(
+                navigator.userAgent.match(/(iPad|iPhone|iPod)/) ||
+                (navigator.platform === 'MacIntel' && 'standalone' in navigator)
+            )
+    )
 
     const apiUrl = computed(() => socketStore.getUrl)
     const hostUrl = computed(() => socketStore.getHostUrl)
@@ -203,6 +228,13 @@ export function useBase() {
         instancesDB,
         socketIsConnected,
         guiIsReady,
+        isMobile,
+        isTablet,
+        isDesktop,
+        isWidescreen,
+        viewport,
+        isTouchDevice,
+        isIOS,
         klippyIsConnected,
         klipperState,
         klipperReadyForGui,

@@ -9,38 +9,30 @@
         xml:space="preserve">
         <g>
             <path
-                :style="'fill:' + color + ';'"
+                :style="'fill:' + internalColor + ';'"
                 d="M382.29,142.98L132.98,522.82L0,522.68L344.3,0l0,0C352.18,49.06,365.2,97.68,382.29,142.98" />
             <path
-                :style="'fill:' + color + ';'"
+                :style="'fill:' + internalColor + ';'"
                 d="M413.28,213.54L208.5,522.92l132.94,0.19l135.03-206.33l0,0C452.69,284.29,431.53,249.77,413.28,213.54 L413.28,213.54" />
             <path
-                :style="'fill:' + color + ';'"
+                :style="'fill:' + internalColor + ';'"
                 d="M599.38,447.69l-49.25,75.42L417,522.82l101.6-153.67l0,0C543.48,397.35,570.49,423.61,599.38,447.69 L599.38,447.69z" />
         </g>
     </svg>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop, Watch } from 'vue-property-decorator'
-import BaseMixin from '../mixins/base'
+<script setup lang="ts">
+import { ref, watch } from 'vue'
 import { defaultLogoColor } from '@/store/variables'
 
-@Component
-export default class MainsailLogo extends Mixins(BaseMixin) {
-    private internalColor = defaultLogoColor
+const props = withDefaults(defineProps<{ color?: string }>(), { color: '' })
 
-    @Prop({ required: false, default: '' })
-    declare readonly color: string
+const internalColor = ref(props.color !== '' ? props.color : defaultLogoColor)
 
-    @Watch('color')
-    colorChanged(newVal: string) {
-        this.internalColor = newVal !== '' ? newVal : defaultLogoColor
+watch(
+    () => props.color,
+    (newVal) => {
+        internalColor.value = newVal !== '' ? newVal : defaultLogoColor
     }
-
-    created() {
-        if (this.color !== '') this.internalColor = this.color
-    }
-}
+)
 </script>
