@@ -172,21 +172,10 @@
             v-model="dialogImage.show"
             fullscreen
             class="fill-height"
-            @keydown.esc="
-                dialogImage.show = false
-                dialogImage.item.url = null
-                dialogImage.item.svg = null
-            ">
+            @keydown.esc="closeImageDialog">
             <panel :title="dialogImage.item.name ?? ''" card-class="maschine-configfiles-imageviewer-dialog" style="position: relative">
                 <template #buttons>
-                    <v-btn
-                        icon
-                        tile
-                        @click="
-                            dialogImage.show = false
-                            dialogImage.item.url = null
-                            dialogImage.item.svg = null
-                        ">
+                    <v-btn icon tile @click="closeImageDialog">
                         <v-icon>{{ mdiCloseThick }}</v-icon>
                     </v-btn>
                 </template>
@@ -446,6 +435,12 @@ const dialogImage = ref<dialogImageObject>({
         svg: null,
     },
 })
+
+function closeImageDialog() {
+    dialogImage.value.show = false
+    dialogImage.value.item.url = null
+    dialogImage.value.item.svg = null
+}
 
 const dialogCreateFile = ref({
     show: false,
