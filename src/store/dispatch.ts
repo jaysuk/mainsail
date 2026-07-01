@@ -133,6 +133,8 @@ export function dispatchStoreAction(path: string, payload: ActionPayload): void 
             return useFilesStore().getScanMetadata(payload as never)
         case 'files/getMetadata':
             return useFilesStore().getMetadata(payload as never)
+        case 'files/rolloverLog':
+            return useFilesStore().rolloverLog(payload as never)
 
         // TODO(phase-2): add cases as farm/editor/root store are ported.
         default:
