@@ -17,6 +17,10 @@ import { useServerPowerStore } from '@/store/server/power'
 import { useServerSensorStore } from '@/store/server/sensor'
 import { useServerAnnouncementsStore } from '@/store/server/announcements'
 import { useServerJobQueueStore } from '@/store/server/jobQueue'
+import { useServerUpdateManagerStore } from '@/store/server/updateManager'
+import { useServerHistoryStore } from '@/store/server/history'
+import { useServerTimelapseStore } from '@/store/server/timelapse'
+import { useServerSpoolmanStore } from '@/store/server/spoolman'
 
 type ActionPayload = Record<string, unknown>
 
@@ -62,8 +66,39 @@ export function dispatchStoreAction(path: string, payload: ActionPayload): void 
         case 'server/jobQueue/start':
             return useServerJobQueueStore().start()
 
-        // TODO(phase-2): add cases as the remaining server submodules, printer,
-        // files and gui stores are ported.
+        // server/updateManager
+        case 'server/updateManager/onUpdateStatus':
+            return useServerUpdateManagerStore().onUpdateStatus(payload as never)
+
+        // server/history
+        case 'server/history/getHistory':
+            return useServerHistoryStore().getHistory(payload)
+        case 'server/history/getTotals':
+            return useServerHistoryStore().getTotals(payload as never)
+        case 'server/history/initHistoryNotes':
+            return useServerHistoryStore().initHistoryNotes(payload as never)
+
+        // server/timelapse
+        case 'server/timelapse/initSettings':
+            return useServerTimelapseStore().initSettings(payload)
+        case 'server/timelapse/initLastFrameinfo':
+            return useServerTimelapseStore().initLastFrameinfo(payload as never)
+
+        // server/spoolman
+        case 'server/spoolman/getActiveSpoolId':
+            return useServerSpoolmanStore().getActiveSpoolId(payload as never)
+        case 'server/spoolman/getActiveSpool':
+            return useServerSpoolmanStore().getActiveSpool(payload)
+        case 'server/spoolman/getHealth':
+            return useServerSpoolmanStore().getHealth(payload)
+        case 'server/spoolman/getInfo':
+            return useServerSpoolmanStore().getInfo(payload)
+        case 'server/spoolman/getVendors':
+            return useServerSpoolmanStore().getVendors(payload)
+        case 'server/spoolman/getSpools':
+            return useServerSpoolmanStore().getSpools(payload)
+
+        // TODO(phase-2): add cases as printer, files and gui stores are ported.
         default:
             window.console.debug(`[ws] no Pinia handler mapped for RPC-result action "${path}"`, payload)
     }
