@@ -1,27 +1,23 @@
 <template>
-    <v-simple-table>
+    <v-table>
         <tbody>
-            <history-all-print-status-table-item
-                v-for="status in printStatusArrayChart"
-                :key="status.name"
-                :item="status"
-                :value-name="valueName" />
+            <history-all-print-status-table-item v-for="status in printStatusArrayChart" :key="status.name" :item="status" :value-name="valueName" />
         </tbody>
-    </v-simple-table>
+    </v-table>
 </template>
 
-<script lang="ts">
-import Component from 'vue-class-component'
-import { Mixins, Prop } from 'vue-property-decorator'
-import BaseMixin from '@/components/mixins/base'
-import HistoryStatsMixin from '@/components/mixins/historyStats'
+<script setup lang="ts">
+import { computed } from 'vue'
 import HistoryAllPrintStatusTableItem from '@/components/charts/HistoryAllPrintStatusTableItem.vue'
-import { HistoryStatsValueNames } from '@/store/server/history/types'
+import type { HistoryStatsValueNames } from '@/store/server/history/types'
+import { useHistoryStats } from '@/composables/useHistoryStats'
 
-@Component({
-    components: { HistoryAllPrintStatusTableItem },
-})
-export default class HistoryAllPrintStatusTable extends Mixins(BaseMixin, HistoryStatsMixin) {
-    @Prop({ type: String, default: 'amount' }) valueName!: HistoryStatsValueNames
-}
+const props = withDefaults(
+    defineProps<{
+        valueName?: HistoryStatsValueNames
+    }>(),
+    { valueName: 'amount' }
+)
+
+const { printStatusArrayChart } = useHistoryStats(computed(() => props.valueName))
 </script>

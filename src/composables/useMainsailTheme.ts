@@ -80,6 +80,7 @@ export function useMainsailTheme() {
     })
 
     return {
+        isDark,
         fgColor,
         bgColor,
         themeName,
