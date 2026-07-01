@@ -1,16 +1,14 @@
 <template>
     <v-row class="rowProfile">
         <v-col class="pl-6">
-            <span
-                :class="{ 'font-weight-bold': is_active, currentMeshName: is_active, 'cursor-pointer': true }"
-                @click="clickOnName">
+            <span :class="{ 'font-weight-bold': is_active, currentMeshName: is_active, 'cursor-pointer': true }" @click="clickOnName">
                 {{ name }}
             </span>
         </v-col>
         <v-col class="col-auto text-center d-flex align-center justify-center pr-6">
-            <v-tooltip top color="rgba(0,0,0,0.8)">
-                <template #activator="{ on, attrs }">
-                    <small v-bind="attrs" v-on="on">{{ variance }}</small>
+            <v-tooltip location="top" color="rgba(0,0,0,0.8)">
+                <template #activator="{ props: activatorProps }">
+                    <small v-bind="activatorProps">{{ variance }}</small>
                 </template>
                 <span>
                     max: {{ max }}
@@ -20,139 +18,100 @@
             </v-tooltip>
         </v-col>
         <v-col class="col-auto py-0 d-flex flex-row align-center justify-end">
-            <v-btn
-                v-if="!is_active"
-                text
-                tile
-                class="px-2 minwidth-0"
-                :loading="isLoadingLoad"
-                style="height: 48px; width: 48px"
-                @click="loadProfile">
+            <v-btn v-if="!is_active" variant="text" tile class="px-2 minwidth-0" :loading="isLoadingLoad" style="height: 48px; width: 48px" @click="loadProfile">
                 <v-icon>{{ mdiProgressUpload }}</v-icon>
             </v-btn>
-            <v-btn
-                v-else
-                text
-                tile
-                class="px-2 minwidth-0"
-                :loading="isLoadingLoad"
-                style="height: 48px; width: 48px"
-                @click="showRename = true">
+            <v-btn v-else variant="text" tile class="px-2 minwidth-0" :loading="isLoadingLoad" style="height: 48px; width: 48px" @click="showRename = true">
                 <v-icon>{{ mdiPencil }}</v-icon>
             </v-btn>
-            <v-btn
-                text
-                tile
-                class="px-2 minwidth-0"
-                style="height: 48px; width: 48px"
-                :loading="isLoadingRemove"
-                :title="$t('Heightmap.DeleteBedMeshProfile')"
-                @click="showRemove = true">
+            <v-btn variant="text" tile class="px-2 minwidth-0" style="height: 48px; width: 48px" :loading="isLoadingRemove" :title="t('Heightmap.DeleteBedMeshProfile')" @click="showRemove = true">
                 <v-icon>{{ mdiDelete }}</v-icon>
             </v-btn>
         </v-col>
         <confirmation-dialog
             v-model="showRemove"
             :icon="mdiGrid"
-            :title="$t('Heightmap.BedMeshRemove')"
-            :text="$t('Heightmap.DoYouReallyWantToDelete', { name })"
-            :action-button-text="$t('Buttons.Delete')"
-            :cancel-button-text="$t('Buttons.Cancel')"
+            :title="t('Heightmap.BedMeshRemove')"
+            :text="t('Heightmap.DoYouReallyWantToDelete', { name })"
+            :action-button-text="t('Buttons.Delete')"
+            :cancel-button-text="t('Buttons.Cancel')"
             @action="removeProfile" />
         <heightmap-rename-profile-dialog v-model="showRename" :name="name" />
     </v-row>
 </template>
-<script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
+
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { mdiDelete, mdiGrid, mdiPencil, mdiProgressUpload } from '@mdi/js'
-import BaseMixin from '@/components/mixins/base'
-import { PrinterStateBedMeshProfile } from '@/store/printer/types'
+import type { PrinterStateBedMeshProfile } from '@/store/printer/types'
 import HeightmapRenameProfileDialog from '@/components/dialogs/HeightmapRenameProfileDialog.vue'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
+import { useBase } from '@/composables/useBase'
+import { usePrinterStore } from '@/store/printer'
+import { useServerStore } from '@/store/server'
+import { webSocketClient } from '@/plugins/webSocketClient'
 
-@Component({
-    components: { HeightmapRenameProfileDialog, ConfirmationDialog },
+const props = defineProps<{
+    name: string
+    profile: PrinterStateBedMeshProfile
+}>()
+
+const { t } = useI18n()
+const { loadings } = useBase()
+const printerStore = usePrinterStore()
+
+const showRemove = ref(false)
+const showRename = ref(false)
+
+const points = computed<number[]>(() => {
+    const output: number[] = []
+
+    for (let i = 0; i < props.profile.points.length; i++) {
+        for (let j = 0; j < props.profile.points[i].length; j++) {
+            output.push(props.profile.points[i][j])
+        }
+    }
+
+    return output
 })
-export default class HeightmapProfilesPanelRow extends Mixins(BaseMixin) {
-    mdiDelete = mdiDelete
-    mdiGrid = mdiGrid
-    mdiPencil = mdiPencil
-    mdiProgressUpload = mdiProgressUpload
 
-    @Prop({ type: String, required: true }) name!: string
-    @Prop({ type: Object, required: true }) profile!: PrinterStateBedMeshProfile
+const min = computed(() => Math.round(Math.min(...points.value) * 1000) / 1000)
+const max = computed(() => Math.round(Math.max(...points.value) * 1000) / 1000)
+const variance = computed(() => Math.abs(min.value - max.value).toFixed(3))
 
-    showRemove = false
-    showRename = false
+const is_active = computed(() => {
+    const currentProfile = printerStore.bed_mesh?.profile_name ?? ''
 
-    get points() {
-        const points: number[] = []
+    return currentProfile === props.name
+})
 
-        for (let i = 0; i < this.profile.points.length; i++) {
-            for (let j = 0; j < this.profile.points[i].length; j++) {
-                points.push(this.profile.points[i][j])
-            }
-        }
+const loadingNameLoad = computed(() => `bedMeshLoad_${props.name}`)
+const loadingNameRemove = computed(() => `bedMeshRemove_${props.name}`)
+const isLoadingLoad = computed(() => loadings.value.includes(loadingNameLoad.value))
+const isLoadingRemove = computed(() => loadings.value.includes(loadingNameRemove.value))
 
-        return points
+function clickOnName() {
+    if (is_active.value) {
+        showRename.value = true
+        return
     }
 
-    get min() {
-        return Math.round(Math.min(...this.points) * 1000) / 1000
-    }
+    loadProfile()
+}
 
-    get max() {
-        return Math.round(Math.max(...this.points) * 1000) / 1000
-    }
+function loadProfile(): void {
+    const gcode = `BED_MESH_PROFILE LOAD="${props.name}"`
 
-    get variance() {
-        return Math.abs(this.min - this.max).toFixed(3)
-    }
+    useServerStore().addEvent({ message: gcode, type: 'command' })
+    webSocketClient.emit('printer.gcode.script', { script: gcode }, { loading: loadingNameLoad.value })
+}
 
-    get is_active() {
-        const currentProfile = this.$store.state.printer.bed_mesh?.profile_name ?? ''
+function removeProfile(): void {
+    const gcode = `BED_MESH_PROFILE REMOVE="${props.name}"`
 
-        return currentProfile === this.name
-    }
-
-    get loadingNameLoad() {
-        return `bedMeshLoad_${this.name}`
-    }
-
-    get loadingNameRemove() {
-        return `bedMeshRemove_${this.name}`
-    }
-
-    get isLoadingLoad() {
-        return this.loadings.includes(this.loadingNameLoad)
-    }
-
-    get isLoadingRemove() {
-        return this.loadings.includes(this.loadingNameRemove)
-    }
-
-    clickOnName() {
-        if (this.is_active) {
-            this.showRename = true
-            return
-        }
-
-        this.loadProfile()
-    }
-
-    loadProfile(): void {
-        const gcode = `BED_MESH_PROFILE LOAD="${this.name}"`
-
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode }, { loading: this.loadingNameLoad })
-    }
-
-    removeProfile(): void {
-        const gcode = `BED_MESH_PROFILE REMOVE="${this.name}"`
-
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode }, { loading: this.loadingNameRemove })
-    }
+    useServerStore().addEvent({ message: gcode, type: 'command' })
+    webSocketClient.emit('printer.gcode.script', { script: gcode }, { loading: loadingNameRemove.value })
 }
 </script>
 
