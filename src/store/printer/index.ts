@@ -56,6 +56,17 @@ export function formatEstimatedTimeETA(eta: number, hours12Format: boolean): str
 export const usePrinterStore = defineStore('printer', () => {
     const state = reactive<PrinterState>(getDefaultState())
 
+    // `Object.assign(state, {...actions})` at the bottom of this store (see
+    // the return statement) attaches every action/getter as an own property
+    // of the *same* `state` object used for Klipper data, since that's what
+    // smuggles them past Pinia's setup-store snapshot (see the note below).
+    // That means `Object.keys(state)` mixes action names in with real
+    // Klipper data keys. `reset()` needs to tell them apart so it only
+    // scrubs stale *data* off the exposed store, not the store's own
+    // methods - populated once, right before the return statement, with
+    // every action/getter name.
+    let reservedKeys = new Set<string>()
+
     // Pinia's setup-store mechanism only exposes the properties present on
     // the object this store's setup() function returns, snapshotted *once*
     // at store-creation time (see `createSetupStore` in pinia's source:
@@ -845,7 +856,11 @@ export const usePrinterStore = defineStore('printer', () => {
         // Snapshot the keys bridged onto the exposed store before wiping
         // `state` back to defaults ({}), so stale Klipper object-model data
         // doesn't linger on `usePrinterStore()` after a disconnect/reconnect.
-        const staleKeys = Object.keys(state)
+        // Exclude the store's own action/getter names - they live on `state`
+        // too (see `reservedKeys` above), and deleting them from the exposed
+        // store bricks every action (getData, getInfo, initGcodes, even
+        // reset/init themselves) the moment Klipper reconnects.
+        const staleKeys = Object.keys(state).filter((key) => !reservedKeys.has(key))
         resetState(state, getDefaultState)
 
         const exposedStore = usePrinterStore() as unknown as Record<string, unknown>
@@ -1003,7 +1018,7 @@ export const usePrinterStore = defineStore('printer', () => {
     // would never expose properties added later. Returning the live reactive
     // `state` object itself (merged with getters/actions) keeps every future
     // key accessible and reactive, mirroring Vuex's dynamic root state bag.
-    return Object.assign(state, {
+    const storeDefinition = {
         getPrintPercent,
         getPrintPercentByFilepositionRelative,
         getPrintPercentByFilepositionAbsolute,
@@ -1066,5 +1081,9 @@ export const usePrinterStore = defineStore('printer', () => {
         initExtruderCanExtrude,
         getEndstopStatus,
         sendGcode,
-    })
+    }
+
+    reservedKeys = new Set(Object.keys(storeDefinition))
+
+    return Object.assign(state, storeDefinition)
 })
