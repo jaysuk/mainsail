@@ -80,7 +80,7 @@ export default defineConfig({
         buildReleaseInfo(),
         vue(),
         // auto-imports Vuetify 4 components/directives and wires up styles
-        // vuetify({ autoImport: true }),
+        vuetify({ autoImport: true }),
         version(),
         checker({
             vueTsc: true,
