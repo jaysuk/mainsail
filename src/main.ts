@@ -11,7 +11,7 @@ import { useSocketStore } from '@/store/socket'
 import { useRootStore } from '@/store'
 import { installMainsailApi } from '@/plugins/mainsail'
 import { loadPlugins } from '@/plugins/mainsail/pluginLoader'
-import { installVendorGlobals } from '@/plugins/mainsail/vendor'
+import { installVendorGlobals, registerVuetifyGlobals } from '@/plugins/mainsail/vendor'
 
 // Toast notifications
 import ToastPlugin from 'vue-toast-notification'
@@ -78,6 +78,11 @@ initLoad().then(() => {
     app.use(router)
     app.use(i18n)
     app.use(vuetify)
+    // Registers a curated set of Vuetify components/directives as real global components on this
+    // app instance, so externally-loaded plugins' <v-btn>/<v-dialog>/etc. template tags (written
+    // with no explicit import, same as any normal Vue SFC) resolve to real Vuetify chrome instead
+    // of silently falling back to native, unstyled elements - see vendor.ts's doc comment.
+    registerVuetifyGlobals(app)
     app.use(ToastPlugin, { duration: 3000 })
 
     app.directive('longpress', longpress)

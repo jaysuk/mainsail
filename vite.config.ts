@@ -168,5 +168,15 @@ export default defineConfig({
         // full jsdom dependency.
         environment: 'happy-dom',
         include: ['tests/**/*.spec.ts'],
+        // vendor.ts imports real Vuetify component modules (registerVuetifyGlobals() globally
+        // registers them on the app for externally-loaded plugins) - Vitest externalizes
+        // node_modules deps to Node's native ESM loader by default, which can't handle the raw
+        // `.css` side-effect imports inside them. Inlining forces it through Vite's own transform
+        // pipeline (same one the dev/prod build already uses) instead.
+        server: {
+            deps: {
+                inline: ['vuetify'],
+            },
+        },
     },
 })
