@@ -1,6 +1,6 @@
 import 'regenerator-runtime' // async polyfill used by the gcodeviewer
 import 'resize-observer-polyfill' // polyfill needed by the responsive class detection
-import { createApp } from 'vue'
+import { createApp, defineAsyncComponent } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import App from '@/App.vue'
 import vuetify from '@/plugins/vuetify'
@@ -25,18 +25,7 @@ import 'overlayscrollbars/overlayscrollbars.css'
 import longpress from '@/directives/longpress'
 import responsiveClass from '@/directives/responsive-class'
 
-// Echarts
-import ECharts from 'vue-echarts'
-import { use } from 'echarts/core'
-
-// import ECharts modules manually to reduce bundle size
-import { SVGRenderer } from 'echarts/renderers'
-import { BarChart, LineChart, PieChart } from 'echarts/charts'
-import { DatasetComponent, GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-
 import { defaultMode } from './store/variables'
-
-use([SVGRenderer, LineChart, BarChart, LegendComponent, PieChart, DatasetComponent, GridComponent, TooltipComponent])
 
 const pinia = createPinia()
 // initLoad() calls into Pinia stores before the app (and app.use(pinia)) is
@@ -88,7 +77,24 @@ initLoad().then(() => {
     app.directive('longpress', longpress)
     app.directive('responsive-class', responsiveClass)
 
-    app.component('EChart', ECharts)
+    // echarts (+ vue-echarts) is only needed on the handful of pages/panels
+    // that render a chart (temp graphs, history stats, heightmap). Registering
+    // it via a static top-level import pulled ~600KB gzip 200KB into the
+    // eager entry bundle, parsed on every single page load regardless of
+    // whether the user ever sees a chart. defineAsyncComponent keeps the
+    // global `<e-chart>` tag working everywhere but defers the actual
+    // download/parse until the first template that renders one.
+    app.component(
+        'EChart',
+        defineAsyncComponent(async () => {
+            const [{ default: ECharts }, { use }, { SVGRenderer }, { BarChart, LineChart, PieChart }, { DatasetComponent, GridComponent, LegendComponent, TooltipComponent }] =
+                await Promise.all([import('vue-echarts'), import('echarts/core'), import('echarts/renderers'), import('echarts/charts'), import('echarts/components')])
+
+            use([SVGRenderer, LineChart, BarChart, LegendComponent, PieChart, DatasetComponent, GridComponent, TooltipComponent])
+
+            return ECharts
+        })
+    )
 
     app.mount('#app')
 
