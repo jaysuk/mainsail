@@ -45,6 +45,57 @@ export interface MainsailPluginApi {
      * Returns an unsubscribe function.
      */
     subscribeToPrinterObject(callback: (printerState: PrinterState) => void): () => void
+
+    /**
+     * Registers a brand-new top-level page: adds a Vue Router route and a
+     * sidebar navigation entry. Returns a function that removes both.
+     */
+    registerPage(config: PluginPageConfig): () => void
+
+    /**
+     * Replaces the component rendered for Mainsail's Dashboard route
+     * (path `/`) while the plugin is active - e.g. for a plugin providing an
+     * alternate, fully custom dashboard/shell. Returns a function that
+     * restores the original Dashboard component.
+     */
+    overrideDashboard(component: Component): () => void
+
+    /**
+     * Registers a tab in the Interface Settings dialog. Returns a function
+     * that removes it.
+     */
+    registerSettingsTab(key: string, config: PluginSettingsTabConfig): () => void
+
+    /**
+     * Reads/writes a plugin's own persisted data, namespaced by `pluginId` so
+     * different plugins' data can't collide. Backed by the same Moonraker
+     * database mechanism every built-in Mainsail setting already persists
+     * through - no server-side changes required. `getPluginData` resolves
+     * `undefined` if nothing has been stored yet for that key.
+     */
+    getPluginData<T = unknown>(pluginId: string, key: string): Promise<T | undefined>
+    setPluginData(pluginId: string, key: string, value: unknown): Promise<void>
+}
+
+export interface PluginPageConfig {
+    /** Unique route name - must not collide with Mainsail's own route names or another plugin's. */
+    name: string
+    /** Sidebar label, shown as-is (not passed through Mainsail's own i18n lookup). */
+    title: string
+    /** URL path, e.g. "/my-plugin". */
+    path: string
+    component: Component
+    /** MDI icon path (from `@mdi/js` or any other source), shown in the sidebar. */
+    icon?: string
+    /** Sidebar ordering, lower first. Defaults to appearing after all of Mainsail's own entries. */
+    position?: number
+}
+
+export interface PluginSettingsTabConfig {
+    /** Tab label, shown as-is (not passed through Mainsail's own i18n lookup). */
+    title: string
+    icon: string
+    component: Component
 }
 
 /** The shape every dynamically-loaded plugin module must export. */

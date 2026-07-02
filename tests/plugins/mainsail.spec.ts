@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, markRaw } from 'vue'
 import { installMainsailApi, mainsailApi } from '@/plugins/mainsail'
@@ -6,6 +6,9 @@ import { on, off, emit, CLOSE_CONTEXT_MENU } from '@/plugins/mainsail'
 import { loadPlugins, unloadPlugin } from '@/plugins/mainsail/pluginLoader'
 import { useLayoutStore } from '@/store/layout'
 import { usePrinterStore } from '@/store/printer'
+import { pluginNaviPoints } from '@/composables/useNavigation'
+import { webSocketClient } from '@/plugins/webSocketClient'
+import router from '@/plugins/router'
 import type { MainsailPluginApi } from '@/plugins/mainsail/types'
 
 // A minimal "mock Moonraker WebSocket fixture": rather than standing up a
@@ -241,6 +244,103 @@ describe('window.Mainsail plugin API', () => {
             expect(result).toBe(false)
             expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to unload Mainsail plugin'), expect.any(Error))
             errorSpy.mockRestore()
+        })
+    })
+
+    describe('registerPage', () => {
+        afterEach(() => {
+            if (router.hasRoute('plugin-test-page')) router.removeRoute('plugin-test-page')
+            pluginNaviPoints.splice(0, pluginNaviPoints.length)
+        })
+
+        it('adds a real Vue Router route reachable by path', () => {
+            mainsailApi.registerPage({ name: 'plugin-test-page', title: 'Test Page', path: '/plugin-test-page', component: FakePanel })
+
+            const resolved = router.resolve('/plugin-test-page')
+            expect(resolved.name).toBe('plugin-test-page')
+            expect(resolved.matched).toHaveLength(1)
+        })
+
+        it('adds a sidebar nav entry, bypassing the core-route i18n lookup', () => {
+            mainsailApi.registerPage({ name: 'plugin-test-page', title: 'Test Page', path: '/plugin-test-page', component: FakePanel, icon: 'mdi-test' })
+
+            expect(pluginNaviPoints).toHaveLength(1)
+            expect(pluginNaviPoints[0]).toMatchObject({ type: 'route', title: 'Test Page', to: '/plugin-test-page', icon: 'mdi-test' })
+        })
+
+        it('the returned unregister function removes both the route and the nav entry', () => {
+            const unregister = mainsailApi.registerPage({ name: 'plugin-test-page', title: 'Test Page', path: '/plugin-test-page', component: FakePanel })
+
+            unregister()
+
+            expect(router.hasRoute('plugin-test-page')).toBe(false)
+            expect(pluginNaviPoints).toHaveLength(0)
+        })
+    })
+
+    describe('overrideDashboard', () => {
+        it('replaces what the dashboard route resolves to', () => {
+            mainsailApi.overrideDashboard(FakePanel)
+
+            const resolved = router.resolve('/')
+            expect(resolved.matched[0]?.components?.default).toBe(FakePanel)
+        })
+
+        it('the returned restore function points the dashboard route at a component again', () => {
+            const restore = mainsailApi.overrideDashboard(FakePanel)
+
+            restore()
+
+            const resolved = router.resolve('/')
+            expect(resolved.matched[0]?.components?.default).not.toBe(FakePanel)
+        })
+    })
+
+    describe('registerSettingsTab', () => {
+        it('is discoverable via getRegisteredSettingsTabs', async () => {
+            const { getRegisteredSettingsTabs } = await import('@/plugins/mainsail')
+
+            const unregister = mainsailApi.registerSettingsTab('my-plugin-tab', { title: 'My Plugin', icon: 'mdi-test', component: FakePanel })
+
+            expect(getRegisteredSettingsTabs().get('my-plugin-tab')).toMatchObject({ title: 'My Plugin', icon: 'mdi-test' })
+
+            unregister()
+            expect(getRegisteredSettingsTabs().has('my-plugin-tab')).toBe(false)
+        })
+    })
+
+    describe('getPluginData / setPluginData', () => {
+        it('setPluginData persists via server.database.post_item under the pluginData namespace', async () => {
+            const emitSpy = vi.spyOn(webSocketClient, 'emit').mockImplementation(() => {})
+
+            await mainsailApi.setPluginData('my_plugin', 'settings', { foo: 'bar' })
+
+            expect(emitSpy).toHaveBeenCalledWith('server.database.post_item', {
+                namespace: 'pluginData',
+                key: 'my_plugin.settings',
+                value: { foo: 'bar' },
+            })
+            emitSpy.mockRestore()
+        })
+
+        it('getPluginData reads via the REST endpoint and unwraps result.value', async () => {
+            const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ result: { value: { foo: 'bar' } } }) })
+            vi.stubGlobal('fetch', fetchSpy)
+
+            const result = await mainsailApi.getPluginData('my_plugin', 'settings')
+
+            expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining('namespace=pluginData&key=my_plugin.settings'))
+            expect(result).toEqual({ foo: 'bar' })
+            vi.unstubAllGlobals()
+        })
+
+        it('getPluginData resolves undefined when nothing has been stored yet', async () => {
+            vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
+
+            const result = await mainsailApi.getPluginData('my_plugin', 'settings')
+
+            expect(result).toBeUndefined()
+            vi.unstubAllGlobals()
         })
     })
 })

@@ -83,6 +83,7 @@ import {
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import type { OverlayScrollbarsComponentRef } from 'overlayscrollbars-vue'
 import { useBase } from '@/composables/useBase'
+import { getRegisteredSettingsTabs } from '@/plugins/mainsail'
 
 // Lazy: pulls in fflate (zip extraction) for the plugin-package install
 // dialog, which most sessions never open. Every other tab here is a static
@@ -116,9 +117,14 @@ const { isMobile, moonrakerComponents } = useBase()
 const settingsScroll = ref<OverlayScrollbarsComponentRef | null>(null)
 
 const showSettings = ref(false)
-const activeTab = ref<keyof typeof tabComponents>('general')
+const activeTab = ref<string>('general')
 
-const activeTabComponent = computed(() => tabComponents[activeTab.value])
+// Plugin-registered tabs (window.Mainsail.registerSettingsTab) aren't known
+// at compile time, so activeTabComponent falls back to the reactive plugin
+// registry when the active key isn't one of Mainsail's own static tabs.
+const activeTabComponent = computed(
+    () => tabComponents[activeTab.value as keyof typeof tabComponents] ?? getRegisteredSettingsTabs().get(activeTab.value)?.component
+)
 
 const tabTitles = computed(() => {
     const tabs = [
@@ -142,6 +148,10 @@ const tabTitles = computed(() => {
     if (moonrakerComponents.value.includes('timelapse')) {
         tabs.push({ icon: mdiTimelapse, name: 'timelapse', title: t('Settings.TimelapseTab.Timelapse') })
     }
+
+    getRegisteredSettingsTabs().forEach((config, key) => {
+        tabs.push({ icon: config.icon, name: key, title: config.title })
+    })
 
     return tabs.sort((a, b) => {
         if (a.name === 'general') return -1

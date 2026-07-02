@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { mdiLinkVariant, mdiViewDashboardOutline } from '@mdi/js'
 import routes, { type AppRoute } from '@/routes'
@@ -23,6 +23,16 @@ export interface NaviPoint {
     position: number
     visible: boolean
 }
+
+/**
+ * Sidebar entries added by plugins via window.Mainsail.registerPage().
+ * Module-level (shared across every useNavigation() call, like
+ * plugins/mainsail/index.ts's componentRegistry) and reactive so the sidebar
+ * updates immediately when a plugin registers/unregisters a page - unlike
+ * core routes, these skip the `t('Router.' + title)` i18n lookup entirely
+ * since plugin titles aren't part of Mainsail's own locale files.
+ */
+export const pluginNaviPoints = reactive<NaviPoint[]>([])
 
 /**
  * Replaces the Vue 2 `NavigationMixin` class component.
@@ -130,7 +140,7 @@ export function useNavigation() {
         return points
     })
 
-    const naviPoints = computed(() => [...routesNaviPoints.value].sort((a, b) => a.position - b.position))
+    const naviPoints = computed(() => [...routesNaviPoints.value, ...pluginNaviPoints].sort((a, b) => a.position - b.position))
     const visibleNaviPoints = computed(() => naviPoints.value.filter((entry) => entry.visible))
 
     watch(
