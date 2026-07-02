@@ -210,7 +210,7 @@ const actionButtonText = computed(() => (props.type === 'create' ? t('Settings.W
 const rotationItems = computed(() => {
     const options = [0, 90, 180, 270]
 
-    return options.map((value) => ({ value, text: `${value}°` }))
+    return options.map((value) => ({ value, title: `${value}°` }))
 })
 
 const rulesStreamUrl = computed(() => {
@@ -234,17 +234,17 @@ const rulesSnapshotUrl = computed(() => {
 })
 
 const serviceItems = computed(() => [
-    { value: 'mjpegstreamer', text: t('Settings.WebcamsTab.Mjpegstreamer') },
-    { value: 'mjpegstreamer-adaptive', text: t('Settings.WebcamsTab.MjpegstreamerAdaptive') },
-    { value: 'uv4l-mjpeg', text: t('Settings.WebcamsTab.Uv4lMjpeg') },
-    { value: 'html-video', text: t('Settings.WebcamsTab.HtmlVideo') },
-    { value: 'iframe', text: t('Settings.WebcamsTab.HtmlIframe') },
-    { value: 'webrtc-camerastreamer', text: t('Settings.WebcamsTab.WebrtcCameraStreamer') },
-    { value: 'webrtc-go2rtc', text: t('Settings.WebcamsTab.WebrtcGo2rtc') },
-    { value: 'webrtc-mediamtx', text: t('Settings.WebcamsTab.WebrtcMediaMTX') },
-    { value: 'hlsstream', text: t('Settings.WebcamsTab.Hlsstream') },
-    { value: 'jmuxer-stream', text: t('Settings.WebcamsTab.JMuxerStream') },
-    { value: 'webrtc-janus', text: t('Settings.WebcamsTab.WebrtcJanus') },
+    { value: 'mjpegstreamer', title: t('Settings.WebcamsTab.Mjpegstreamer') },
+    { value: 'mjpegstreamer-adaptive', title: t('Settings.WebcamsTab.MjpegstreamerAdaptive') },
+    { value: 'uv4l-mjpeg', title: t('Settings.WebcamsTab.Uv4lMjpeg') },
+    { value: 'html-video', title: t('Settings.WebcamsTab.HtmlVideo') },
+    { value: 'iframe', title: t('Settings.WebcamsTab.HtmlIframe') },
+    { value: 'webrtc-camerastreamer', title: t('Settings.WebcamsTab.WebrtcCameraStreamer') },
+    { value: 'webrtc-go2rtc', title: t('Settings.WebcamsTab.WebrtcGo2rtc') },
+    { value: 'webrtc-mediamtx', title: t('Settings.WebcamsTab.WebrtcMediaMTX') },
+    { value: 'hlsstream', title: t('Settings.WebcamsTab.Hlsstream') },
+    { value: 'jmuxer-stream', title: t('Settings.WebcamsTab.JMuxerStream') },
+    { value: 'webrtc-janus', title: t('Settings.WebcamsTab.WebrtcJanus') },
 ])
 
 const iconItems = computed(() => [

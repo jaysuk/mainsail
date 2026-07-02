@@ -251,12 +251,12 @@ const editGroupId = ref<string | null>('')
 const searchMacros = ref('')
 
 const groupColors = computed(() => [
-    { text: t('Settings.MacrosTab.Primary'), value: 'primary' },
-    { text: t('Settings.MacrosTab.Secondary'), value: 'secondary' },
-    { text: t('Settings.MacrosTab.Success'), value: 'success' },
-    { text: t('Settings.MacrosTab.Warning'), value: 'warning' },
-    { text: t('Settings.MacrosTab.Error'), value: 'error' },
-    { text: t('Settings.MacrosTab.Custom'), value: 'custom' },
+    { title: t('Settings.MacrosTab.Primary'), value: 'primary' },
+    { title: t('Settings.MacrosTab.Secondary'), value: 'secondary' },
+    { title: t('Settings.MacrosTab.Success'), value: 'success' },
+    { title: t('Settings.MacrosTab.Warning'), value: 'warning' },
+    { title: t('Settings.MacrosTab.Error'), value: 'error' },
+    { title: t('Settings.MacrosTab.Custom'), value: 'custom' },
 ])
 
 const macroColors = computed(() => {
@@ -264,7 +264,7 @@ const macroColors = computed(() => {
     const indexCustom = colors.findIndex((color) => color.value === 'custom')
     if (indexCustom !== -1) colors.splice(indexCustom, 1)
 
-    colors.push({ text: t('Settings.MacrosTab.Group'), value: 'group' })
+    colors.push({ title: t('Settings.MacrosTab.Group'), value: 'group' })
 
     return colors
 })

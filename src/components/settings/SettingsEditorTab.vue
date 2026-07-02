@@ -36,14 +36,14 @@ const { t } = useI18n()
 const guiStore = useGuiStore()
 
 const klipperRestartMethods = [
-    { text: 'FIRMWARE_RESTART', value: 'FIRMWARE_RESTART' },
-    { text: 'RESTART', value: 'RESTART' },
+    { title: 'FIRMWARE_RESTART', value: 'FIRMWARE_RESTART' },
+    { title: 'RESTART', value: 'RESTART' },
 ]
 
 const tabSizes = computed(() => {
     const spaces = [2, 4, 6, 8]
     return spaces.map((space) => ({
-        text: t('Settings.EditorTab.Spaces', { count: space }),
+        title: t('Settings.EditorTab.Spaces', { count: space }),
         value: space,
     }))
 })

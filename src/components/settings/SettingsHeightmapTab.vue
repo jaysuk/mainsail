@@ -32,10 +32,10 @@ const { t } = useI18n()
 const guiHeightmapStore = useGuiHeightmapStore()
 
 const availableOrientations = computed(() => [
-    { text: t('Settings.HeightmapTab.Orientations.RightFront'), value: 'rightFront' },
-    { text: t('Settings.HeightmapTab.Orientations.LeftFront'), value: 'leftFront' },
-    { text: t('Settings.HeightmapTab.Orientations.Front'), value: 'front' },
-    { text: t('Settings.HeightmapTab.Orientations.Top'), value: 'top' },
+    { title: t('Settings.HeightmapTab.Orientations.RightFront'), value: 'rightFront' },
+    { title: t('Settings.HeightmapTab.Orientations.LeftFront'), value: 'leftFront' },
+    { title: t('Settings.HeightmapTab.Orientations.Front'), value: 'front' },
+    { title: t('Settings.HeightmapTab.Orientations.Top'), value: 'top' },
 ])
 
 const defaultOrientation = computed({
@@ -44,11 +44,11 @@ const defaultOrientation = computed({
 })
 
 const availableColorSchemes = computed(() => [
-    { text: t('Settings.HeightmapTab.Schemes.Portland') + ' ' + t('Settings.HeightmapTab.IsDefault'), value: 'portland' },
-    { text: t('Settings.HeightmapTab.Schemes.Spring'), value: 'spring' },
-    { text: t('Settings.HeightmapTab.Schemes.Hot'), value: 'hot' },
-    { text: t('Settings.HeightmapTab.Schemes.Hsv'), value: 'hsv' },
-    { text: t('Settings.HeightmapTab.Schemes.GrayScale'), value: 'grayScale' },
+    { title: t('Settings.HeightmapTab.Schemes.Portland') + ' ' + t('Settings.HeightmapTab.IsDefault'), value: 'portland' },
+    { title: t('Settings.HeightmapTab.Schemes.Spring'), value: 'spring' },
+    { title: t('Settings.HeightmapTab.Schemes.Hot'), value: 'hot' },
+    { title: t('Settings.HeightmapTab.Schemes.Hsv'), value: 'hsv' },
+    { title: t('Settings.HeightmapTab.Schemes.GrayScale'), value: 'grayScale' },
 ])
 
 const colorScheme = computed({

@@ -92,15 +92,15 @@ const nameInputRules = [(value: string) => !!value || t('History.InvalidNameEmpt
 
 const reminderItems = computed(() => [
     {
-        text: t('History.NoReminder'),
+        title: t('History.NoReminder'),
         value: null,
     },
     {
-        text: t('History.OneTime'),
+        title: t('History.OneTime'),
         value: 'one-time',
     },
     {
-        text: t('History.Repeat'),
+        title: t('History.Repeat'),
         value: 'repeat',
     },
 ])

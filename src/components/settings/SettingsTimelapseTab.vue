@@ -317,38 +317,38 @@ const timelapseStore = useServerTimelapseStore()
 const printerStore = usePrinterStore()
 
 const modeOptions = [
-    { text: 'layermacro', value: 'layermacro' },
-    { text: 'hyperlapse', value: 'hyperlapse' },
+    { title: 'layermacro', value: 'layermacro' },
+    { title: 'hyperlapse', value: 'hyperlapse' },
 ]
 
 const parkposOptions = [
-    { text: 'center', value: 'center' },
-    { text: 'front_left', value: 'front_left' },
-    { text: 'front_right', value: 'front_right' },
-    { text: 'back_left', value: 'back_left' },
-    { text: 'back_right', value: 'back_right' },
-    { text: 'x_only', value: 'x_only' },
-    { text: 'y_only', value: 'y_only' },
-    { text: 'custom', value: 'custom' },
+    { title: 'center', value: 'center' },
+    { title: 'front_left', value: 'front_left' },
+    { title: 'front_right', value: 'front_right' },
+    { title: 'back_left', value: 'back_left' },
+    { title: 'back_right', value: 'back_right' },
+    { title: 'x_only', value: 'x_only' },
+    { title: 'y_only', value: 'y_only' },
+    { title: 'custom', value: 'custom' },
 ]
 
 const availableSnapshotWebcams = computed<GuiWebcamStateWebcam[]>(() => guiWebcamsStore.getWebcams.filter((webcam) => webcam.snapshot_url !== ''))
 
 const cameraOptions = computed(() => {
-    let output: { text: string; value: string | null }[] = []
+    let output: { title: string; value: string | null }[] = []
 
     if (availableSnapshotWebcams.value.length === 0) {
-        return [{ value: null, text: t('Settings.TimelapseTab.NoWebcamFound') }]
+        return [{ value: null, title: t('Settings.TimelapseTab.NoWebcamFound') }]
     }
 
     availableSnapshotWebcams.value.forEach((webcam: GuiWebcamStateWebcam) => {
-        output.push({ text: webcam.name, value: webcam.name })
+        output.push({ title: webcam.name, value: webcam.name })
     })
 
-    output = caseInsensitiveSort(output, 'text')
+    output = caseInsensitiveSort(output, 'title')
 
     if (camera.value === null) {
-        output.unshift({ value: null, text: t('Settings.TimelapseTab.SelectWebcam') })
+        output.unshift({ value: null, title: t('Settings.TimelapseTab.SelectWebcam') })
     }
 
     return output

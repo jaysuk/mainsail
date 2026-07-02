@@ -34,8 +34,8 @@ const guiMacrosStore = useGuiMacrosStore()
 const showGeneral = ref(true)
 
 const modes = computed(() => [
-    { text: t('Settings.MacrosTab.Simple'), value: 'simple' },
-    { text: t('Settings.MacrosTab.Expert'), value: 'expert' },
+    { title: t('Settings.MacrosTab.Simple'), value: 'simple' },
+    { title: t('Settings.MacrosTab.Expert'), value: 'expert' },
 ])
 
 const mode = computed({

@@ -204,11 +204,11 @@ const mode = computed({
 })
 
 const modes = computed(() => [
-    { text: t('Settings.UiSettingsTab.ThemeDark'), value: 'dark' },
-    { text: t('Settings.UiSettingsTab.ThemeLight'), value: 'light' },
+    { title: t('Settings.UiSettingsTab.ThemeDark'), value: 'dark' },
+    { title: t('Settings.UiSettingsTab.ThemeLight'), value: 'light' },
 ])
 
-const themeItems = computed(() => themes.map((theme) => ({ text: theme.displayName, value: theme.name })))
+const themeItems = computed(() => themes.map((theme) => ({ title: theme.displayName, value: theme.name })))
 
 const defaultLogoColor = computed(() => theme.value?.colorLogo ?? defaultLogoColorConst)
 const defaultPrimaryColor = computed(() => theme.value?.colorPrimary ?? defaultPrimaryColorConst)
@@ -299,8 +299,8 @@ const navigationStyleSetting = computed({
 })
 
 const navigationStyles = computed(() => [
-    { text: t('Settings.UiSettingsTab.NavigationStyleIconsOnly'), value: 'iconsOnly' },
-    { text: t('Settings.UiSettingsTab.NavigationStyleIconsAndText'), value: 'iconsAndText' },
+    { title: t('Settings.UiSettingsTab.NavigationStyleIconsOnly'), value: 'iconsOnly' },
+    { title: t('Settings.UiSettingsTab.NavigationStyleIconsAndText'), value: 'iconsAndText' },
 ])
 
 const defaultNavigationStateSetting = computed({
@@ -309,9 +309,9 @@ const defaultNavigationStateSetting = computed({
 })
 
 const defaultNavigationStateSettings = computed(() => [
-    { text: t('Settings.UiSettingsTab.DefaultNavigationStateAlwaysOpen'), value: 'alwaysOpen' },
-    { text: t('Settings.UiSettingsTab.DefaultNavigationStateAlwaysClosed'), value: 'alwaysClosed' },
-    { text: t('Settings.UiSettingsTab.DefaultNavigationStateLastState'), value: 'lastState' },
+    { title: t('Settings.UiSettingsTab.DefaultNavigationStateAlwaysOpen'), value: 'alwaysOpen' },
+    { title: t('Settings.UiSettingsTab.DefaultNavigationStateAlwaysClosed'), value: 'alwaysClosed' },
+    { title: t('Settings.UiSettingsTab.DefaultNavigationStateLastState'), value: 'lastState' },
 ])
 
 const boolHideUploadAndPrintButton = computed({
@@ -329,11 +329,11 @@ const powerDeviceName = computed({
 })
 
 const powerDeviceOptions = computed(() => {
-    const items: { text: string; value: string | null }[] = [{ text: `Auto (${autoPowerDevice.value})`, value: null }]
+    const items: { title: string; value: string | null }[] = [{ title: `Auto (${autoPowerDevice.value})`, value: null }]
 
     powerDevices.value.forEach((device: ServerPowerStateDevice) => {
         items.push({
-            text: `${device.device} (${device.type})`,
+            title: `${device.device} (${device.type})`,
             value: device.device.toString(),
         })
     })
@@ -391,10 +391,10 @@ const dashboardFilesFilter = computed({
     set: (newVal) => guiStore.saveSetting({ name: 'uiSettings.dashboardFilesFilter', value: newVal }),
 })
 
-const dashboardFilesFilters = computed<{ text: string; value: GuiStateUiSettingsDashboardFilesFilter }[]>(() => [
-    { text: t('Settings.UiSettingsTab.DashboardFilesFilterNew'), value: 'new' },
-    { text: t('Settings.UiSettingsTab.DashboardFilesFilterFailed'), value: 'failed' },
-    { text: t('Settings.UiSettingsTab.DashboardFilesFilterCompleted'), value: 'completed' },
+const dashboardFilesFilters = computed<{ title: string; value: GuiStateUiSettingsDashboardFilesFilter }[]>(() => [
+    { title: t('Settings.UiSettingsTab.DashboardFilesFilterNew'), value: 'new' },
+    { title: t('Settings.UiSettingsTab.DashboardFilesFilterFailed'), value: 'failed' },
+    { title: t('Settings.UiSettingsTab.DashboardFilesFilterCompleted'), value: 'completed' },
 ])
 
 const dashboardHistoryLimit = computed({

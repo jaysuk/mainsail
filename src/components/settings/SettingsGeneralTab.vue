@@ -57,23 +57,23 @@ const { t } = useI18n()
 const { formatDate, browserLocale } = useBase()
 const guiStore = useGuiStore()
 
-const availableLanguages = ref<{ text: string; value: string }[]>([])
+const availableLanguages = ref<{ title: string; value: string }[]>([])
 
 onMounted(async () => {
     const locales = import.meta.glob('../../locales/*.json', { import: 'default' })
-    const languages: { text: string; value: string }[] = []
+    const languages: { title: string; value: string }[] = []
 
     for (const file in locales) {
         const langKey = file.slice(file.lastIndexOf('/') + 1, file.lastIndexOf('.'))
         const locale = (await locales[file]()) as { title: string }
 
         languages.push({
-            text: locale.title,
+            title: locale.title,
             value: langKey,
         })
     }
 
-    availableLanguages.value = languages.sort((a, b) => a.text.localeCompare(b.text))
+    availableLanguages.value = languages.sort((a, b) => a.title.localeCompare(b.title))
 })
 
 const printerName = computed({
@@ -120,7 +120,7 @@ const dateFormatItems = computed(() => {
 
         return {
             value: format,
-            text: `${name} (${example})`,
+            title: `${name} (${example})`,
         }
     })
 })
@@ -135,16 +135,16 @@ const timeFormatItems = computed(() => {
     const userLocale = navigator.languages && navigator.languages.length ? navigator.languages[0] : navigator.language
 
     return [
-        { value: null, text: `Browser (${date.toLocaleTimeString(userLocale, { timeStyle: 'short' })})` },
+        { value: null, title: `Browser (${date.toLocaleTimeString(userLocale, { timeStyle: 'short' })})` },
         {
             value: '24hours',
-            text: t('Settings.GeneralTab.24hours', {
+            title: t('Settings.GeneralTab.24hours', {
                 time: date.toLocaleTimeString(userLocale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }),
             }),
         },
         {
             value: '12hours',
-            text: t('Settings.GeneralTab.12hours', {
+            title: t('Settings.GeneralTab.12hours', {
                 time: date.toLocaleTimeString(userLocale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h12' }),
             }),
         },
@@ -152,10 +152,10 @@ const timeFormatItems = computed(() => {
 })
 
 const calcPrintProgressItems = computed(() => [
-    { value: 'file-relative', text: t('Settings.GeneralTab.CalcPrintProgressItems.FileRelative') },
-    { value: 'file-absolute', text: t('Settings.GeneralTab.CalcPrintProgressItems.FileAbsolute') },
-    { value: 'slicer', text: t('Settings.GeneralTab.CalcPrintProgressItems.Slicer') },
-    { value: 'filament', text: t('Settings.GeneralTab.CalcPrintProgressItems.Filament') },
+    { value: 'file-relative', title: t('Settings.GeneralTab.CalcPrintProgressItems.FileRelative') },
+    { value: 'file-absolute', title: t('Settings.GeneralTab.CalcPrintProgressItems.FileAbsolute') },
+    { value: 'slicer', title: t('Settings.GeneralTab.CalcPrintProgressItems.Slicer') },
+    { value: 'filament', title: t('Settings.GeneralTab.CalcPrintProgressItems.Filament') },
 ])
 
 const calcPrintProgress = computed({
@@ -164,8 +164,8 @@ const calcPrintProgress = computed({
 })
 
 const calcEstimateItems = computed(() => [
-    { value: 'file', text: t('Settings.GeneralTab.EstimateValues.File') },
-    { value: 'filament', text: t('Settings.GeneralTab.EstimateValues.Filament') },
+    { value: 'file', title: t('Settings.GeneralTab.EstimateValues.File') },
+    { value: 'filament', title: t('Settings.GeneralTab.EstimateValues.Filament') },
 ])
 
 const calcEstimateTime = computed({
@@ -174,9 +174,9 @@ const calcEstimateTime = computed({
 })
 
 const calcEtaTimeItems = computed(() => [
-    { value: 'file', text: t('Settings.GeneralTab.EstimateValues.File') },
-    { value: 'filament', text: t('Settings.GeneralTab.EstimateValues.Filament') },
-    { value: 'slicer', text: t('Settings.GeneralTab.EstimateValues.Slicer') },
+    { value: 'file', title: t('Settings.GeneralTab.EstimateValues.File') },
+    { value: 'filament', title: t('Settings.GeneralTab.EstimateValues.Filament') },
+    { value: 'slicer', title: t('Settings.GeneralTab.EstimateValues.Slicer') },
 ])
 
 const calcEtaTime = computed({

@@ -130,8 +130,8 @@ onMounted(() => {
 const consoleFilters = computed(() => (guiConsoleStore.getConsolefilters ?? []) as ConsoleFilter[])
 
 const availableDirections = computed(() => [
-    { text: t('Settings.ConsoleTab.DirectionTable'), value: 'table' },
-    { text: t('Settings.ConsoleTab.DirectionShell'), value: 'shell' },
+    { title: t('Settings.ConsoleTab.DirectionTable'), value: 'table' },
+    { title: t('Settings.ConsoleTab.DirectionShell'), value: 'shell' },
 ])
 
 const consoleDirection = computed({
@@ -140,8 +140,8 @@ const consoleDirection = computed({
 })
 
 const availableEntryStyles = computed(() => [
-    { text: t('Settings.ConsoleTab.EntryStyleDefault'), value: 'default' },
-    { text: t('Settings.ConsoleTab.EntryStyleCompact'), value: 'compact' },
+    { title: t('Settings.ConsoleTab.EntryStyleDefault'), value: 'default' },
+    { title: t('Settings.ConsoleTab.EntryStyleCompact'), value: 'compact' },
 ])
 
 const entryStyle = computed({

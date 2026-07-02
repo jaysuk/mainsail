@@ -178,6 +178,18 @@ html.theme--light .settings-tabs-bar {
     height: 500px;
     max-height: calc(var(--app-height) - 111px);
 }
+
+/* The left nav panel carries a `height500` class in the template (matching
+   the right content panel) but there was never a `.settings-tabs-bar.height500`
+   rule for it to match - only the unrelated `.settings-tabs.height500` above,
+   a different class name. Without an explicit bounded height,
+   `.settings-tabs-bar`'s `height: 100%` has no definite height to resolve
+   against, so OverlayScrollbarsComponent never detects overflow and the tab
+   list just grows past the dialog instead of scrolling internally. */
+.settings-tabs-bar.height500 {
+    height: 500px;
+    max-height: calc(var(--app-height) - 111px);
+}
 </style>
 
 <style>

@@ -268,9 +268,9 @@ function onlyUnique(value: number, index: number, self: number[]) {
 }
 
 const controlStyles = computed(() => [
-    { text: t('Settings.ControlTab.Bars'), value: 'bars' },
-    { text: t('Settings.ControlTab.Circle'), value: 'circle' },
-    { text: t('Settings.ControlTab.Cross'), value: 'cross' },
+    { title: t('Settings.ControlTab.Bars'), value: 'bars' },
+    { title: t('Settings.ControlTab.Circle'), value: 'circle' },
+    { title: t('Settings.ControlTab.Cross'), value: 'cross' },
 ])
 
 const controlStyle = computed({
@@ -288,19 +288,19 @@ const defaultActionButton = computed(() => guiStore.getDefaultControlActionButto
 const actionOptions = computed(() => {
     const actions = [
         {
-            text: t('Settings.ControlTab.MotorsOff', { isDefault: defaultActionButton.value === 'm84' ? t('Settings.ControlTab.IsDefault') : '' }),
+            title: t('Settings.ControlTab.MotorsOff', { isDefault: defaultActionButton.value === 'm84' ? t('Settings.ControlTab.IsDefault') : '' }),
             value: 'm84',
         },
     ]
     if (existsQGL.value) {
         actions.push({
-            text: t('Settings.ControlTab.QuadGantryLevel', { isDefault: defaultActionButton.value === 'qgl' ? t('Settings.ControlTab.IsDefault') : '' }),
+            title: t('Settings.ControlTab.QuadGantryLevel', { isDefault: defaultActionButton.value === 'qgl' ? t('Settings.ControlTab.IsDefault') : '' }),
             value: 'qgl',
         })
     }
     if (existsZtilt.value) {
         actions.push({
-            text: t('Settings.ControlTab.ZTiltAdjust', { isDefault: defaultActionButton.value === 'ztilt' ? t('Settings.ControlTab.IsDefault') : '' }),
+            title: t('Settings.ControlTab.ZTiltAdjust', { isDefault: defaultActionButton.value === 'ztilt' ? t('Settings.ControlTab.IsDefault') : '' }),
             value: 'ztilt',
         })
     }
@@ -441,14 +441,14 @@ const offsetZSaveOption = computed({
 const offsetZSaveOptions = computed(() => {
     const defaultValue = autoSaveZOffsetOption.value.replace(/Z_OFFSET_APPLY_/g, '')
 
-    const output: { value: string | null; text: string }[] = [{ value: null, text: `Auto (${defaultValue})` }]
+    const output: { value: string | null; title: string }[] = [{ value: null, title: `Auto (${defaultValue})` }]
 
     if (existZOffsetApplyEndstop.value) {
-        output.push({ value: 'Z_OFFSET_APPLY_ENDSTOP', text: 'ENDSTOP' })
+        output.push({ value: 'Z_OFFSET_APPLY_ENDSTOP', title: 'ENDSTOP' })
     }
 
     if (existZOffsetApplyProbe.value) {
-        output.push({ value: 'Z_OFFSET_APPLY_PROBE', text: 'PROBE' })
+        output.push({ value: 'Z_OFFSET_APPLY_PROBE', title: 'PROBE' })
     }
 
     return output
