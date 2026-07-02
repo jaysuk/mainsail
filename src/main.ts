@@ -11,6 +11,7 @@ import { useSocketStore } from '@/store/socket'
 import { useRootStore } from '@/store'
 import { installMainsailApi } from '@/plugins/mainsail'
 import { loadPlugins } from '@/plugins/mainsail/pluginLoader'
+import { installVendorGlobals } from '@/plugins/mainsail/vendor'
 
 // Toast notifications
 import ToastPlugin from 'vue-toast-notification'
@@ -36,6 +37,11 @@ setActivePinia(pinia)
 // call is the whole point of loading it), and doesn't depend on the app/
 // router/vuetify being mounted yet - install it as early as possible.
 installMainsailApi()
+// Likewise: a plugin's own compiled `import { ref } from 'vue'` needs this
+// global populated before its module code can even finish evaluating, so it
+// runs immediately alongside installMainsailApi(), not deferred until later
+// in boot.
+installVendorGlobals()
 
 const initLoad = async (): Promise<void> => {
     try {
