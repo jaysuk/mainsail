@@ -10,6 +10,12 @@ import { useServerStore } from '@/store/server'
 import { useGuiStore } from '@/store/gui'
 
 export const getDefaultState = (): GuiConsoleState => ({
+    // Explicitly present (even as undefined) so toRefs(state) below creates a
+    // real ref for it at store-construction time - a key introduced only
+    // later, via a plain `state.cleared_since = x` assignment, would never
+    // become visible through this store's exposed toRefs snapshot (the same
+    // failure mode fixed in src/store/printer/index.ts).
+    cleared_since: undefined,
     hideWaitTemperatures: true,
     hideTlCommands: true,
     direction: 'table',

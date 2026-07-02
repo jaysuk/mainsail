@@ -40,11 +40,6 @@ import { useGuiPresetsStore } from '@/store/gui/presets'
 import { useGuiRemoteprintersStore } from '@/store/gui/remoteprinters'
 import { useGuiWebcamsStore } from '@/store/gui/webcams'
 
-// NOTE: `gui/reminders` exists on disk but was never registered in the
-// original Vuex `gui` module tree (missing from its `modules: {}` map) and is
-// never dispatched from anywhere in the app -- genuinely dead/unreachable
-// code. Intentionally not ported to a live store.
-
 const submoduleStores = {
     console: () => useGuiConsoleStore(),
     gcodehistory: () => useGuiGcodehistoryStore(),

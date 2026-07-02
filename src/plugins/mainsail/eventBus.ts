@@ -23,7 +23,16 @@ class Emitter {
     }
 
     emit(event: string, ...args: unknown[]): void {
-        this.handlers.get(event)?.forEach((handler) => handler(...args))
+        // Isolate each handler: this bus is shared with externally-loaded
+        // plugins, so one throwing handler (buggy or malicious) must not
+        // abort delivery to the other subscribers of the same event.
+        this.handlers.get(event)?.forEach((handler) => {
+            try {
+                handler(...args)
+            } catch (e) {
+                window.console.error(`Mainsail event handler for "${event}" threw`, e)
+            }
+        })
     }
 }
 

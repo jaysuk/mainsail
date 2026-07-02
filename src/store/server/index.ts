@@ -55,6 +55,7 @@ export const getDefaultState = (): ServerState => ({
     websocket_count: 0,
     moonraker_version: '',
     connection_id: null,
+    console_cleared_this_session: false,
 })
 
 // Maps a server component name to its store's init() — replaces the legacy

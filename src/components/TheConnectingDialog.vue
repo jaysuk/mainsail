@@ -58,6 +58,9 @@ const formatHostname = computed(() => (parseInt(String(port.value)) !== 80 && St
 
 const isConnecting = computed(() => socketStore.isConnecting)
 const connectingFailed = computed(() => socketStore.connectingFailed)
+// Always true: App.vue only mounts this component at all while the app is in
+// a not-yet-connected/not-yet-ready state (v-else against that gate), so the
+// dialog should always be visible for as long as this component exists.
 const showDialog = computed(() => true)
 
 const titleText = computed(() => {

@@ -61,7 +61,7 @@ export interface ServerState {
     moonraker_version: string
     connection_id: number | null
 
-    console_cleared_this_session?: boolean
+    console_cleared_this_session: boolean
 
     power?: ServerPowerState
     updateManager?: ServerUpdateManagerState
