@@ -47,6 +47,15 @@ export interface MainsailPluginApi {
     subscribeToPrinterObject(callback: (printerState: PrinterState) => void): () => void
 
     /**
+     * Sends a G-code script to Klipper, exactly as if the user had typed it into the console -
+     * it's logged to the console history the same way. `M112` is special-cased to the dedicated
+     * emergency-stop RPC rather than sent as a literal script, matching the console's own
+     * behavior. This is the only way a plugin can command the printer - there's deliberately no
+     * lower-level websocket-emit passthrough on this API surface.
+     */
+    sendGcode(script: string): void
+
+    /**
      * Registers a brand-new top-level page: adds a Vue Router route and a
      * sidebar navigation entry. Returns a function that removes both.
      */

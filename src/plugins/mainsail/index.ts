@@ -42,6 +42,10 @@ function subscribeToPrinterObject(callback: Parameters<MainsailPluginApi['subscr
     return usePrinterStore().subscribeToUpdates(callback)
 }
 
+function sendGcode(script: string): void {
+    usePrinterStore().sendGcode(script)
+}
+
 // registerPage() adds a real Vue Router route (so /path navigation and
 // refresh-on-that-URL work) plus a sidebar entry. Core routes' sidebar labels
 // are looked up through Mainsail's own i18n as `Router.<title>`
@@ -130,6 +134,7 @@ export const mainsailApi: MainsailPluginApi = {
     off,
     emit,
     subscribeToPrinterObject,
+    sendGcode,
     registerPage,
     overrideDashboard,
     registerSettingsTab,

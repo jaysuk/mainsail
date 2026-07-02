@@ -247,6 +247,26 @@ describe('window.Mainsail plugin API', () => {
         })
     })
 
+    describe('sendGcode', () => {
+        it('sends a script through the same path as the console (printer.gcode.script)', () => {
+            const emitSpy = vi.spyOn(webSocketClient, 'emit').mockImplementation(() => {})
+
+            mainsailApi.sendGcode('G28')
+
+            expect(emitSpy).toHaveBeenCalledWith('printer.gcode.script', { script: 'G28' }, expect.anything())
+            emitSpy.mockRestore()
+        })
+
+        it('special-cases M112 to the dedicated emergency-stop RPC, matching the console', () => {
+            const emitSpy = vi.spyOn(webSocketClient, 'emit').mockImplementation(() => {})
+
+            mainsailApi.sendGcode('M112')
+
+            expect(emitSpy).toHaveBeenCalledWith('printer.emergency_stop', {}, expect.anything())
+            emitSpy.mockRestore()
+        })
+    })
+
     describe('registerPage', () => {
         afterEach(() => {
             if (router.hasRoute('plugin-test-page')) router.removeRoute('plugin-test-page')
