@@ -22,6 +22,7 @@ import { useSocketStore } from '@/store/socket'
 import { useServerStore } from '@/store/server'
 import { usePrinterStore } from '@/store/printer'
 import { useRootStore } from '@/store'
+import { loadPlugins } from '@/plugins/mainsail/pluginLoader'
 
 // gui submodules (each is its own Pinia store). In Vuex these were nested
 // child modules physically sharing the parent's state tree, so the parent's
@@ -36,6 +37,7 @@ import { useGuiMaintenanceStore } from '@/store/gui/maintenance'
 import { useGuiMiscellaneousStore } from '@/store/gui/miscellaneous'
 import { useGuiNavigationStore } from '@/store/gui/navigation'
 import { useGuiNotificationsStore } from '@/store/gui/notifications'
+import { useGuiPluginsStore } from '@/store/gui/plugins'
 import { useGuiPresetsStore } from '@/store/gui/presets'
 import { useGuiRemoteprintersStore } from '@/store/gui/remoteprinters'
 import { useGuiWebcamsStore } from '@/store/gui/webcams'
@@ -49,6 +51,7 @@ const submoduleStores = {
     miscellaneous: () => useGuiMiscellaneousStore(),
     navigation: () => useGuiNavigationStore(),
     notifications: () => useGuiNotificationsStore(),
+    plugins: () => useGuiPluginsStore(),
     presets: () => useGuiPresetsStore(),
     remoteprinters: () => useGuiRemoteprintersStore(),
     webcams: () => useGuiWebcamsStore(),
@@ -710,6 +713,18 @@ export const useGuiStore = defineStore('gui', () => {
         }
 
         setData(data)
+
+        // Plugins installed through the Plugins settings tab are persisted
+        // in this same 'mainsail' namespace (hydrated by the submodule loop
+        // above), so load them here rather than at main.ts's boot-time
+        // config.json-driven loadPlugins() call, which runs before this
+        // database round-trip resolves. Additive to, not a replacement for,
+        // that call - hand-edited config.json plugins keep working.
+        const enabledUrls = useGuiPluginsStore()
+            .getPlugins.filter((plugin) => plugin.enabled)
+            .map((plugin) => plugin.entryUrl)
+        if (enabledUrls.length) loadPlugins(enabledUrls)
+
         socketStore.removeInitModule('gui/init')
     }
 

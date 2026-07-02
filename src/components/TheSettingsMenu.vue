@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, defineAsyncComponent } from 'vue'
 import { useI18n } from 'vue-i18n'
 import SettingsGeneralTab from '@/components/settings/SettingsGeneralTab.vue'
 import SettingsWebcamsTab from '@/components/settings/SettingsWebcamsTab.vue'
@@ -71,6 +71,7 @@ import {
     mdiMonitorDashboard,
     mdiPalette,
     mdiPrinter3d,
+    mdiPuzzle,
     mdiTimelapse,
     mdiTune,
     mdiVideo3d,
@@ -82,6 +83,13 @@ import {
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import type { OverlayScrollbarsComponentRef } from 'overlayscrollbars-vue'
 import { useBase } from '@/composables/useBase'
+
+// Lazy: pulls in fflate (zip extraction) for the plugin-package install
+// dialog, which most sessions never open. Every other tab here is a static
+// import (pre-existing pattern, out of scope to change for all of them right
+// now), but this one adds a genuinely new dependency, so it's worth keeping
+// out of the eager settings-menu bundle specifically.
+const SettingsPluginsTab = defineAsyncComponent(() => import('@/components/settings/SettingsPluginsTab.vue'))
 
 const tabComponents = {
     general: SettingsGeneralTab,
@@ -98,6 +106,7 @@ const tabComponents = {
     miscellaneous: SettingsMiscellaneousTab,
     navigation: SettingsNavigationTab,
     heightmap: SettingsHeightmapTab,
+    plugins: SettingsPluginsTab,
     timelapse: SettingsTimelapseTab,
 } as const
 
@@ -127,6 +136,7 @@ const tabTitles = computed(() => {
         { icon: mdiDipSwitch, name: 'miscellaneous', title: t('Settings.MiscellaneousTab.Miscellaneous') },
         { icon: mdiMenu, name: 'navigation', title: t('Settings.NavigationTab.Navigation') },
         { icon: mdiGrid, name: 'heightmap', title: t('Settings.HeightmapTab.Heightmap') },
+        { icon: mdiPuzzle, name: 'plugins', title: t('Settings.PluginsTab.Plugins') },
     ]
 
     if (moonrakerComponents.value.includes('timelapse')) {

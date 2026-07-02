@@ -14,6 +14,15 @@ function resolveInstall(module: unknown): MainsailPluginModule['install'] | null
     return null
 }
 
+function resolveUninstall(module: unknown): MainsailPluginModule['uninstall'] | null {
+    const candidate = module as { uninstall?: unknown; default?: { uninstall?: unknown } }
+
+    if (typeof candidate.uninstall === 'function') return candidate.uninstall as MainsailPluginModule['uninstall']
+    if (typeof candidate.default?.uninstall === 'function') return candidate.default.uninstall as MainsailPluginModule['uninstall']
+
+    return null
+}
+
 /**
  * Dynamically imports each plugin URL (from config.json's `plugins` list) as
  * an ES module and calls its `install(api)` export, resolving injected
@@ -38,5 +47,38 @@ export async function loadPlugins(pluginUrls: string[], importer: Importer = def
         } catch (e) {
             window.console.error(`Failed to load Mainsail plugin at "${url}"`, e)
         }
+    }
+}
+
+/**
+ * Best-effort hot-unload of a plugin previously loaded by `loadPlugins`.
+ * Re-imports the URL (the browser's ESM module cache makes this cheap - it
+ * returns the already-evaluated module record rather than re-fetching/
+ * re-executing it) and calls its `uninstall(api)` export if present.
+ *
+ * Returns whether an `uninstall` export was actually found and called. A
+ * `false` return means the plugin has no teardown hook, so whatever it
+ * registered via `install()` is still live until the next page reload -
+ * callers should surface that to the user rather than claiming a clean
+ * removal.
+ *
+ * Note this only undoes what `uninstall()` itself explicitly tears down -
+ * any module-scope side effect a plugin created outside of `install()`
+ * (e.g. a top-level `setInterval`) is untouched, since the module isn't
+ * re-executed.
+ */
+export async function unloadPlugin(url: string, importer: Importer = defaultImporter): Promise<boolean> {
+    try {
+        const module = await importer(url)
+        const uninstall = resolveUninstall(module)
+
+        if (!uninstall) return false
+
+        uninstall(mainsailApi)
+        window.console.info(`Unloaded Mainsail plugin: ${url}`)
+        return true
+    } catch (e) {
+        window.console.error(`Failed to unload Mainsail plugin at "${url}"`, e)
+        return false
     }
 }

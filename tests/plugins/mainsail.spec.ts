@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, markRaw } from 'vue'
 import { installMainsailApi, mainsailApi } from '@/plugins/mainsail'
 import { on, off, emit, CLOSE_CONTEXT_MENU } from '@/plugins/mainsail'
-import { loadPlugins } from '@/plugins/mainsail/pluginLoader'
+import { loadPlugins, unloadPlugin } from '@/plugins/mainsail/pluginLoader'
 import { useLayoutStore } from '@/store/layout'
 import { usePrinterStore } from '@/store/printer'
 import type { MainsailPluginApi } from '@/plugins/mainsail/types'
@@ -185,6 +185,61 @@ describe('window.Mainsail plugin API', () => {
 
             expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to load Mainsail plugin'), expect.any(Error))
             expect(install).toHaveBeenCalledWith(mainsailApi)
+            errorSpy.mockRestore()
+        })
+    })
+
+    describe('unloadPlugin (best-effort hot teardown)', () => {
+        it('calls uninstall(api) for a plugin module exporting it as a named export, and returns true', async () => {
+            const uninstall = vi.fn()
+            const importer = vi.fn().mockResolvedValue({ uninstall })
+
+            const result = await unloadPlugin('https://example.com/plugin.js', importer)
+
+            expect(importer).toHaveBeenCalledWith('https://example.com/plugin.js')
+            expect(uninstall).toHaveBeenCalledWith(mainsailApi)
+            expect(result).toBe(true)
+        })
+
+        it('calls uninstall(api) for a plugin module exporting it on its default export', async () => {
+            const uninstall = vi.fn()
+            const importer = vi.fn().mockResolvedValue({ default: { uninstall } })
+
+            const result = await unloadPlugin('https://example.com/plugin.js', importer)
+
+            expect(uninstall).toHaveBeenCalledWith(mainsailApi)
+            expect(result).toBe(true)
+        })
+
+        it('actually tears down what the plugin registered during install(), not just calls the hook', async () => {
+            const importer = vi.fn().mockResolvedValue({
+                install: (api: MainsailPluginApi) => api.registerDashboardPanel('unload-test-panel', FakePanel),
+                uninstall: (api: MainsailPluginApi) => api.unregisterDashboardPanel('unload-test-panel'),
+            })
+
+            await loadPlugins(['https://example.com/plugin.js'], importer)
+            expect(useLayoutStore().resolvePanelComponent('unload-test-panel')).toBe(FakePanel)
+
+            await unloadPlugin('https://example.com/plugin.js', importer)
+            expect(useLayoutStore().resolvePanelComponent('unload-test-panel')).toBeUndefined()
+        })
+
+        it('returns false without erroring for a plugin with no uninstall() export', async () => {
+            const importer = vi.fn().mockResolvedValue({ install: vi.fn() })
+
+            const result = await unloadPlugin('https://example.com/plugin.js', importer)
+
+            expect(result).toBe(false)
+        })
+
+        it('returns false and logs an error for a plugin whose import() rejects', async () => {
+            const errorSpy = vi.spyOn(window.console, 'error').mockImplementation(() => {})
+            const importer = vi.fn().mockRejectedValue(new Error('network error'))
+
+            const result = await unloadPlugin('https://example.com/broken.js', importer)
+
+            expect(result).toBe(false)
+            expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to unload Mainsail plugin'), expect.any(Error))
             errorSpy.mockRestore()
         })
     })

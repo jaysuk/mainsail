@@ -50,6 +50,17 @@ export interface MainsailPluginApi {
 /** The shape every dynamically-loaded plugin module must export. */
 export interface MainsailPluginModule {
     install(api: MainsailPluginApi): void
+    /**
+     * Optional best-effort teardown hook, called when a plugin is disabled or
+     * uninstalled from the Plugins settings tab without a page reload. A
+     * well-behaved plugin should undo here whatever `install()` registered
+     * (unregisterDashboardPanel/unregisterComponent/off/unsubscribe
+     * callbacks). Plugins that don't export this simply won't be hot-torn-down
+     * - their registrations are cleared on the next reload instead, same as
+     * DuetWebControl's own plugin manager, which recommends a restart after
+     * removing a plugin rather than promising seamless hot-uninstall.
+     */
+    uninstall?(api: MainsailPluginApi): void
 }
 
 declare global {

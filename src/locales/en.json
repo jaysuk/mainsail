@@ -1362,6 +1362,27 @@
         "NavigationTab": {
             "Navigation": "Navigation"
         },
+        "PluginsTab": {
+            "Errors": {
+                "InvalidManifest": "The plugin.json manifest is missing required fields (id, name, author, version).",
+                "MissingEntryFile": "The plugin package is missing its mainsail/index.js entry file.",
+                "MissingManifest": "The plugin package doesn't contain a plugin.json manifest.",
+                "NotAZip": "This doesn't look like a valid .zip file.",
+                "PathTraversal": "The plugin package contains an invalid file path and was rejected.",
+                "Unknown": "Something went wrong installing this plugin.",
+                "UploadFailed": "Uploading the plugin's files failed."
+            },
+            "Install": "Install",
+            "InstallPlugin": "Install Plugin",
+            "InstallPluginDescription": "Select a plugin package (.zip) to install. It's extracted in your browser and uploaded to your printer - nothing is sent anywhere else.",
+            "NoPlugins": "No plugins installed.",
+            "Plugins": "Plugins",
+            "PluginPackage": "Plugin package",
+            "ReloadRequired": "This plugin doesn't support hot reload - reload the page for the change to fully take effect.",
+            "Uninstall": "Uninstall",
+            "UninstallPlugin": "Uninstall Plugin",
+            "UninstallPluginQuestion": "Do you really want to uninstall \"{name}\"? This deletes its files from your printer."
+        },
         "PresetsTab": {
             "AddPreset": "add preset",
             "Cooldown": "Cooldown",
