@@ -144,9 +144,6 @@ export const useSocketStore = defineStore('socket', () => {
             case 'notify_filelist_changed':
                 useFilesStore().filelistChanged(param)
                 break
-            case 'notify_metadata_update':
-                useFilesStore().setMetadata(param)
-                break
             case 'notify_power_changed':
                 useServerPowerStore().setStatus(param)
                 break
